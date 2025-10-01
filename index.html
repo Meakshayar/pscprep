@@ -10,6 +10,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         :root {
@@ -713,6 +714,8 @@
                     <div style="text-align: center; margin-top: 10px;">
                         <button onclick="skipQuestion()" class="btn-warning">Skip Now</button>
                         <button onclick="endPractice()" class="btn-danger">End Practice</button>
+                        <button id="nextQuestionBtn" onclick="proceedToNextQuestion()" class="btn-success hidden">Next Question</button>
+                        <button id="reportQuestionBtn" onclick="reportCurrentQuestion()" class="btn-warning" style="background: #e67e22; margin-top: 20px;">Report Question</button>
                     </div>
                 </div>
                 </div>
@@ -803,6 +806,7 @@
                     <h3>Admin Actions</h3>
                     <button id="showAddQuestionsBtn">Manage Question Sets</button>
                     <button id="showRevisionCalendarBtn">View Revision Calendar</button>
+                    <button id="showReportedQuestionsBtn">View Reported Questions</button>
 
                     <div class="form-group" style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px;">
                         <label for="playerToRemoveSelect">Remove a Player:</label>
@@ -817,7 +821,7 @@
                 </div>
 
                 <div id="addQuestionsSection" class="hidden" style="margin-top: 20px;">
-                    <button id="backToSettingsBtn">&larr; Back to Settings</button>
+                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
                     <h2>Add Questions</h2>
                     <div id="addQuestionsContent">
                         <div class="form-group">
@@ -875,12 +879,13 @@
                             </select>
                         </div>
                         <button onclick="saveEditedQuestion()" class="btn-success">Save Changes</button>
-                        <button onclick="cancelQuestionEdit()" class="btn-danger">Cancel</button>
+                        <button onclick="cancelQuestionEdit()">Cancel</button>
+                        <button onclick="deleteCurrentEditedQuestion()" class="btn-danger" style="margin-top: 10px;">Delete This Question</button>
                     </div>
                 </div>
 
                 <div id="revisionCalendarSection" class="hidden" style="margin-top: 20px;">
-                    <button id="backToSettingsFromCalendarBtn">&larr; Back to Settings</button>
+                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
                     <h2 style="margin-top: 15px;">Admin Revision Calendar</h2>
                     <div class="calendar-header">
                         <button id="prevMonthBtn">&lt; Prev</button>
@@ -888,6 +893,12 @@
                         <button id="nextMonthBtn">Next &gt;</button>
                     </div>
                     <div id="calendarBody" class="calendar-grid"></div>
+                </div>
+                
+                <div id="reportedQuestionsSection" class="hidden" style="margin-top: 20px;">
+                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
+                    <h2 style="margin-top: 15px;">Reported Questions for Review</h2>
+                    <div id="reportedQuestionsList"></div>
                 </div>
 
             </div>
@@ -975,6 +986,7 @@
         let practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
         let revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {}; 
         let playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+        let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
         
         const ADMIN_PASSWORD = "2525", SETTINGS_PASSWORD = "2525";
         let isAdmin = false;
@@ -1016,11 +1028,17 @@
             document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
 
             document.getElementById('showAddQuestionsBtn').addEventListener('click', showAddQuestionsSection); 
-            document.getElementById('backToSettingsBtn').addEventListener('click', () => {
-                document.getElementById('addQuestionsSection').classList.add('hidden');
-                document.getElementById('editQuestionsSection').classList.add('hidden'); 
-                document.getElementById('mainSettings').classList.remove('hidden');
+            
+            document.querySelectorAll('.backToSettingsBtn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('addQuestionsSection').classList.add('hidden');
+                    document.getElementById('editQuestionsSection').classList.add('hidden'); 
+                    document.getElementById('revisionCalendarSection').classList.add('hidden');
+                    document.getElementById('reportedQuestionsSection').classList.add('hidden');
+                    document.getElementById('mainSettings').classList.remove('hidden');
+                });
             });
+
             document.getElementById('backToSetListBtn').addEventListener('click', () => {
                 document.getElementById('editQuestionsSection').classList.add('hidden');
                 document.getElementById('addQuestionsSection').classList.remove('hidden');
@@ -1036,10 +1054,13 @@
                 currentCalendarDate = new Date();
                 renderRevisionCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
             });
-            document.getElementById('backToSettingsFromCalendarBtn').addEventListener('click', () => {
-                document.getElementById('revisionCalendarSection').classList.add('hidden');
-                document.getElementById('mainSettings').classList.remove('hidden');
+
+            document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
+                document.getElementById('mainSettings').classList.add('hidden');
+                document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+                renderReportedQuestions();
             });
+            
             document.getElementById('prevMonthBtn').addEventListener('click', () => {
                 currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
                 renderRevisionCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
@@ -1174,6 +1195,13 @@
                     }
                 }
             });
+             db.ref('reportedQuestions').on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    reportedQuestions = data;
+                    localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+                }
+            });
         }
         
         function saveFirebaseConfig() {
@@ -1206,6 +1234,7 @@
             db.ref('practiceHistory').set(practiceHistory);
             db.ref('revisionProgress').set(revisionProgress); 
             db.ref('playerProfiles').set(playerProfiles);
+            db.ref('reportedQuestions').set(reportedQuestions);
             showNotification('All data synced to Firebase!');
         }
 
@@ -1217,10 +1246,12 @@
                 if(data.practiceHistory) practiceHistory = data.practiceHistory;
                 if(data.revisionProgress) revisionProgress = data.revisionProgress;
                 if(data.playerProfiles) playerProfiles = data.playerProfiles;
+                if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
                 localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+                localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
                 loadQuestionSets();
                 updateSetSelects();
                 updatePlayerSelects();
@@ -1230,7 +1261,7 @@
         
         // --- DATA MANAGEMENT ---
         function exportData() {
-            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles };
+            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1251,10 +1282,12 @@
                         if(data.practiceHistory) practiceHistory = data.practiceHistory;
                         if(data.revisionProgress) revisionProgress = data.revisionProgress;
                         if(data.playerProfiles) playerProfiles = data.playerProfiles;
+                        if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
                         localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                         localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                         localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                         localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+                        localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
                         init();
                         showNotification('Data imported successfully!');
                     } catch (err) { showNotification('Invalid import file', 'error'); }
@@ -1270,6 +1303,7 @@
                 practiceHistory = {};
                 revisionProgress = {}; 
                 playerProfiles = {};
+                reportedQuestions = [];
                 localStorage.clear();
                 if (isFirebaseConnected) { 
                     db.ref().set(null);
@@ -1484,6 +1518,7 @@
                     document.getElementById('addQuestionsSection').classList.add('hidden');
                     document.getElementById('editQuestionsSection').classList.add('hidden');
                     document.getElementById('revisionCalendarSection').classList.add('hidden');
+                    document.getElementById('reportedQuestionsSection').classList.add('hidden');
                     document.getElementById('mainSettings').classList.remove('hidden');
                 }
             };
@@ -1609,6 +1644,9 @@
         }
         
         function showNextQuestion() {
+            document.getElementById('nextQuestionBtn').classList.add('hidden');
+            document.getElementById('reportQuestionBtn').classList.remove('hidden');
+
             if (currentQuestionIndex >= currentSet.length) { endPractice(); return; }
             const question = currentSet[currentQuestionIndex];
             document.getElementById('practiceQuestion').textContent = `${currentQuestionIndex + 1}. ${question.question}`;
@@ -1645,15 +1683,25 @@
                 isSkipped: false
             });
 
-            if (isCorrect) { score++; playSound('correct'); addXP(XP_PER_CORRECT_ANSWER); document.getElementById('practiceScore').textContent = `Score: ${score}`; } 
-            else { playSound('wrong'); }
+            if (isCorrect) { 
+                score++; 
+                playSound('correct'); 
+                addXP(XP_PER_CORRECT_ANSWER); 
+                document.getElementById('practiceScore').textContent = `Score: ${score}`; 
+                setTimeout(() => { 
+                    proceedToNextQuestion();
+                }, 200);
+            } 
+            else { 
+                playSound('wrong'); 
+                document.getElementById('nextQuestionBtn').classList.remove('hidden');
+            }
             
-            const delay = isCorrect ? 200 : 1000;
-            
-            setTimeout(() => { 
-                currentQuestionIndex++; 
-                showNextQuestion(); 
-            }, delay);
+        }
+
+        function proceedToNextQuestion() {
+            currentQuestionIndex++; 
+            showNextQuestion(); 
         }
 
         function skipQuestion() {
@@ -1674,8 +1722,7 @@
             });
             
             showNotification('Question skipped.', 'warning');
-            currentQuestionIndex++;
-            showNextQuestion();
+            proceedToNextQuestion();
         }
 
         function endPractice() {
@@ -1717,12 +1764,21 @@
 
         function loadQuestionSets() {
             const setsList = document.getElementById('setsList');
-            setsList.innerHTML = Object.keys(questionSets).map(setName => `
-                <div class="question-set" style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="flex-grow: 1;">${setName} (${(questionSets[setName].questions || []).length} questions)</h4>
-                    <div>
-                        <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 5px; padding: 8px 15px;">Edit Questions</button>
-                        <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 5px; padding: 8px 15px;">Delete</button>
+            
+            const sortedSetNames = Object.keys(questionSets).sort((a, b) => {
+                const dateA = new Date(questionSets[a].uploadDate || 0);
+                const dateB = new Date(questionSets[b].uploadDate || 0);
+                return dateB - dateA; // Sort descending
+            });
+
+            setsList.innerHTML = sortedSetNames.map(setName => `
+                <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
+                    <h4 style="flex-grow: 1; min-width: 150px;">${setName} (${(questionSets[setName].questions || []).length} questions)</h4>
+                    <div style="display: flex; flex-wrap: wrap;">
+                        <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
+                        <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
+                        <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
+                        <button onclick="downloadSetAsPDF('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px;">PDF</button>
                     </div>
                 </div>`).join('') || '<p>No question sets found.</p>';
         }
@@ -1824,6 +1880,55 @@
             }, 'Enter Admin Password to Delete');
         }
         
+        function renameSet(oldName) {
+            const newName = prompt("Enter the new name for the question set:", oldName);
+            if (!newName || newName.trim() === '') {
+                showNotification('Set name cannot be empty.', 'warning');
+                return;
+            }
+            if (newName === oldName) return;
+            if (questionSets[newName]) {
+                showNotification(`A set named "${newName}" already exists.`, 'error');
+                return;
+            }
+
+            // Update questionSets
+            questionSets[newName] = { ...questionSets[oldName] };
+            delete questionSets[oldName];
+
+            // Update practiceHistory
+            Object.keys(practiceHistory).forEach(key => {
+                if (practiceHistory[key].setName === oldName) {
+                    practiceHistory[key].setName = newName;
+                }
+            });
+
+            // Update revisionProgress
+            Object.keys(revisionProgress).forEach(player => {
+                Object.keys(revisionProgress[player]).forEach(revKey => {
+                    if (revKey.startsWith(`${oldName}_RevDay`)) {
+                        const newRevKey = revKey.replace(oldName, newName);
+                        revisionProgress[player][newRevKey] = revisionProgress[player][revKey];
+                        delete revisionProgress[player][revKey];
+                    }
+                });
+            });
+
+            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+
+            if (isFirebaseConnected) {
+                db.ref('questionSets').set(questionSets);
+                db.ref('practiceHistory').set(practiceHistory);
+                db.ref('revisionProgress').set(revisionProgress);
+            }
+
+            showNotification(`Set renamed from "${oldName}" to "${newName}".`, 'success');
+            loadQuestionSets();
+            updateSetSelects();
+        }
+
         function editQuestionSet(setName) {
             currentEditingSet = setName;
             document.getElementById('addQuestionsSection').classList.add('hidden');
@@ -1860,8 +1965,27 @@
             }, "Confirm Deletion");
         }
 
+        function deleteCurrentEditedQuestion() {
+            if (currentEditingSet === null || currentEditingIndex === -1) return;
+            showPasswordModal(`Are you sure you want to delete this question?`, ADMIN_PASSWORD, () => {
+                questionSets[currentEditingSet].questions.splice(currentEditingIndex, 1);
+                
+                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                if (isFirebaseConnected) db.ref('questionSets').set(questionSets);
+
+                showNotification('Question deleted successfully.', 'error');
+                
+                // Return to the list view
+                document.getElementById('questionEditForm').classList.add('hidden');
+                editQuestionSet(currentEditingSet); 
+                currentEditingIndex = -1;
+
+            }, "Confirm Deletion");
+        }
+
         function editSpecificQuestion(setName, qIndex) {
             currentEditingIndex = qIndex;
+            currentEditingSet = setName; // Ensure this is set
             const question = questionSets[setName].questions[qIndex];
 
             document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
@@ -1901,10 +2025,8 @@
             const totalQuestionsInSet = questionSets[setName].questions.length;
 
             if (nextQuestionIndex < totalQuestionsInSet) {
-                // There is a next question, so load it for editing.
                 editSpecificQuestion(setName, nextQuestionIndex);
             } else {
-                // This was the last question, so go back to the list.
                 showNotification(`Finished editing all questions in ${setName}.`, 'success');
                 cancelQuestionEdit();
                 editQuestionSet(setName);
@@ -2491,6 +2613,141 @@
             });
             if (confettiParticles.length > 0) animationFrameId = requestAnimationFrame(animateConfetti);
         }
+
+        // --- NEW REPORTING FUNCTIONS ---
+        function reportCurrentQuestion() {
+            const question = currentSet[currentQuestionIndex];
+            
+            // Avoid duplicate reports of the exact same question
+            const isAlreadyReported = reportedQuestions.some(
+                r => r.setName === currentAttempt.setName && r.question.question === question.question
+            );
+
+            if (isAlreadyReported) {
+                showNotification('This question has already been reported.', 'warning');
+                return;
+            }
+
+            reportedQuestions.push({
+                reportId: `report-${Date.now()}`,
+                setName: currentAttempt.setName,
+                question: JSON.parse(JSON.stringify(question)), // Deep copy
+                reportedAt: new Date().toISOString(),
+                reportedBy: currentPlayerName
+            });
+            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+            if (isFirebaseConnected) {
+                db.ref('reportedQuestions').set(reportedQuestions);
+            }
+            showNotification('Question reported for admin review.', 'success');
+            document.getElementById('reportQuestionBtn').classList.add('hidden'); // Hide after reporting
+        }
+
+        function renderReportedQuestions() {
+            const listDiv = document.getElementById('reportedQuestionsList');
+            if (reportedQuestions.length === 0) {
+                listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>';
+                return;
+            }
+            listDiv.innerHTML = reportedQuestions.map((report, index) => {
+                const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
+                return `
+                <div class="question-set" style="border-left-color: var(--danger-color);">
+                    <h4>Set: ${report.setName}</h4>
+                    <p><strong>Question:</strong> ${report.question.question}</p>
+                    <p style="margin-top: 5px;"><strong>Options:</strong> ${report.question.options.join(', ')}</p>
+                    <p><strong>Correct Answer:</strong> ${report.question.correctAnswer} (${correctOpt})</p>
+                    <p style="font-size: 12px; color: #555;">Reported by ${report.reportedBy} on ${new Date(report.reportedAt).toLocaleDateString()}</p>
+                    <div style="margin-top: 10px;">
+                        <button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review & Edit</button>
+                        <button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss Report</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function dismissReport(reportId) {
+            reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
+            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+            if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
+            renderReportedQuestions();
+            showNotification('Report dismissed.', 'success');
+        }
+
+        function editReportedQuestion(reportId) {
+            const report = reportedQuestions.find(r => r.reportId === reportId);
+            if (!report) return;
+
+            // Find the original question index
+            const qIndex = (questionSets[report.setName].questions || []).findIndex(
+                q => q.question === report.question.question
+            );
+
+            if (qIndex === -1) {
+                showNotification('Original question not found in the set. It may have been deleted.', 'error');
+                return;
+            }
+
+            // Switch to the edit view
+            switchTab('settings');
+            document.getElementById('mainSettings').classList.add('hidden');
+            editQuestionSet(report.setName);
+            editSpecificQuestion(report.setName, qIndex);
+            
+            // After editing, we can dismiss the report automatically
+            reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
+            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+            if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
+        }
+
+        // --- NEW PDF EXPORT FUNCTION ---
+        function downloadSetAsPDF(setName) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const set = questionSets[setName];
+            if (!set || !set.questions || set.questions.length === 0) {
+                showNotification('This set is empty, cannot generate PDF.', 'warning');
+                return;
+            }
+
+            let y = 20; // Initial Y position
+            const pageHeight = doc.internal.pageSize.height;
+            const margin = 15;
+
+            doc.setFontSize(18);
+            doc.text(setName, margin, y);
+            y += 15;
+
+            doc.setFontSize(12);
+
+            set.questions.forEach((q, index) => {
+                const questionText = `${index + 1}. ${q.question}`;
+                const correctOpt = q.options[q.correctAnswer.charCodeAt(0) - 65];
+                const answerText = `Answer: ${q.correctAnswer}. ${correctOpt}`;
+
+                const questionLines = doc.splitTextToSize(questionText, doc.internal.pageSize.width - margin * 2);
+                const answerLines = doc.splitTextToSize(answerText, doc.internal.pageSize.width - margin * 2);
+
+                const requiredHeight = (questionLines.length + answerLines.length) * 5 + 5;
+
+                if (y + requiredHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.setFont('helvetica', 'bold');
+                doc.text(questionLines, margin, y);
+                y += questionLines.length * 5;
+
+                doc.setFont('helvetica', 'normal');
+                doc.text(answerLines, margin, y);
+                y += answerLines.length * 5 + 5; // Extra space between questions
+            });
+
+            doc.save(`${setName.replace(/\s/g, '_')}_Questions.pdf`);
+            showNotification('PDF download started!', 'success');
+        }
+
     </script>
 </body>
 </html>
