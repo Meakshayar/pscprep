@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSC Exam Prep</title>
+    <title>PSC Exam Prep - Gamified</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1897,8 +1897,18 @@
 
             showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
             
-            cancelQuestionEdit();
-            editQuestionSet(setName);
+            const nextQuestionIndex = qIndex + 1;
+            const totalQuestionsInSet = questionSets[setName].questions.length;
+
+            if (nextQuestionIndex < totalQuestionsInSet) {
+                // There is a next question, so load it for editing.
+                editSpecificQuestion(setName, nextQuestionIndex);
+            } else {
+                // This was the last question, so go back to the list.
+                showNotification(`Finished editing all questions in ${setName}.`, 'success');
+                cancelQuestionEdit();
+                editQuestionSet(setName);
+            }
         }
 
         function cancelQuestionEdit() {
@@ -2484,4 +2494,3 @@
     </script>
 </body>
 </html>
-
