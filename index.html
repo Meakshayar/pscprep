@@ -825,6 +825,10 @@
                     <h2>Add Questions</h2>
                     <div id="addQuestionsContent">
                         <div class="form-group">
+                            <label for="setUploadDate">Set Upload Date (for new sets):</label>
+                            <input type="date" id="setUploadDate">
+                        </div>
+                        <div class="form-group">
                             <label>Question Set Name:</label>
                             <input type="text" id="setName" placeholder="e.g., General Knowledge Set 1">
                         </div>
@@ -1011,6 +1015,7 @@
             setDailyQuote();
             
             document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}%).`;
+            document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
             const lastPlayer = localStorage.getItem('pscLastPlayer');
             if (lastPlayer) {
@@ -1771,16 +1776,23 @@
                 return dateB - dateA; // Sort descending
             });
 
-            setsList.innerHTML = sortedSetNames.map(setName => `
+            setsList.innerHTML = sortedSetNames.map(setName => {
+                const set = questionSets[setName];
+                const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
+                return `
                 <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
-                    <h4 style="flex-grow: 1; min-width: 150px;">${setName} (${(questionSets[setName].questions || []).length} questions)</h4>
+                    <div>
+                        <h4 style="margin-bottom: 3px;">${setName} (${(set.questions || []).length} questions)</h4>
+                        <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
+                    </div>
                     <div style="display: flex; flex-wrap: wrap;">
                         <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
                         <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
                         <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
                         <button onclick="downloadSetAsPDF('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px;">PDF</button>
                     </div>
-                </div>`).join('') || '<p>No question sets found.</p>';
+                </div>`;
+            }).join('') || '<p>No question sets found.</p>';
         }
 
         function updateSetSelects() {
@@ -1835,7 +1847,11 @@
             if(options.length !== 4) { showNotification('Please provide exactly 4 options (one per line).', 'error'); return; }
             
             if(!questionSets[setName]) {
-                questionSets[setName] = { questions: [], uploadDate: new Date().toISOString().split('T')[0] };
+                const uploadDate = document.getElementById('setUploadDate').value;
+                questionSets[setName] = { 
+                    questions: [], 
+                    uploadDate: uploadDate || new Date().toISOString().split('T')[0] 
+                };
             }
             questionSets[setName].questions.push({ question: qText, options, correctAnswer: document.getElementById('correctAnswer').value });
             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
@@ -1853,7 +1869,11 @@
             let imported = 0;
             
             if(!questionSets[setName]) {
-                questionSets[setName] = { questions: [], uploadDate: new Date().toISOString().split('T')[0] };
+                const uploadDate = document.getElementById('setUploadDate').value;
+                questionSets[setName] = { 
+                    questions: [], 
+                    uploadDate: uploadDate || new Date().toISOString().split('T')[0]
+                };
             }
             bulkText.split('\n').forEach(line => {
                 const parts = line.split('|').map(p => p.trim());
