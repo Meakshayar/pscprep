@@ -73,7 +73,7 @@
         #practiceSessionView {
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start; /* MODIFIED: Aligned content to top */
             height: 100vh;
             padding: 20px;
             position: relative;
@@ -82,6 +82,8 @@
         #practiceOptions {
             margin: 20px 0;
             overflow-y: auto;
+            flex: 1; /* ADDED: Makes this div take available space */
+            min-height: 0; /* ADDED: Critical for scrolling in flexbox */
         }
 
 
@@ -770,10 +772,12 @@
             <div id="history" class="tab-content">
                 <h2>My Practice History</h2>
                 <p>Showing your latest attempt for each question set.</p>
-                <div class="player-selector">
-                    <select id="historyPlayerSelect" onchange="loadHistory()" class="styled-select"></select>
+                <div class="player-selector" style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <select id="historyPlayerSelect" onchange="loadHistory()" class="styled-select" style="flex-grow: 1;"></select>
+                    <button onclick="showQuestionAnalysis()">Analyze Question Timings</button>
                 </div>
                 <div id="historyList"></div>
+                <div id="questionAnalysisView" class="hidden" style="margin-top: 20px;"></div>
             </div>
 
             <div id="settings" class="tab-content">
@@ -1001,6 +1005,7 @@
         let currentEditingIndex = -1; 
         let selectedAvatarUrl = null;
         let pendingPlayerName = null;
+        let analyzedQuestions = []; // For the new history analysis feature
         
         let currentCalendarDate = new Date(); // For the new calendar
 
@@ -1677,13 +1682,16 @@
                 else if (i === selectedIndex) o.classList.add('wrong');
             });
 
+            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
+            const timeForThisQuestion = timeElapsed - lastAnswerTime;
+
             currentAttempt.answers.push({ 
                 isCorrect, 
                 questionText: question.question,
                 questionOptions: question.options,
                 selectedAnswer: String.fromCharCode(65 + selectedIndex), 
                 correctAnswer: question.correctAnswer,
-                timeTaken: timeElapsed - (currentAttempt.answers.reduce((sum, a) => sum + (a.timeAtAnswer || 0), 0)),
+                timeTaken: timeForThisQuestion,
                 timeAtAnswer: timeElapsed,
                 isSkipped: false
             });
@@ -1715,13 +1723,16 @@
             
             document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
             
+            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
+            const timeForThisQuestion = timeElapsed - lastAnswerTime;
+
             currentAttempt.answers.push({
                 isCorrect: false,
                 questionText: question.question,
                 questionOptions: question.options,
                 selectedAnswer: 'SKIPPED',
                 correctAnswer: question.correctAnswer,
-                timeTaken: timeElapsed - (currentAttempt.answers.reduce((sum, a) => sum + (a.timeAtAnswer || 0), 0)),
+                timeTaken: timeForThisQuestion,
                 timeAtAnswer: timeElapsed,
                 isSkipped: true
             });
@@ -2215,6 +2226,9 @@
         }
 
         function loadHistory() {
+            document.getElementById('questionAnalysisView').classList.add('hidden');
+            document.getElementById('historyList').classList.remove('hidden');
+
             const playerName = document.getElementById('historyPlayerSelect').value;
             const listDiv = document.getElementById('historyList');
             if (!playerName) { listDiv.innerHTML = '<p>Please select a player to view their history.</p>'; return; }
@@ -2280,6 +2294,93 @@
             detailsHtml += `<p style="margin-top:20px;">Total Practice Time: ${formatTime(attempt.timeSpent)}</p>`
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml + `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
             openModal('viewDetailsModal');
+        }
+
+        // --- NEW HISTORY ANALYSIS FUNCTIONS ---
+        function showQuestionAnalysis() {
+            const playerName = document.getElementById('historyPlayerSelect').value;
+            if (!playerName) {
+                showNotification('Please select a player to analyze.', 'warning');
+                return;
+            }
+
+            document.getElementById('historyList').classList.add('hidden');
+            document.getElementById('questionAnalysisView').classList.remove('hidden');
+
+            analyzedQuestions = []; // Clear previous analysis
+            Object.values(practiceHistory).forEach(attempt => {
+                if (attempt.playerName === playerName && attempt.answers && Array.isArray(attempt.answers)) {
+                    attempt.answers.forEach((answer, index) => {
+                        const prevTime = index > 0 ? (attempt.answers[index - 1].timeAtAnswer || 0) : 0;
+                        const timeTaken = (answer.timeAtAnswer || 0) - prevTime;
+
+                        analyzedQuestions.push({
+                            questionText: answer.questionText || "N/A",
+                            timeTaken: timeTaken,
+                            isCorrect: answer.isCorrect,
+                            isSkipped: answer.isSkipped,
+                            setName: attempt.setName,
+                        });
+                    });
+                }
+            });
+
+            if (analyzedQuestions.length === 0) {
+                document.getElementById('questionAnalysisView').innerHTML = '<p>No question data found for this player.</p><button onclick="loadHistory()">Back to History</button>';
+                return;
+            }
+
+            sortAndRenderAnalysis('slowest');
+        }
+
+        function sortAndRenderAnalysis(sortBy) {
+            if (sortBy === 'slowest') {
+                analyzedQuestions.sort((a, b) => b.timeTaken - a.timeTaken);
+            } else if (sortBy === 'fastest') {
+                analyzedQuestions.sort((a, b) => a.timeTaken - b.timeTaken);
+            }
+            renderAnalysisTable(analyzedQuestions);
+        }
+
+        function renderAnalysisTable(questions) {
+            const analysisView = document.getElementById('questionAnalysisView');
+            let tableHTML = `
+                <h3>Question Timing Analysis</h3>
+                <p>A breakdown of every question you've answered, sortable by the time taken.</p>
+                <div style="margin: 15px 0;">
+                    <button onclick="sortAndRenderAnalysis('slowest')">Sort by Slowest</button>
+                    <button onclick="sortAndRenderAnalysis('fastest')">Sort by Fastest</button>
+                    <button onclick="loadHistory()" class="btn-warning">Back to History Summary</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="leaderboard-table">
+                        <thead><tr><th>Question</th><th>Time Taken</th><th>Result</th><th>From Set</th></tr></thead>
+                        <tbody>
+            `;
+            
+            questions.forEach(q => {
+                let resultText = 'Incorrect';
+                let resultClass = 'loss';
+                if (q.isSkipped) {
+                    resultText = 'Skipped';
+                    resultClass = '';
+                } else if (q.isCorrect) {
+                    resultText = 'Correct';
+                    resultClass = 'leaderboard-win-loss';
+                }
+                
+                tableHTML += `
+                    <tr>
+                        <td data-label="Question">${q.questionText}</td>
+                        <td data-label="Time Taken">${q.timeTaken} sec</td>
+                        <td data-label="Result"><span class="${resultClass}">${resultText}</span></td>
+                        <td data-label="From Set">${q.setName}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `</tbody></table></div>`;
+            analysisView.innerHTML = tableHTML;
         }
 
         // --- REVISION FUNCTIONS ---
