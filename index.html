@@ -1005,7 +1005,8 @@
         let currentEditingIndex = -1; 
         let selectedAvatarUrl = null;
         let pendingPlayerName = null;
-        let analyzedQuestions = []; // For the new history analysis feature
+        
+        let analyzedQuestionsBySet = {}; 
         
         let currentCalendarDate = new Date(); // For the new calendar
 
@@ -2296,7 +2297,7 @@
             openModal('viewDetailsModal');
         }
 
-        // --- NEW HISTORY ANALYSIS FUNCTIONS ---
+        // --- NEW/MODIFIED HISTORY ANALYSIS FUNCTIONS ---
         function showQuestionAnalysis() {
             const playerName = document.getElementById('historyPlayerSelect').value;
             if (!playerName) {
@@ -2307,57 +2308,98 @@
             document.getElementById('historyList').classList.add('hidden');
             document.getElementById('questionAnalysisView').classList.remove('hidden');
 
-            analyzedQuestions = []; // Clear previous analysis
+            analyzedQuestionsBySet = {}; // Clear previous analysis
+
             Object.values(practiceHistory).forEach(attempt => {
                 if (attempt.playerName === playerName && attempt.answers && Array.isArray(attempt.answers)) {
+                    // Ensure the set exists in our analysis object
+                    if (!analyzedQuestionsBySet[attempt.setName]) {
+                        analyzedQuestionsBySet[attempt.setName] = [];
+                    }
+
                     attempt.answers.forEach((answer, index) => {
                         const prevTime = index > 0 ? (attempt.answers[index - 1].timeAtAnswer || 0) : 0;
                         const timeTaken = (answer.timeAtAnswer || 0) - prevTime;
 
-                        analyzedQuestions.push({
+                        analyzedQuestionsBySet[attempt.setName].push({
                             questionText: answer.questionText || "N/A",
                             timeTaken: timeTaken,
                             isCorrect: answer.isCorrect,
                             isSkipped: answer.isSkipped,
-                            setName: attempt.setName,
+                            correctAnswer: answer.correctAnswer,
+                            options: answer.questionOptions || [],
                         });
                     });
                 }
             });
 
-            if (analyzedQuestions.length === 0) {
+            if (Object.keys(analyzedQuestionsBySet).length === 0) {
                 document.getElementById('questionAnalysisView').innerHTML = '<p>No question data found for this player.</p><button onclick="loadHistory()">Back to History</button>';
                 return;
             }
 
-            sortAndRenderAnalysis('slowest');
+            renderAnalysisInterface(analyzedQuestionsBySet);
         }
 
-        function sortAndRenderAnalysis(sortBy) {
-            if (sortBy === 'slowest') {
-                analyzedQuestions.sort((a, b) => b.timeTaken - a.timeTaken);
-            } else if (sortBy === 'fastest') {
-                analyzedQuestions.sort((a, b) => a.timeTaken - b.timeTaken);
-            }
-            renderAnalysisTable(analyzedQuestions);
-        }
-
-        function renderAnalysisTable(questions) {
+        function renderAnalysisInterface(questionsBySet) {
             const analysisView = document.getElementById('questionAnalysisView');
-            let tableHTML = `
+            const setNames = Object.keys(questionsBySet);
+
+            const setOptions = setNames.map(name => `<option value="${name}">${name}</option>`).join('');
+
+            let viewHTML = `
                 <h3>Question Timing Analysis</h3>
-                <p>A breakdown of every question you've answered, sortable by the time taken.</p>
-                <div style="margin: 15px 0;">
-                    <button onclick="sortAndRenderAnalysis('slowest')">Sort by Slowest</button>
-                    <button onclick="sortAndRenderAnalysis('fastest')">Sort by Fastest</button>
-                    <button onclick="loadHistory()" class="btn-warning">Back to History Summary</button>
+                <p>A breakdown of every question you've answered. Select a set to view its analysis.</p>
+                <div style="margin: 15px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                    <label for="analysisSetSelect" style="font-weight: 600;">Select Set:</label>
+                    <select id="analysisSetSelect" onchange="displayAnalysisForSet(this.value)" style="flex-grow: 1;">
+                        ${setOptions}
+                    </select>
+                    <button onclick="sortCurrentAnalysis('slowest')">Sort Slowest</button>
+                    <button onclick="sortCurrentAnalysis('fastest')">Sort Fastest</button>
+                    <button onclick="loadHistory()" class="btn-warning">Back</button>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table class="leaderboard-table">
-                        <thead><tr><th>Question</th><th>Time Taken</th><th>Result</th><th>From Set</th></tr></thead>
-                        <tbody>
+                <div id="analysisTableContainer"></div>
             `;
-            
+
+            analysisView.innerHTML = viewHTML;
+
+            if (setNames.length > 0) {
+                sortCurrentAnalysis('slowest');
+            }
+        }
+
+        function sortCurrentAnalysis(sortBy) {
+            const selectElement = document.getElementById('analysisSetSelect');
+            const setName = selectElement ? selectElement.value : Object.keys(analyzedQuestionsBySet)[0];
+
+            if (!setName || !analyzedQuestionsBySet[setName]) return;
+
+            if (sortBy === 'slowest') {
+                analyzedQuestionsBySet[setName].sort((a, b) => b.timeTaken - a.timeTaken);
+            } else if (sortBy === 'fastest') {
+                analyzedQuestionsBySet[setName].sort((a, b) => a.timeTaken - b.timeTaken);
+            }
+
+            displayAnalysisForSet(setName);
+        }
+
+        function displayAnalysisForSet(setName) {
+            const container = document.getElementById('analysisTableContainer');
+            if (!setName || !analyzedQuestionsBySet[setName]) {
+                container.innerHTML = "<p>Please select a valid set.</p>";
+                return;
+            }
+
+            const questions = analyzedQuestionsBySet[setName];
+            let tableHTML = `
+                <div class="history-item" style="border-left-color: var(--primary-color);">
+                    <div style="overflow-x: auto;">
+                        <table class="leaderboard-table">
+                            <thead><tr><th>Question & Answer</th><th>Time Taken</th><th>Result</th></tr></thead>
+                            <tbody>
+            `;
+
             questions.forEach(q => {
                 let resultText = 'Incorrect';
                 let resultClass = 'loss';
@@ -2368,20 +2410,30 @@
                     resultText = 'Correct';
                     resultClass = 'leaderboard-win-loss';
                 }
-                
+
+                const correctIndex = q.correctAnswer ? q.correctAnswer.charCodeAt(0) - 65 : -1;
+                const correctAnswerText = (correctIndex !== -1 && q.options.length > correctIndex) 
+                                          ? q.options[correctIndex] 
+                                          : 'N/A';
+
                 tableHTML += `
                     <tr>
-                        <td data-label="Question">${q.questionText}</td>
+                        <td data-label="Question">
+                            ${q.questionText}
+                            <div class="correct-answer" style="margin-top: 5px; font-size: 0.9em;">
+                               ↳ Answer: ${q.correctAnswer}. ${correctAnswerText}
+                            </div>
+                        </td>
                         <td data-label="Time Taken">${q.timeTaken} sec</td>
                         <td data-label="Result"><span class="${resultClass}">${resultText}</span></td>
-                        <td data-label="From Set">${q.setName}</td>
                     </tr>
                 `;
             });
 
-            tableHTML += `</tbody></table></div>`;
-            analysisView.innerHTML = tableHTML;
+            tableHTML += `</tbody></table></div></div>`;
+            container.innerHTML = tableHTML;
         }
+
 
         // --- REVISION FUNCTIONS ---
         function getDaysSince(dateString) {
