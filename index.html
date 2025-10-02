@@ -602,6 +602,26 @@
         }
         /* --- END CALENDAR STYLES --- */
 
+        /* --- NEW: Mobile Practice Screen Font Size Adjustment --- */
+        @media screen and (max-width: 600px) {
+            #practiceQuestion {
+                font-size: 1.1em;
+                margin-bottom: 15px;
+            }
+            .option {
+                font-size: 14px;
+                padding: 12px;
+            }
+            #practiceSessionView {
+                padding: 15px;
+                padding-top: 55px;
+            }
+            button {
+                padding: 10px 18px;
+                font-size: 14px;
+            }
+        }
+        /* --- END: Mobile Practice Screen Font Size Adjustment --- */
 
         @media screen and (max-width: 768px) {
             .leaderboard-table thead {
@@ -2343,7 +2363,12 @@
 
         function renderAnalysisInterface(questionsBySet) {
             const analysisView = document.getElementById('questionAnalysisView');
-            const setNames = Object.keys(questionsBySet);
+            
+            const setNames = Object.keys(questionsBySet).sort((a, b) => {
+                const dateA = new Date(questionSets[a]?.uploadDate || 0);
+                const dateB = new Date(questionSets[b]?.uploadDate || 0);
+                return dateB - dateA; // Sort descending (latest first)
+            });
 
             const setOptions = setNames.map(name => `<option value="${name}">${name}</option>`).join('');
 
