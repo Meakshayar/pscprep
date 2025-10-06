@@ -705,11 +705,11 @@
                     </div>
                     <div class="player-selector" style="padding: 20px;">
                         <label>Select an Existing Player:</label>
-                        <select id="playerSelect" onchange="setPlayerName()" class="styled-select" style="margin-bottom:10px;"></select>
+                        <select id="playerSelect" onchange="handlePlayerSelection()" class="styled-select" style="margin-bottom:10px;"></select>
                         <hr style="margin: 20px 0;">
                         <h4>Or Create a New Player:</h4>
                         <input type="text" id="newPlayerName" placeholder="Enter new player name" class="styled-input">
-                        <button onclick="setPlayerName(true)">Create Player</button>
+                        <button onclick="createPlayer()">Create Player</button>
                     </div>
                 </div>
                 
@@ -824,14 +824,18 @@
                     <button onclick="resetLeaderboard()" class="btn-danger">Clear All Practice Leaderboard Scores</button>
                     <button onclick="resetRevisionProgress()" class="btn-danger">Clear All Revision Leaderboard Scores</button>
                     <hr style="margin: 20px 0;">
+                    
+                    <h3>User Password Management</h3>
+                    <div class="form-group">
+                        <label for="passwordUserSelect">Select User to Manage Password:</label>
+                        <select id="passwordUserSelect"></select>
+                        <input type="text" id="newUserPassword" placeholder="Enter new password" style="margin-top: 10px;">
+                        <button onclick="updateUserPassword()" class="btn-success">Set/Update Password</button>
+                    </div>
+                    <hr style="margin: 20px 0;">
+
                     <h3>User Management</h3>
                     <button onclick="logout()" class="btn-danger">Switch User / Logout</button>
-                    <hr style="margin: 20px 0;">
-                    <h3>Admin Actions</h3>
-                    <button id="showAddQuestionsBtn">Manage Question Sets</button>
-                    <button id="showRevisionCalendarBtn">View Revision Calendar</button>
-                    <button id="showReportedQuestionsBtn">View Reported Questions</button>
-
                     <div class="form-group" style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px;">
                         <label for="playerToRemoveSelect">Remove a Player:</label>
                         <select id="playerToRemoveSelect"></select>
@@ -842,12 +846,33 @@
                         <select id="playerToClearHistorySelect"></select>
                         <button onclick="clearPlayerHistory()" class="btn-danger">Clear Player History</button>
                     </div>
+                    <hr style="margin: 20px 0;">
+
+                    <h3>Admin Actions</h3>
+                    <button id="showAddQuestionsBtn">Manage Question Sets</button>
+                    <button id="showRevisionCalendarBtn">View Revision Calendar</button>
+                    <button id="showReportedQuestionsBtn">View Reported Questions</button>
                 </div>
 
                 <div id="addQuestionsSection" class="hidden" style="margin-top: 20px;">
                     <button class="backToSettingsBtn">&larr; Back to Settings</button>
-                    <h2>Add Questions</h2>
+                    <h2>Manage Question Sets</h2>
                     <div id="addQuestionsContent">
+                        <div style="background: #f0f4f8; padding: 20px; border-radius: var(--border-radius); margin-bottom: 30px; border: 1px solid #ddd;">
+                            <h3>Create PDF Study Set</h3>
+                            <div class="form-group">
+                                <label>Set Name for PDF:</label>
+                                <input type="text" id="pdfSetName" placeholder="e.g., History Notes Chapter 1">
+                            </div>
+                            <div class="form-group">
+                                <label>Upload PDF File:</label>
+                                <input type="file" id="pdfFileInput" accept=".pdf" style="padding: 5px;">
+                            </div>
+                            <button onclick="createPdfSet()">Create PDF Set</button>
+                        </div>
+
+                        <hr style="margin: 30px 0;">
+                        <h3>Add Questions Manually</h3>
                         <div class="form-group">
                             <label for="setUploadDate">Set Upload Date (for new sets):</label>
                             <input type="date" id="setUploadDate">
@@ -941,6 +966,10 @@
                     <h3>Spaced Repetition System (SRS) & Backlog</h3>
                     <p>The **Revision Plan** uses a scientifically proven Spaced Repetition System. Questions are scheduled for review on specific days (1, 3, 7, 14, 30, 60, 90 days after upload or last mastery) to ensure long-term retention. Crucially, due revisions remain in your **backlog** until you clear them with a successful score (70%+).</p>
                 </div>
+                 <div class="dashboard-card" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                    <h3>Flexible Study with PDFs</h3>
+                    <p>You can now upload PDF files as study sets. The app will schedule them for revision just like regular question sets, ensuring you revisit your notes and documents at optimal intervals for learning.</p>
+                </div>
                 <div class="dashboard-card" style="background: linear-gradient(135deg, #e67e22, #d35400);">
                     <h3>Focus & Efficiency</h3>
                     <p>The time-bound practice mode simulates exam conditions, helping you improve speed and accuracy. The **Question Set Management** allows you or an admin to curate highly relevant study material. The full-screen exam mode helps you focus without distractions.</p>
@@ -950,7 +979,7 @@
     </div>
 
     <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore"></p><p id="modalTime"></p><p id="modalXPGained"></p><button onclick="closeModal('resultsModal')">Close</button></div></div>
-    <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><button id="passwordSubmitBtn"></button><button onclick="closeModal('passwordModal')" class="btn-danger">Cancel</button></div></div>
+    <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><div id="passwordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="passwordConfirmInput" placeholder="Confirm Password"></div><button id="passwordSubmitBtn"></button><button onclick="closeModal('passwordModal')" class="btn-danger">Cancel</button></div></div>
     <div id="viewDetailsModal" class="modal"><div class="modal-content" id="viewDetailsModalContent" style="text-align: left; max-height: 80vh; overflow-y: auto;"></div></div>
     
     <div id="avatarModal" class="modal">
@@ -1023,6 +1052,9 @@
         
         let currentEditingSet = null;
         let currentEditingIndex = -1; 
+        // NEW: State for seamless reported question editing
+        let editingFromReport = { active: false, reportId: null };
+
         let selectedAvatarUrl = null;
         let pendingPlayerName = null;
         
@@ -1040,19 +1072,16 @@
             populateAvatars();
             setDailyQuote();
             
-            document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}%).`;
+            document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
             document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
+            // MODIFIED: This block handles automatic login on page reload.
             const lastPlayer = localStorage.getItem('pscLastPlayer');
-            if (lastPlayer) {
-                currentPlayerName = lastPlayer;
-                loadPlayerProgress();
-                updatePlayerSelects();
-                document.getElementById('playerSelect').value = currentPlayerName;
-                document.getElementById('historyPlayerSelect').value = currentPlayerName;
-                switchPracticeView('practiceSetupView');
-                document.getElementById('setupWelcome').textContent = `Welcome back, ${currentPlayerName}!`;
+            if (lastPlayer && playerProfiles[lastPlayer]) {
+                // Automatically log in the last user
+                loginPlayer(lastPlayer, true); // The 'true' flag indicates it's an auto-login
             } else {
+                // Otherwise, show the default welcome screen
                 switchPracticeView('welcomeView');
             }
 
@@ -1071,9 +1100,13 @@
             });
 
             document.getElementById('backToSetListBtn').addEventListener('click', () => {
-                document.getElementById('editQuestionsSection').classList.add('hidden');
-                document.getElementById('addQuestionsSection').classList.remove('hidden');
-                currentEditingSet = null;
+                if (editingFromReport.active) {
+                    returnToReportedQuestionsView();
+                } else {
+                    document.getElementById('editQuestionsSection').classList.add('hidden');
+                    document.getElementById('addQuestionsSection').classList.remove('hidden');
+                    currentEditingSet = null;
+                }
             });
             renderRevisionPage();
             
@@ -1101,7 +1134,6 @@
                 renderRevisionCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
             });
             
-            // Close dropdown if clicked outside
             window.onclick = function(event) {
                 if (!event.target.matches('.menu-btn')) {
                     var dropdowns = document.getElementsByClassName("dropdown-content");
@@ -1470,26 +1502,32 @@
 
         function savePlayerProgress() {
             if (!currentPlayerName) return;
-            const progressData = { level, xp, xpToNextLevel };
-
-            localStorage.setItem(`pscPlayerProgress_${currentPlayerName}`, JSON.stringify(progressData));
             
             if (!playerProfiles[currentPlayerName]) playerProfiles[currentPlayerName] = {};
-            playerProfiles[currentPlayerName] = progressData;
+
+            playerProfiles[currentPlayerName].level = level;
+            playerProfiles[currentPlayerName].xp = xp;
+            playerProfiles[currentPlayerName].xpToNextLevel = xpToNextLevel;
+            // Password is saved separately
+
             localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
 
             if (isFirebaseConnected) {
-                db.ref(`playerProfiles/${currentPlayerName}`).set(progressData);
+                db.ref(`playerProfiles/${currentPlayerName}/level`).set(level);
+                db.ref(`playerProfiles/${currentPlayerName}/xp`).set(xp);
+                db.ref(`playerProfiles/${currentPlayerName}/xpToNextLevel`).set(xpToNextLevel);
             }
         }
 
         function loadPlayerProgress() {
             if (!currentPlayerName) return;
 
-            const progress = playerProfiles[currentPlayerName] || JSON.parse(localStorage.getItem(`pscPlayerProgress_${currentPlayerName}`));
+            const profile = playerProfiles[currentPlayerName];
 
-            if (progress) {
-                ({ level, xp, xpToNextLevel } = progress);
+            if (profile) {
+                level = profile.level || 1;
+                xp = profile.xp || 0;
+                xpToNextLevel = profile.xpToNextLevel || 100;
             } else {
                 level = 1; xp = 0; xpToNextLevel = 100;
             }
@@ -1551,6 +1589,7 @@
                     document.getElementById('revisionCalendarSection').classList.add('hidden');
                     document.getElementById('reportedQuestionsSection').classList.add('hidden');
                     document.getElementById('mainSettings').classList.remove('hidden');
+                    editingFromReport.active = false; // Reset state if navigating manually
                 }
             };
 
@@ -1571,57 +1610,124 @@
             document.getElementById('mainSettings').classList.add('hidden');
         }
         
-        function setPlayerName(isButtonClicked = false) {
-            if (isButtonClicked) {
-                const input = document.getElementById('newPlayerName');
-                const name = input.value.trim();
-                if (!name) {
-                    showNotification('Please enter a name for the new player.', 'error');
-                    return;
-                }
-                if ([...document.getElementById('playerSelect').options].some(opt => opt.value.toLowerCase() === name.toLowerCase())) {
-                    showNotification('A player with this name already exists.', 'error');
-                    return;
-                }
-                pendingPlayerName = name;
-                openModal('avatarModal');
-            } else { 
-                const select = document.getElementById('playerSelect');
-                const name = select.value;
-                if (name) {
-                    currentPlayerName = name;
-                    localStorage.setItem('pscLastPlayer', currentPlayerName);
-                    showNotification(`Welcome, ${currentPlayerName}!`);
-                    document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-                    loadPlayerProgress();
-                    switchPracticeView('practiceSetupView');
-                }
+        // --- NEW/MODIFIED Player and Password Functions ---
+        function handlePlayerSelection() {
+            const select = document.getElementById('playerSelect');
+            const name = select.value;
+            if (!name) return;
+
+            if (!playerProfiles[name]) {
+                playerProfiles[name] = { level: 1, xp: 0, xpToNextLevel: 100, password: '' };
             }
+
+            const profile = playerProfiles[name];
+
+            if (profile.password) {
+                // User has a password, prompt for it
+                showPasswordPrompt(name, profile.password, () => {
+                    loginPlayer(name);
+                });
+            } else {
+                // No password, prompt to create one
+                showCreatePasswordPrompt(name, (newPassword) => {
+                    profile.password = newPassword;
+                    savePlayerProfiles();
+                    showNotification('Password created successfully!', 'success');
+                    loginPlayer(name);
+                });
+            }
+        }
+
+        function createPlayer() {
+            const input = document.getElementById('newPlayerName');
+            const name = input.value.trim();
+            if (!name) {
+                showNotification('Please enter a name for the new player.', 'error');
+                return;
+            }
+            if (Object.keys(playerProfiles).some(pName => pName.toLowerCase() === name.toLowerCase())) {
+                showNotification('A player with this name already exists.', 'error');
+                return;
+            }
+            pendingPlayerName = name;
+            openModal('avatarModal');
         }
 
         function confirmAvatar() {
             if (!pendingPlayerName) return;
             
-            currentPlayerName = pendingPlayerName;
-            pendingPlayerName = null;
-            localStorage.setItem('pscLastPlayer', currentPlayerName);
+            showCreatePasswordPrompt(pendingPlayerName, (newPassword) => {
+                currentPlayerName = pendingPlayerName;
+                pendingPlayerName = null;
+                
+                playerProfiles[currentPlayerName] = { 
+                    level: 1, 
+                    xp: 0, 
+                    xpToNextLevel: 100,
+                    password: newPassword
+                };
+                savePlayerProfiles();
+                
+                localStorage.setItem(`pscPlayerPFP_${currentPlayerName}`, selectedAvatarUrl || `https://api.dicebear.com/8.x/initials/svg?seed=${currentPlayerName}`);
+                
+                updatePlayerSelects();
+                document.getElementById('playerSelect').value = currentPlayerName;
+                document.getElementById('newPlayerName').value = '';
+                
+                loginPlayer(currentPlayerName);
+                closeModal('avatarModal');
 
-            localStorage.setItem(`pscPlayerPFP_${currentPlayerName}`, selectedAvatarUrl || `https://api.dicebear.com/8.x/initials/svg?seed=${currentPlayerName}`);
-            
-            updatePlayerSelects();
-            document.getElementById('playerSelect').value = currentPlayerName;
-            document.getElementById('newPlayerName').value = '';
-            
-            showNotification(`Player ${currentPlayerName} created!`, 'success');
+                selectedAvatarUrl = null;
+                document.querySelectorAll('.avatar-selection img').forEach(i => i.classList.remove('selected'));
+            });
+        }
+        
+        // MODIFIED: Added isAutoLogin flag to suppress notification on reload
+        function loginPlayer(name, isAutoLogin = false) {
+            currentPlayerName = name;
+            localStorage.setItem('pscLastPlayer', currentPlayerName);
+            if (!isAutoLogin) {
+                showNotification(`Welcome, ${currentPlayerName}!`);
+            }
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-            
             loadPlayerProgress();
             switchPracticeView('practiceSetupView');
-            closeModal('avatarModal');
-
-            selectedAvatarUrl = null;
-            document.querySelectorAll('.avatar-selection img').forEach(i => i.classList.remove('selected'));
         }
+
+        function savePlayerProfiles() {
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+            if (isFirebaseConnected) {
+                db.ref('playerProfiles').set(playerProfiles);
+            }
+        }
+
+        function updateUserPassword() {
+            showPasswordModal("Enter Admin Password to confirm password change", ADMIN_PASSWORD, () => {
+                const userToUpdate = document.getElementById('passwordUserSelect').value;
+                const newPassword = document.getElementById('newUserPassword').value;
+
+                if (!userToUpdate) {
+                    showNotification('Please select a user.', 'warning');
+                    return;
+                }
+                if (!newPassword) {
+                    showNotification('Please enter a new password.', 'warning');
+                    return;
+                }
+
+                if (!playerProfiles[userToUpdate]) {
+                    playerProfiles[userToUpdate] = {};
+                }
+                playerProfiles[userToUpdate].password = newPassword;
+                savePlayerProfiles();
+                
+                document.getElementById('newUserPassword').value = '';
+                showNotification(`Password for ${userToUpdate} has been updated.`, 'success');
+
+            }, "Admin Confirmation");
+        }
+
+        // --- END Player and Password Functions ---
 
         function startPracticeWrapper(setName = null, isRev = false, revisionKey = null) {
             if (!currentPlayerName) { return; } 
@@ -1630,6 +1736,12 @@
                 showNotification('Please select a question set.', 'error'); return; 
             }
             
+            const set = questionSets[selectedSetName];
+            if (set.type === 'pdf') {
+                showNotification('This is a PDF set. Please start revisions from the Revision Plan tab.', 'warning');
+                return;
+            }
+
             document.body.classList.add('practice-active');
             switchPracticeView('practiceSessionView');
             startPractice(selectedSetName, isRev, revisionKey);
@@ -1811,17 +1923,20 @@
             setsList.innerHTML = sortedSetNames.map(setName => {
                 const set = questionSets[setName];
                 const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
+                const isPdfSet = set.type === 'pdf';
+                const countText = isPdfSet ? 'PDF Set' : `${(set.questions || []).length} questions`;
+
                 return `
                 <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
                     <div>
-                        <h4 style="margin-bottom: 3px;">${setName} (${(set.questions || []).length} questions)</h4>
+                        <h4 style="margin-bottom: 3px;">${setName} (${countText})</h4>
                         <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
                     </div>
                     <div style="display: flex; flex-wrap: wrap;">
-                        <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
+                        ${!isPdfSet ? `<button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>` : ''}
                         <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
                         <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
-                        <button onclick="downloadSetAsPDF('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px;">PDF</button>
+                        ${!isPdfSet ? `<button onclick="downloadSetAsPDF('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px;">PDF</button>` : ''}
                     </div>
                 </div>`;
             }).join('') || '<p>No question sets found.</p>';
@@ -1835,27 +1950,30 @@
                 const dateB = new Date(questionSets[b].uploadDate || 0);
                 return dateB - dateA;
             });
+            
+            // Filter out PDF sets for practice selection
+            const practiceSets = sortedSetNames.filter(name => questionSets[name].type !== 'pdf');
 
             selects.forEach(s => {
                 if (!s) return;
                 const currentVal = s.value;
                 s.innerHTML = '<option value="">Select a question set</option>' +
-                sortedSetNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                practiceSets.map(name => `<option value="${name}">${name}</option>`).join('');
                 s.value = currentVal;
             });
             const startBtn = document.getElementById('startPracticeBtn');
-            if(startBtn) startBtn.disabled = Object.keys(questionSets).length === 0;
+            if(startBtn) startBtn.disabled = practiceSets.length === 0;
         }
 
         function updatePlayerSelects() {
-            const selects = [document.getElementById('playerSelect'), document.getElementById('historyPlayerSelect'), document.getElementById('playerToRemoveSelect'), document.getElementById('playerToClearHistorySelect')];
+            const selects = [document.getElementById('playerSelect'), document.getElementById('historyPlayerSelect'), document.getElementById('playerToRemoveSelect'), document.getElementById('playerToClearHistorySelect'), document.getElementById('passwordUserSelect')];
             const players = getAllPlayerNames();
 
             selects.forEach(s => {
                 if (!s) return;
                 const currentVal = s.value;
                 s.innerHTML = `<option value="">Select a player</option>` +
-                [...players].map(p => `<option value="${p}">${p}</option>`).join('');
+                [...players].sort().map(p => `<option value="${p}">${p}</option>`).join('');
                 s.value = currentVal;
             });
         }
@@ -1882,7 +2000,8 @@
                 const uploadDate = document.getElementById('setUploadDate').value;
                 questionSets[setName] = { 
                     questions: [], 
-                    uploadDate: uploadDate || new Date().toISOString().split('T')[0] 
+                    uploadDate: uploadDate || new Date().toISOString().split('T')[0],
+                    type: 'questions'
                 };
             }
             questionSets[setName].questions.push({ question: qText, options, correctAnswer: document.getElementById('correctAnswer').value });
@@ -1904,7 +2023,8 @@
                 const uploadDate = document.getElementById('setUploadDate').value;
                 questionSets[setName] = { 
                     questions: [], 
-                    uploadDate: uploadDate || new Date().toISOString().split('T')[0]
+                    uploadDate: uploadDate || new Date().toISOString().split('T')[0],
+                    type: 'questions'
                 };
             }
             bulkText.split('\n').forEach(line => {
@@ -2044,7 +2164,9 @@
             document.getElementById('editQuestionText').value = question.question;
             document.getElementById('editQuestionOptions').value = question.options.join('\n');
             document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-
+            
+            document.getElementById('addQuestionsSection').classList.add('hidden');
+            document.getElementById('editQuestionsSection').classList.remove('hidden');
             document.getElementById('questionsToEditList').classList.add('hidden');
             document.getElementById('questionEditForm').classList.remove('hidden');
         }
@@ -2073,22 +2195,34 @@
 
             showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
             
-            const nextQuestionIndex = qIndex + 1;
-            const totalQuestionsInSet = questionSets[setName].questions.length;
-
-            if (nextQuestionIndex < totalQuestionsInSet) {
-                editSpecificQuestion(setName, nextQuestionIndex);
+            // MODIFIED: Check if editing from report
+            if (editingFromReport.active) {
+                dismissReport(editingFromReport.reportId, true); // Dismiss silently
+                returnToReportedQuestionsView();
             } else {
-                showNotification(`Finished editing all questions in ${setName}.`, 'success');
-                cancelQuestionEdit();
-                editQuestionSet(setName);
+                // Original behavior: proceed to next question or back to list
+                const nextQuestionIndex = qIndex + 1;
+                const totalQuestionsInSet = questionSets[setName].questions.length;
+                if (nextQuestionIndex < totalQuestionsInSet) {
+                    editSpecificQuestion(setName, nextQuestionIndex);
+                } else {
+                    showNotification(`Finished editing all questions in ${setName}.`, 'success');
+                    cancelQuestionEdit();
+                }
             }
         }
 
         function cancelQuestionEdit() {
-            document.getElementById('questionEditForm').classList.add('hidden');
-            document.getElementById('questionsToEditList').classList.remove('hidden');
-            currentEditingIndex = -1;
+            // MODIFIED: Check if editing from report
+            if (editingFromReport.active) {
+                returnToReportedQuestionsView();
+            } else {
+                document.getElementById('questionEditForm').classList.add('hidden');
+                document.getElementById('addQuestionsSection').classList.remove('hidden');
+                document.getElementById('editQuestionsSection').classList.add('hidden');
+                editQuestionSet(currentEditingSet); // Refresh the list view
+                currentEditingIndex = -1;
+            }
         }
         
         function toggleLeaderboardView(view) {
@@ -2178,12 +2312,21 @@
         
         function showRevisionLeaderboard() {
             const bestRevisionScores = {};
-            Object.values(practiceHistory).filter(a => a.playerName && a.isRevision).forEach(a => {
-                const key = `${a.playerName}_${a.revisionKey}`;
-                if (!bestRevisionScores[key] || a.percentage > bestRevisionScores[key].percentage) {
-                    bestRevisionScores[key] = a;
+            // Include PDF revisions, which are marked with 100% on completion
+            for (const player in revisionProgress) {
+                for (const key in revisionProgress[player]) {
+                    const rev = revisionProgress[player][key];
+                    if (rev.success) { // only count successful revisions
+                        const attemptKey = `${player}_${key}`;
+                        bestRevisionScores[attemptKey] = {
+                            playerName: player,
+                            percentage: rev.percentage,
+                            score: rev.percentage === 100 ? 1 : 0 // Simplified metric for PDF vs question sets
+                        };
+                    }
                 }
-            });
+            }
+
 
             const playerScores = {};
             Object.values(bestRevisionScores).forEach(a => {
@@ -2277,12 +2420,19 @@
                 </div>`}).join('') || '<p>No history found for this player.</p>';
         }
 
+        // --- NEW/MODIFIED History Details functions ---
         function viewAttemptDetails(startTime) {
             const attempt = Object.values(practiceHistory).find(a => a.startTime === startTime);
             if (!attempt) return;
             
-            let detailsHtml = `<h2>Details for ${attempt.setName}</h2><h3 style="margin-top:10px;">Question Breakdown:</h3>`;
+            let detailsHtml = `<h2>Details for ${attempt.setName}</h2>`;
             
+            // Add new buttons here
+            detailsHtml += `<div style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;">
+                <button onclick="toggleWrongAnswersView(this)">Show Wrong Answers Only</button>
+                <button onclick="downloadSetAsPDF('${attempt.setName}')" class="btn-success">Print Set as PDF</button>
+            </div><div id="attemptDetailsList">`;
+
             attempt.answers.forEach((ans, index) => {
                 const qText = ans.questionText || 'Question details missing';
                 const qOptions = ans.questionOptions || ['A', 'B', 'C', 'D'];
@@ -2306,18 +2456,33 @@
                 }
 
                 detailsHtml += `
-                    <div class="question-set" style="margin-top:15px; border-left: 4px solid ${ans.isCorrect ? 'var(--secondary-color)' : 'var(--danger-color)'};">
+                    <div class="question-detail-item question-set" data-correct="${ans.isCorrect}" style="margin-top:15px; border-left: 4px solid ${ans.isCorrect ? 'var(--secondary-color)' : 'var(--danger-color)'};">
                         <p><strong>${index + 1}. ${qText}</strong></p>
                         <p class="${resultClass}">${answerDisplay}</p>
                     </div>`;
             });
-
+            
+            detailsHtml += '</div>'; // Close attemptDetailsList div
             detailsHtml += `<p style="margin-top:20px;">Total Practice Time: ${formatTime(attempt.timeSpent)}</p>`
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml + `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
             openModal('viewDetailsModal');
         }
 
-        // --- NEW/MODIFIED HISTORY ANALYSIS FUNCTIONS ---
+        function toggleWrongAnswersView(button) {
+            const listContainer = document.getElementById('attemptDetailsList');
+            const wrongOnly = button.textContent.includes('Wrong');
+            
+            listContainer.querySelectorAll('.question-detail-item').forEach(item => {
+                if (wrongOnly && item.dataset.correct === 'true') {
+                    item.style.display = 'none';
+                } else {
+                    item.style.display = 'block';
+                }
+            });
+
+            button.textContent = wrongOnly ? 'Show All Answers' : 'Show Wrong Answers Only';
+        }
+
         function showQuestionAnalysis() {
             const playerName = document.getElementById('historyPlayerSelect').value;
             if (!playerName) {
@@ -2470,6 +2635,7 @@
             return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
         
+        // MODIFIED renderRevisionPage to handle PDFs
         function renderRevisionPage() {
             const dueTodayDiv = document.getElementById('dueTodayList');
             const backlogDiv = document.getElementById('backlogList');
@@ -2490,7 +2656,11 @@
 
             for (const setName in questionSets) {
                 const set = questionSets[setName];
-                if (!set || typeof set.uploadDate === 'undefined' || !set.questions || set.questions.length === 0) continue;
+                if (!set || typeof set.uploadDate === 'undefined') continue;
+
+                if (set.type === 'pdf' && !set.pdfDataUrl) continue;
+                if (set.type !== 'pdf' && (!set.questions || set.questions.length === 0)) continue;
+
                 const daysSinceUpload = getDaysSince(set.uploadDate);
 
                 for (const day of revisionIntervals) {
@@ -2502,8 +2672,8 @@
                         if (!isCompleted) {
                             revisionItems.push({ 
                                 setName: setName, 
-                                day: day, 
-                                totalQuestions: set.questions.length,
+                                day: day,
+                                type: set.type || 'questions',
                                 isCurrentDay: daysSinceUpload === day
                             });
                             pendingRevisionsCount++;
@@ -2516,32 +2686,35 @@
             const backlogItems = revisionItems.filter(item => !item.isCurrentDay).sort((a,b) => a.day - b.day);
 
             const renderItem = (item) => {
-                const status = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][`${item.setName}_RevDay${item.day}`];
-                const percentage = status ? status.percentage : 0;
-                const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
-                const buttonClass = status ? 'btn-warning' : 'btn-danger';
                 const key = `${item.setName}_RevDay${item.day}`;
-                
-                return `
+                let itemHtml = `
                     <div class="history-item" style="border-left-color: ${item.isCurrentDay ? 'var(--primary-color)' : 'var(--danger-color)'};">
-                        <h4>${item.setName} - Revision Day ${item.day}</h4>
-                        <p>Total Questions: ${item.totalQuestions}</p>
+                        <h4>${item.setName} - Revision Day ${item.day}</h4>`;
+                
+                if (item.type === 'pdf') {
+                    itemHtml += `
+                        <p>This is a PDF study set.</p>
+                        <button onclick="viewRevisionPdf('${item.setName}')">View PDF to Revise</button>
+                        <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success">Mark as Completed</button>
+                    `;
+                } else {
+                    const status = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][key];
+                    const percentage = status ? status.percentage : 0;
+                    const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
+                    const buttonClass = status ? 'btn-warning' : 'btn-danger';
+                    itemHtml += `
+                        <p>Total Questions: ${questionSets[item.setName].questions.length}</p>
                         <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
                         ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}
-                    </div>`;
+                    `;
+                }
+                
+                itemHtml += `</div>`;
+                return itemHtml;
             };
 
-            if (dueTodayItems.length > 0) {
-                dueTodayDiv.innerHTML = dueTodayItems.map(renderItem).join('');
-            } else {
-                dueTodayDiv.innerHTML = '<p>No revision tasks due today. Good job!</p>';
-            }
-
-            if (backlogItems.length > 0) {
-                backlogDiv.innerHTML = backlogItems.map(renderItem).join('');
-            } else {
-                backlogDiv.innerHTML = '<p>Your backlog is clear. Keep it up!</p>';
-            }
+            dueTodayDiv.innerHTML = dueTodayItems.length > 0 ? dueTodayItems.map(renderItem).join('') : '<p>No revision tasks due today. Good job!</p>';
+            backlogDiv.innerHTML = backlogItems.length > 0 ? backlogItems.map(renderItem).join('') : '<p>Your backlog is clear. Keep it up!</p>';
             
             updateRevisionBadge(pendingRevisionsCount);
         }
@@ -2749,10 +2922,12 @@
         function closeModal(id) { document.getElementById(id).style.display = 'none'; if(id === 'viewDetailsModal') {document.getElementById('viewDetailsModalContent').innerHTML='';} }
         
         function showPasswordModal(prompt, correctPassword, onSuccess, title = "Admin Access") {
+            document.getElementById('passwordConfirmGroup').classList.add('hidden');
             document.getElementById('passwordModalTitle').textContent = title;
             document.getElementById('passwordModalPrompt').textContent = prompt;
             const input = document.getElementById('passwordInput');
             const submitBtn = document.getElementById('passwordSubmitBtn');
+            submitBtn.textContent = 'Submit';
             input.value = '';
             openModal('passwordModal');
             input.focus();
@@ -2764,6 +2939,61 @@
             input.onkeyup = (event) => {
                 if(event.key === 'Enter') submitBtn.click();
             }
+        }
+
+        // NEW Password Prompts for Users
+        function showPasswordPrompt(playerName, correctPassword, onSuccess) {
+            document.getElementById('passwordConfirmGroup').classList.add('hidden');
+            document.getElementById('passwordModalTitle').textContent = `Login as ${playerName}`;
+            document.getElementById('passwordModalPrompt').textContent = 'Please enter your password:';
+            const input = document.getElementById('passwordInput');
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+            submitBtn.textContent = 'Login';
+            input.value = '';
+            openModal('passwordModal');
+            input.focus();
+            submitBtn.onclick = () => {
+                if (input.value === correctPassword) {
+                    onSuccess();
+                    closeModal('passwordModal');
+                } else {
+                    showNotification('Incorrect Password', 'error');
+                }
+            };
+            input.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
+        }
+
+        function showCreatePasswordPrompt(playerName, onSuccess) {
+            document.getElementById('passwordModalTitle').textContent = `Create Password for ${playerName}`;
+            document.getElementById('passwordModalPrompt').textContent = 'Please create a password for your account.';
+            document.getElementById('passwordConfirmGroup').classList.remove('hidden');
+            const passInput = document.getElementById('passwordInput');
+            const confirmInput = document.getElementById('passwordConfirmInput');
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+            submitBtn.textContent = 'Create Password';
+            passInput.value = '';
+            confirmInput.value = '';
+            openModal('passwordModal');
+            passInput.focus();
+            
+            const handleSubmit = () => {
+                const pass = passInput.value;
+                const confirmPass = confirmInput.value;
+                if (!pass) {
+                    showNotification('Password cannot be empty.', 'error');
+                    return;
+                }
+                if (pass !== confirmPass) {
+                    showNotification('Passwords do not match.', 'error');
+                    return;
+                }
+                onSuccess(pass);
+                closeModal('passwordModal');
+            };
+
+            submitBtn.onclick = handleSubmit;
+            passInput.onkeyup = (event) => { if(event.key === 'Enter') confirmInput.focus(); }
+            confirmInput.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
         }
         
         function playSound(type) {
@@ -2812,11 +3042,10 @@
             if (confettiParticles.length > 0) animationFrameId = requestAnimationFrame(animateConfetti);
         }
 
-        // --- NEW REPORTING FUNCTIONS ---
+        // --- NEW/MODIFIED REPORTING FUNCTIONS ---
         function reportCurrentQuestion() {
             const question = currentSet[currentQuestionIndex];
             
-            // Avoid duplicate reports of the exact same question
             const isAlreadyReported = reportedQuestions.some(
                 r => r.setName === currentAttempt.setName && r.question.question === question.question
             );
@@ -2864,47 +3093,115 @@
             }).join('');
         }
 
-        function dismissReport(reportId) {
+        function dismissReport(reportId, silent = false) {
             reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
             localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
             if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
             renderReportedQuestions();
-            showNotification('Report dismissed.', 'success');
+            if (!silent) showNotification('Report dismissed.', 'success');
         }
 
+        // MODIFIED for seamless workflow
         function editReportedQuestion(reportId) {
             const report = reportedQuestions.find(r => r.reportId === reportId);
             if (!report) return;
 
-            // Find the original question index
             const qIndex = (questionSets[report.setName].questions || []).findIndex(
                 q => q.question === report.question.question
             );
 
             if (qIndex === -1) {
-                showNotification('Original question not found in the set. It may have been deleted.', 'error');
+                showNotification('Original question not found. It may have been edited or deleted.', 'error');
+                dismissReport(reportId); // Clean up obsolete report
                 return;
             }
 
-            // Switch to the edit view
-            switchTab('settings');
+            // Set state for returning after edit
+            editingFromReport = { active: true, reportId: report.reportId };
+
+            // Go directly to the edit form
             document.getElementById('mainSettings').classList.add('hidden');
-            editQuestionSet(report.setName);
             editSpecificQuestion(report.setName, qIndex);
-            
-            // After editing, we can dismiss the report automatically
-            reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
-            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-            if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
+        }
+        
+        function returnToReportedQuestionsView() {
+            editingFromReport = { active: false, reportId: null };
+            document.getElementById('editQuestionsSection').classList.add('hidden');
+            document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+            renderReportedQuestions();
         }
 
-        // --- NEW PDF EXPORT FUNCTION ---
+        // --- NEW PDF FUNCTIONS ---
+        function createPdfSet() {
+            const setName = document.getElementById('pdfSetName').value.trim();
+            const fileInput = document.getElementById('pdfFileInput');
+            const file = fileInput.files[0];
+
+            if (!setName || !file) {
+                showNotification('Please provide both a set name and a PDF file.', 'error');
+                return;
+            }
+            
+            if (file.size > 4 * 1024 * 1024) { // 4MB limit
+                showNotification('File is too large (max 4MB). Please choose a smaller PDF.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const pdfDataUrl = event.target.result;
+                questionSets[setName] = {
+                    type: 'pdf',
+                    pdfDataUrl: pdfDataUrl,
+                    uploadDate: new Date().toISOString().split('T')[0]
+                };
+                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
+
+                showNotification(`PDF set "${setName}" created successfully!`, 'success');
+                loadQuestionSets();
+                updateSetSelects();
+                document.getElementById('pdfSetName').value = '';
+                fileInput.value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function viewRevisionPdf(setName) {
+            const set = questionSets[setName];
+            if (set && set.type === 'pdf' && set.pdfDataUrl) {
+                window.open(set.pdfDataUrl, '_blank');
+            } else {
+                showNotification('Could not find the PDF for this set.', 'error');
+            }
+        }
+
+        function markPdfRevisionAsComplete(revisionKey) {
+            if (!currentPlayerName) {
+                showNotification('Please select a player first.', 'error');
+                return;
+            }
+            if (!revisionProgress[currentPlayerName]) {
+                revisionProgress[currentPlayerName] = {};
+            }
+            revisionProgress[currentPlayerName][revisionKey] = {
+                success: true,
+                date: new Date().toISOString(),
+                percentage: 100 // Mark as 100% for leaderboard purposes
+            };
+            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+            if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
+
+            showNotification('Revision marked as complete!', 'success');
+            renderRevisionPage();
+        }
+
         function downloadSetAsPDF(setName) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const set = questionSets[setName];
             if (!set || !set.questions || set.questions.length === 0) {
-                showNotification('This set is empty, cannot generate PDF.', 'warning');
+                showNotification('This set is empty or not a question-based set.', 'warning');
                 return;
             }
 
