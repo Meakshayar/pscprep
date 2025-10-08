@@ -556,6 +556,7 @@
             justify-content: center;
             flex-direction: column;
             font-size: 12px;
+            position: relative;
         }
         .calendar-day-header {
             font-weight: bold;
@@ -569,15 +570,27 @@
             color: white;
             font-weight: bold;
         }
-        .calendar-day.has-revision {
-            background-color: #e8dff5;
-            cursor: pointer;
-            position: relative;
-        }
-        .calendar-day.has-revision:hover {
+        .calendar-day.has-revision::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
             background-color: var(--primary-color);
-            color: white;
+            border: 1px solid white;
+            cursor: pointer;
         }
+        .calendar-day.present.has-revision::after {
+             right: auto;
+             left: 4px;
+        }
+
+        .calendar-day.has-revision {
+            cursor: pointer;
+        }
+
         .revision-cal-badge {
             position: absolute;
             top: 5px;
@@ -752,8 +765,13 @@
             </div>
             
             <div id="attendance" class="tab-content">
-                <h2>My Attendance</h2>
-                <p>Your attendance is marked automatically when you complete a revision or practice session each day.</p>
+                <h2>My Attendance & Revisions</h2>
+                <p>Your attendance is marked when you complete a session. Dots indicate days with due revisions.</p>
+                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                    <p>Legend:</p>
+                    <div style="display:flex; align-items:center; gap: 5px;"><div style="width:15px; height:15px; background:var(--success-color); border-radius:4px;"></div> Present</div>
+                    <div style="display:flex; align-items:center; gap: 5px;"><div style="width:15px; height:15px; position:relative; background:#eee; border-radius:4px;"><span style="position:absolute; bottom:1px; right:1px; width:6px; height:6px; background:var(--primary-color); border-radius:50%;"></span></div> Revision Due</div>
+                </div>
                 <div class="calendar-container">
                     <div class="calendar-header">
                         <button id="prevAttendanceMonthBtn">&lt; Prev</button>
@@ -814,9 +832,8 @@
 
                     <h3>Admin Actions</h3>
                     <button id="showAddQuestionsBtn">Manage Question Sets</button>
-                    <button id="showRevisionCalendarBtn">View Revision Calendar</button>
                     <button id="showReportedQuestionsBtn">View Reported Questions</button>
-                    <button id="showAttendanceRegisterBtn">View Attendance Register</button>
+                    <button id="showAttendanceRegisterBtn">View Attendance & Revision Register</button>
                 </div>
 
                 <div id="addQuestionsSection" class="hidden" style="margin-top: 20px;">
@@ -901,19 +918,6 @@
                         <button onclick="deleteCurrentEditedQuestion()" class="btn-danger" style="margin-top: 10px;">Delete This Question</button>
                     </div>
                 </div>
-
-                <div id="revisionCalendarSection" class="hidden" style="margin-top: 20px;">
-                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
-                    <h2 style="margin-top: 15px;">Admin Revision Calendar</h2>
-                    <div class="calendar-container">
-                        <div class="calendar-header">
-                            <button id="prevMonthBtn">&lt; Prev</button>
-                            <h3 id="calendarMonthYear"></h3>
-                            <button id="nextMonthBtn">Next &gt;</button>
-                        </div>
-                        <div id="calendarBody" class="calendar-grid"></div>
-                    </div>
-                </div>
                 
                 <div id="reportedQuestionsSection" class="hidden" style="margin-top: 20px;">
                     <button class="backToSettingsBtn">&larr; Back to Settings</button>
@@ -923,7 +927,12 @@
                 
                 <div id="attendanceRegisterSection" class="hidden" style="margin-top: 20px;">
                     <button class="backToSettingsBtn">&larr; Back to Settings</button>
-                    <h2 style="margin-top: 15px;">Player Attendance Register</h2>
+                    <h2 style="margin-top: 15px;">Player Attendance & Revision Register</h2>
+                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                        <p>Legend:</p>
+                        <div style="display:flex; align-items:center; gap: 5px;"><div style="width:15px; height:15px; background:var(--success-color); border-radius:4px;"></div> Present</div>
+                        <div style="display:flex; align-items:center; gap: 5px;"><div style="width:15px; height:15px; position:relative; background:#eee; border-radius:4px;"><span style="position:absolute; bottom:1px; right:1px; width:6px; height:6px; background:var(--primary-color); border-radius:50%;"></span></div> Revision Due</div>
+                    </div>
                     <div class="form-group">
                         <label for="attendancePlayerSelect">Select Player:</label>
                         <select id="attendancePlayerSelect" onchange="renderAdminAttendanceCalendar(this.value)"></select>
@@ -963,7 +972,6 @@
         </main>
     </div>
 
-    <!-- Modals -->
     <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore"></p><p id="modalTime"></p><p id="modalXPGained"></p><button onclick="closeModal('resultsModal')">Close</button></div></div>
     <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><div id="passwordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="passwordConfirmInput" placeholder="Confirm Password"></div><button id="passwordSubmitBtn"></button><button onclick="closeModal('passwordModal')" class="btn-danger">Cancel</button></div></div>
     <div id="viewDetailsModal" class="modal"><div class="modal-content" id="viewDetailsModalContent" style="text-align: left; max-height: 80vh; overflow-y: auto;"></div></div>
@@ -989,7 +997,6 @@
         </div>
     </div>
     
-    <!-- NEW: PDF Viewer Modal -->
     <div id="pdfViewModal" class="modal">
         <div class="modal-content" style="width: 95%; height: 95%; max-width: 1200px; padding: 10px; box-sizing: border-box;">
             <iframe id="pdfViewer" style="width: 100%; height: calc(100% - 50px); border: none;"></iframe>
@@ -1048,7 +1055,6 @@
         
         let analyzedQuestionsBySet = {}; 
         
-        let currentCalendarDate = new Date();
         let currentAttendanceCalendarDate = new Date();
         let currentAdminAttendanceDate = new Date();
 
@@ -1080,7 +1086,6 @@
                 btn.addEventListener('click', () => {
                     document.getElementById('addQuestionsSection').classList.add('hidden');
                     document.getElementById('editQuestionsSection').classList.add('hidden'); 
-                    document.getElementById('revisionCalendarSection').classList.add('hidden');
                     document.getElementById('reportedQuestionsSection').classList.add('hidden');
                     document.getElementById('attendanceRegisterSection').classList.add('hidden');
                     document.getElementById('mainSettings').classList.remove('hidden');
@@ -1098,13 +1103,6 @@
             });
             renderRevisionPage();
             
-            document.getElementById('showRevisionCalendarBtn').addEventListener('click', () => {
-                document.getElementById('mainSettings').classList.add('hidden');
-                document.getElementById('revisionCalendarSection').classList.remove('hidden');
-                currentCalendarDate = new Date();
-                renderRevisionCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
-            });
-
             document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
                 document.getElementById('mainSettings').classList.add('hidden');
                 document.getElementById('reportedQuestionsSection').classList.remove('hidden');
@@ -1115,17 +1113,9 @@
                 document.getElementById('mainSettings').classList.add('hidden');
                 document.getElementById('attendanceRegisterSection').classList.remove('hidden');
                 currentAdminAttendanceDate = new Date();
+                updatePlayerSelects(); // Ensure dropdown is populated
                 const firstPlayer = document.getElementById('attendancePlayerSelect').value;
                 renderAdminAttendanceCalendar(firstPlayer);
-            });
-            
-            document.getElementById('prevMonthBtn').addEventListener('click', () => {
-                currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
-                renderRevisionCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
-            });
-            document.getElementById('nextMonthBtn').addEventListener('click', () => {
-                currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
-                renderRevisionCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
             });
             
              // Attendance calendar navigation
@@ -1362,44 +1352,55 @@
         
         function removePlayer() {
             const playerToRemove = document.getElementById('playerToRemoveSelect').value;
-            if (!playerToRemove) { showNotification('Please select a player to remove.', 'warning'); return; }
+            if (!playerToRemove) { return; }
 
             showPasswordModal(`Are you sure you want to remove '${playerToRemove}' and all their data?`, ADMIN_PASSWORD, () => {
-                const newPracticeHistory = {};
-                for (const key in practiceHistory) {
-                    if (practiceHistory[key].playerName !== playerToRemove) { newPracticeHistory[key] = practiceHistory[key]; }
-                }
-                practiceHistory = newPracticeHistory;
-                if (revisionProgress[playerToRemove]) { delete revisionProgress[playerToRemove]; }
-                if (playerProfiles[playerToRemove]) { delete playerProfiles[playerToRemove]; }
-                localStorage.removeItem(`pscPlayerPFP_${playerToRemove}`);
+                // 1. Remove history
+                const historyKeysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToRemove);
+                historyKeysToDelete.forEach(key => delete practiceHistory[key]);
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+
+                // 2. Remove revision progress
+                delete revisionProgress[playerToRemove];
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+
+                // 3. Remove profile
+                delete playerProfiles[playerToRemove];
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+
+                // 4. Remove PFP
+                localStorage.removeItem(`pscPlayerPFP_${playerToRemove}`);
+
+                // 5. Sync with Firebase
                 if (isFirebaseConnected) {
-                    db.ref('practiceHistory').set(practiceHistory);
+                    historyKeysToDelete.forEach(key => db.ref(`practiceHistory/${key}`).remove());
                     db.ref(`revisionProgress/${playerToRemove}`).remove();
                     db.ref(`playerProfiles/${playerToRemove}`).remove();
                 }
-                if (currentPlayerName === playerToRemove) { logout(); }
-                updatePlayerSelects();
+                
+                if (currentPlayerName === playerToRemove) { logout(); } 
+                else { updatePlayerSelects(); }
+
                 showNotification(`Player '${playerToRemove}' has been removed.`, 'error');
             }, "Enter Admin Password to Confirm");
         }
-        
+
         function clearPlayerHistory() {
             const playerToClear = document.getElementById('playerToClearHistorySelect').value;
-            if (!playerToClear) { showNotification('Please select a player whose history you want to clear.', 'warning'); return; }
+            if (!playerToClear) { return; }
+            
             showPasswordModal(`Are you sure you want to clear ALL practice and revision history for '${playerToClear}'? This action cannot be undone.`, ADMIN_PASSWORD, () => {
-                const newHistory = {};
-                for (const key in practiceHistory) {
-                    if (practiceHistory[key].playerName !== playerToClear) { newHistory[key] = practiceHistory[key]; }
-                }
-                practiceHistory = newHistory;
+                const keysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToClear);
+                
+                keysToDelete.forEach(key => {
+                    delete practiceHistory[key];
+                    if (isFirebaseConnected) db.ref(`practiceHistory/${key}`).remove();
+                });
+                
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-                if (isFirebaseConnected) { db.ref('practiceHistory').set(practiceHistory); }
                 showNotification(`All history for ${playerToClear} has been cleared.`, 'error');
-                updatePlayerSelects();
+                
+                // We don't need to update selects as the player still exists
             }, "Confirm History Deletion");
         }
 
@@ -1514,7 +1515,6 @@
                 if(tabName === 'settings') {
                     document.getElementById('addQuestionsSection').classList.add('hidden');
                     document.getElementById('editQuestionsSection').classList.add('hidden');
-                    document.getElementById('revisionCalendarSection').classList.add('hidden');
                     document.getElementById('reportedQuestionsSection').classList.add('hidden');
                     document.getElementById('mainSettings').classList.remove('hidden');
                     editingFromReport.active = false;
@@ -1717,7 +1717,20 @@
             clearInterval(timer);
             const percentage = currentSet.length > 0 ? Math.round((score / currentSet.length) * 100) : 0;
             
-            const xpEarned = calculateAndApplyXP(score);
+            let xpEarned = 0;
+            let xpMessage = '';
+            if (isRevisionMode) {
+                xpEarned = calculateAndApplyXP(score); // Full XP for revisions
+                xpMessage = `You earned ${xpEarned} XP!`;
+            } else {
+                // For regular practice, only award daily streak/login XP, not score-based XP
+                xpEarned = calculateAndApplyXP(0);
+                if (xpEarned > 0) {
+                    xpMessage = `You earned ${xpEarned} XP for your daily activity! Score-based XP is for revisions.`;
+                } else {
+                    xpMessage = 'XP for correct answers is awarded during revision sessions.';
+                }
+            }
 
             currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
             const attemptId = `attempt-${Date.now()}`;
@@ -1737,7 +1750,7 @@
             document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
             document.getElementById('modalScore').textContent = `Score: ${score}/${currentSet.length} (${percentage}%)`;
             document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
-            document.getElementById('modalXPGained').textContent = `You earned ${xpEarned} XP!`;
+            document.getElementById('modalXPGained').textContent = xpMessage;
             openModal('resultsModal');
             if (percentage >= 75) startConfetti();
             document.body.classList.remove('practice-active');
@@ -1803,8 +1816,10 @@
             if (lastDate !== today) {
                 // First activity of the day. Handle attendance and streak.
                 if (!profile.attendance) profile.attendance = [];
-                profile.attendance.push(today);
-                showNotification('Attendance automatically marked for today!', 'success');
+                if (!profile.attendance.includes(today)) {
+                    profile.attendance.push(today);
+                    showNotification('Attendance automatically marked for today!', 'success');
+                }
 
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
@@ -2379,68 +2394,53 @@
         }
 
         // --- CALENDAR FUNCTIONS (ADMIN & ATTENDANCE) ---
-        function getRevisionSchedule() {
+        function getRevisionScheduleForPlayer(playerName) {
             const schedule = {};
-            const allPlayers = getAllPlayerNames();
+            if (!playerName) return schedule;
+
             for (const setName in questionSets) {
                 const set = questionSets[setName];
                 if (!set || !set.uploadDate) continue;
                 for (const day of revisionIntervals) {
-                    const revisionDate = new Date(set.uploadDate); // Important: re-initialize from original date
+                    const revisionDate = new Date(set.uploadDate);
                     revisionDate.setDate(revisionDate.getDate() + day);
                     const dateKey = revisionDate.toISOString().split('T')[0];
+
                     const revisionKey = `${setName}_RevDay${day}`;
-                    const playersDue = allPlayers.filter(playerName => {
-                        const playerStatus = revisionProgress[playerName] && revisionProgress[playerName][revisionKey];
-                        return !playerStatus || !playerStatus.success;
-                    });
-                    if (playersDue.length > 0) {
-                        if (!schedule[dateKey]) schedule[dateKey] = [];
-                        schedule[dateKey].push({ setName, day, players: playersDue });
+                    const playerStatus = revisionProgress[playerName] && revisionProgress[playerName][revisionKey];
+                    const isCompleted = playerStatus && playerStatus.success;
+
+                    if (!isCompleted) {
+                         if (!schedule[dateKey]) schedule[dateKey] = [];
+                        schedule[dateKey].push({ setName, day });
                     }
                 }
             }
             return schedule;
         }
-
-        function renderRevisionCalendar(year, month) {
-            const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
-            document.getElementById('calendarMonthYear').textContent = `${monthName} ${year}`;
-            const schedule = getRevisionSchedule();
-            const calendarBody = document.getElementById('calendarBody');
-            calendarBody.innerHTML = '';
-            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; // Monday as first day
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`; });
-            for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div class="calendar-day empty"></div>`; }
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayCell = document.createElement('div');
-                dayCell.classList.add('calendar-day'); dayCell.textContent = day;
-                const today = new Date();
-                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) { dayCell.classList.add('today'); }
-                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                if (schedule[dateKey]) {
-                    dayCell.classList.add('has-revision');
-                    const badge = document.createElement('span');
-                    badge.className = 'revision-cal-badge'; badge.textContent = schedule[dateKey].length;
-                    dayCell.appendChild(badge);
-                    dayCell.onclick = () => showRevisionDetailsForDate(dateKey, schedule[dateKey]);
-                }
-                calendarBody.appendChild(dayCell);
-            }
-        }
-
-        function showRevisionDetailsForDate(dateKey, revisions) {
+        
+        function showAdminRevisionDetailsForDate(dateKey, revisions, playerName) {
             const formattedDate = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            let detailsHtml = `<h2>Revisions Due On ${formattedDate}</h2>`;
+            let detailsHtml = `<h2>Revisions Due for ${playerName} on ${formattedDate}</h2>`;
             revisions.forEach(rev => {
-                detailsHtml += `<div class="question-set" style="margin-top:15px; border-left-color: var(--primary-color);"><p><strong>Set: ${rev.setName} (Day ${rev.day})</strong></p><p>Due for: ${rev.players.join(', ')}</p></div>`;
+                detailsHtml += `<div class="question-set" style="margin-top:15px; border-left-color: var(--primary-color);"><p><strong>Set: ${rev.setName} (Day ${rev.day})</strong></p></div>`;
             });
             detailsHtml += `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml;
             openModal('viewDetailsModal');
         }
+
+        function showUserRevisionDetailsForDate(dateKey, revisions) {
+            const formattedDate = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            let detailsHtml = `<h2>Revisions Due on ${formattedDate}</h2>`;
+            revisions.forEach(rev => {
+                detailsHtml += `<div class="question-set" style="margin-top:15px; border-left-color: var(--primary-color);"><p><strong>Set: ${rev.setName} (Day ${rev.day})</strong></p></div>`;
+            });
+            detailsHtml += `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
+            document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml;
+            openModal('viewDetailsModal');
+        }
+
 
         function renderAttendanceCalendar(year, month) {
              if (!currentPlayerName) {
@@ -2450,6 +2450,7 @@
             }
             const profile = playerProfiles[currentPlayerName];
             const attendance = profile.attendance || [];
+            const revisionSchedule = getRevisionScheduleForPlayer(currentPlayerName);
             const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
             document.getElementById('attendanceCalendarMonthYear').textContent = `${monthName} ${year}`;
             const calendarBody = document.getElementById('attendanceCalendarBody');
@@ -2471,6 +2472,10 @@
                 if (attendance.includes(dateKey)) {
                     dayCell.classList.add('present');
                 }
+                if (revisionSchedule[dateKey]) {
+                    dayCell.classList.add('has-revision');
+                    dayCell.onclick = () => showUserRevisionDetailsForDate(dateKey, revisionSchedule[dateKey]);
+                }
                 if (dateKey === todayStr) {
                     dayCell.classList.add('today');
                 }
@@ -2491,6 +2496,7 @@
             }
             const profile = playerProfiles[playerName];
             const attendance = profile.attendance || [];
+            const revisionSchedule = getRevisionScheduleForPlayer(playerName);
             
             calendarBody.innerHTML = '';
             const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; // Monday as first day
@@ -2500,8 +2506,7 @@
             for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div class="calendar-day empty"></div>`; }
 
             const today = new Date();
-            const todayStr = getTodayDateString();
-
+            
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayCell = document.createElement('div');
                 dayCell.classList.add('calendar-day'); dayCell.textContent = day;
@@ -2510,6 +2515,12 @@
                 if (attendance.includes(dateKey)) {
                     dayCell.classList.add('present');
                 }
+                
+                if (revisionSchedule[dateKey]) {
+                    dayCell.classList.add('has-revision');
+                    dayCell.onclick = () => showAdminRevisionDetailsForDate(dateKey, revisionSchedule[dateKey], playerName);
+                }
+
                 if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
                     dayCell.classList.add('today');
                 }
@@ -2729,4 +2740,3 @@
     </script>
 </body>
 </html>
-
