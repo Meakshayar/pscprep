@@ -10,7 +10,6 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         :root {
@@ -390,8 +389,7 @@
         .leaderboard-table tr:nth-child(odd) { background-color: #fdfdfd; }
         .leaderboard-table tr:hover { background-color: #f1f1f1; }
         .leaderboard-table .winner { 
-            background: linear-gradient(135deg, #f1c40f, #f39c12);
-            color: white;
+            background-color: #fffbe6;
             font-weight: bold;
         }
         .leaderboard-table .current-player-highlight {
@@ -502,18 +500,6 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
 
-        .leaderboard-toggle button {
-            background: #ecf0f1;
-            color: var(--dark-color);
-            border: 1px solid #bdc3c7;
-            margin: 0 5px 15px 5px;
-        }
-        .leaderboard-toggle button.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
         .avatar-selection {
             display: flex;
             flex-wrap: wrap;
@@ -539,14 +525,18 @@
             transform: scale(1.1);
         }
 
-        /* --- NEW CALENDAR STYLES --- */
+        /* --- CALENDAR STYLES (SHARED) --- */
+        .calendar-container {
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
         .calendar-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
         }
-        #calendarMonthYear {
+        #calendarMonthYear, #attendanceCalendarMonthYear, #adminAttendanceCalendarMonthYear {
             font-size: 1.5em;
             font-weight: 600;
         }
@@ -554,9 +544,10 @@
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 5px;
+            min-width: 400px;
         }
         .calendar-day, .calendar-day-header {
-            padding: 10px;
+            padding: 8px;
             text-align: center;
             border-radius: 8px;
             aspect-ratio: 1 / 1;
@@ -564,7 +555,7 @@
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            font-size: 14px;
+            font-size: 12px;
         }
         .calendar-day-header {
             font-weight: bold;
@@ -594,16 +585,26 @@
             background-color: var(--danger-color);
             color: white;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
-            line-height: 20px;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            line-height: 18px;
             text-align: center;
+        }
+        .calendar-day.present {
+            background-color: var(--success-color);
+            color: white;
+            font-weight: bold;
         }
         /* --- END CALENDAR STYLES --- */
 
-        /* --- NEW: Mobile Practice Screen Font Size Adjustment --- */
+        /* --- RESPONSIVE ADJUSTMENTS --- */
         @media screen and (max-width: 600px) {
+            body { padding: 5px; }
+            .container { padding: 0; border-radius: 0; }
+            nav button { font-size: 12px; padding: 12px 5px; }
+            .tab-content { padding: 15px; }
+
             #practiceQuestion {
                 font-size: 1.1em;
                 margin-bottom: 15px;
@@ -620,41 +621,12 @@
                 padding: 10px 18px;
                 font-size: 14px;
             }
-        }
-        /* --- END: Mobile Practice Screen Font Size Adjustment --- */
-
-        @media screen and (max-width: 768px) {
-            .leaderboard-table thead {
-                display: none;
+            .calendar-day, .calendar-day-header {
+                font-size: 11px;
+                padding: 5px;
             }
-            .leaderboard-table, .leaderboard-table tbody, .leaderboard-table tr, .leaderboard-table td {
-                display: block;
-                width: 100%;
-            }
-            .leaderboard-table tr {
-                margin-bottom: 15px;
-                border: 1px solid #ddd;
-                border-radius: var(--border-radius);
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            }
-            .leaderboard-table td {
-                text-align: right;
-                position: relative;
-                padding-left: 50%;
-                border-bottom: 1px dotted #ccc;
-            }
-            .leaderboard-table td:last-child {
-                border-bottom: none;
-            }
-            .leaderboard-table td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 10px;
-                width: 45%;
-                padding-right: 10px;
-                white-space: nowrap;
-                text-align: left;
-                font-weight: bold;
+            .calendar-grid {
+                gap: 2px;
             }
         }
 
@@ -680,7 +652,7 @@
             
             <div id="playerStats" class="player-stats hidden">
                 <p id="playerNameDisplay"></p>
-                <p>Level <span id="playerLevel">1</span> (<span id="playerXP">0</span> / <span id="xpToNextLevel">100</span> XP)</p>
+                <p>Title: <span id="playerTitle"></span> (<span id="playerXP">0</span> / <span id="xpToNextLevel">500</span> XP)</p>
                 <div class="xp-bar">
                     <div id="xpBarFill" class="xp-bar-fill"></div>
                 </div>
@@ -688,10 +660,11 @@
         </header>
 
         <nav id="tab-nav">
-            <button onclick="switchTab('practice')" class="active">Practice & Dashboard</button>
+            <button onclick="switchTab('practice')" class="active">Practice</button>
             <button onclick="switchTab('revision')">Revision Plan</button>
             <button onclick="switchTab('leaderboard')">Leaderboard</button>
             <button onclick="switchTab('history')">My History</button>
+            <button onclick="switchTab('attendance')">Attendance</button>
         </nav>
         
         <main>
@@ -743,61 +716,52 @@
                 </div>
 
             <div id="revision" class="tab-content">
-                <h2>Revision Plan & Backlog</h2>
+                <h2>Revision Plan & Smart Backlog</h2>
                 <div style="background: linear-gradient(135deg, #a29bfe, #6c5ce7); color: white; padding: 20px; border-radius: var(--border-radius); margin-bottom: 20px;">
                     <h3>Spaced Repetition</h3>
                     <p id="revisionSuccessInfo"></p>
                 </div>
-                <p id="revisionUserPrompt" style="margin-bottom: 15px; color: var(--danger-color); font-weight: 600;" class="hidden">Please select a player on the Dashboard tab to view your personalized revision plan.</p>
+                <p id="revisionUserPrompt" style="margin-bottom: 15px; color: var(--danger-color); font-weight: 600;" class="hidden">Please select a player on the Practice tab to view your personalized revision plan.</p>
                 
                 <h3>Due Today</h3>
                 <div id="dueTodayList"></div>
                 <hr style="margin: 30px 0;">
-                <h3>Backlog</h3>
+                <h3>Backlog (Earliest Missed First)</h3>
                 <div id="backlogList"></div>
-
             </div>
 
             <div id="leaderboard" class="tab-content">
                 <h2>Leaderboard</h2>
-                
-                <div class="leaderboard-toggle" style="text-align: center;">
-                    <button id="showPracticeLeaderboardBtn" onclick="toggleLeaderboardView('practice')" class="active">Practice Leaderboard</button>
-                    <button id="showRevisionLeaderboardBtn" onclick="toggleLeaderboardView('revision')">Revision Leaderboard</button>
-                </div>
-
-                <div id="practiceLeaderboardView">
-                    <h3>Overall Practice Performance</h3>
-                    <p>Ranking based on average score across all attempted practice sets.</p>
-                    <div style="overflow-x: auto;">
-                        <table class="leaderboard-table">
-                            <thead><tr><th>Rank</th><th>Player</th><th>Average Score</th><th>Sets Attempted</th><th>W/L Record</th><th>Correct Ans.</th><th>Total Time</th></tr></thead>
-                            <tbody id="leaderboardTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div id="revisionLeaderboardView" class="hidden">
-                    <h3>Overall Revision Performance</h3>
-                    <p>Ranking based on average score across all unique revision tasks completed.</p>
-                    <div style="overflow-x: auto;">
-                        <table class="leaderboard-table">
-                            <thead><tr><th>Rank</th><th>Player</th><th>Average Score</th><th>Revisions Done</th><th>Correct Ans.</th></tr></thead>
-                            <tbody id="revisionLeaderboardTableBody"></tbody>
-                        </table>
-                    </div>
+                <p>Ranking based on total Experience Points (XP). Ties are broken by total correct answers.</p>
+                <div style="overflow-x: auto;">
+                    <table class="leaderboard-table">
+                        <thead><tr><th>Rank</th><th>Player</th><th>Total XP</th><th>Streak</th><th>Title</th></tr></thead>
+                        <tbody id="leaderboardTableBody"></tbody>
+                    </table>
                 </div>
             </div>
 
             <div id="history" class="tab-content">
                 <h2>My Practice History</h2>
-                <p>Showing your latest attempt for each question set.</p>
-                <div class="player-selector" style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <select id="historyPlayerSelect" onchange="loadHistory()" class="styled-select" style="flex-grow: 1;"></select>
+                <p id="historyPrompt">Showing your latest attempt for each question set.</p>
+                <div id="historyControls" class="hidden" style="margin-bottom: 15px;">
                     <button onclick="showQuestionAnalysis()">Analyze Question Timings</button>
                 </div>
                 <div id="historyList"></div>
                 <div id="questionAnalysisView" class="hidden" style="margin-top: 20px;"></div>
+            </div>
+            
+            <div id="attendance" class="tab-content">
+                <h2>My Attendance</h2>
+                <p>Your attendance is marked automatically when you complete a revision or practice session each day.</p>
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button id="prevAttendanceMonthBtn">&lt; Prev</button>
+                        <h3 id="attendanceCalendarMonthYear"></h3>
+                        <button id="nextAttendanceMonthBtn">Next &gt;</button>
+                    </div>
+                    <div id="attendanceCalendarBody" class="calendar-grid"></div>
+                </div>
             </div>
 
             <div id="settings" class="tab-content">
@@ -820,9 +784,9 @@
                     <button onclick="importData()">Import Data</button>
                     <button onclick="clearAllData()" class="btn-danger">Clear All Data</button>
                     <hr style="margin: 20px 0;">
-                    <h4>Leaderboard Management</h4>
-                    <button onclick="resetLeaderboard()" class="btn-danger">Clear All Practice Leaderboard Scores</button>
-                    <button onclick="resetRevisionProgress()" class="btn-danger">Clear All Revision Leaderboard Scores</button>
+                    <h4>Leaderboard & Progress Management</h4>
+                    <button onclick="resetAllXP()" class="btn-danger">Clear All Player XP & Streaks</button>
+                    <button onclick="resetRevisionProgress()" class="btn-danger">Clear All Revision Progress</button>
                     <hr style="margin: 20px 0;">
                     
                     <h3>User Password Management</h3>
@@ -852,6 +816,7 @@
                     <button id="showAddQuestionsBtn">Manage Question Sets</button>
                     <button id="showRevisionCalendarBtn">View Revision Calendar</button>
                     <button id="showReportedQuestionsBtn">View Reported Questions</button>
+                    <button id="showAttendanceRegisterBtn">View Attendance Register</button>
                 </div>
 
                 <div id="addQuestionsSection" class="hidden" style="margin-top: 20px;">
@@ -940,12 +905,14 @@
                 <div id="revisionCalendarSection" class="hidden" style="margin-top: 20px;">
                     <button class="backToSettingsBtn">&larr; Back to Settings</button>
                     <h2 style="margin-top: 15px;">Admin Revision Calendar</h2>
-                    <div class="calendar-header">
-                        <button id="prevMonthBtn">&lt; Prev</button>
-                        <h3 id="calendarMonthYear"></h3>
-                        <button id="nextMonthBtn">Next &gt;</button>
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <button id="prevMonthBtn">&lt; Prev</button>
+                            <h3 id="calendarMonthYear"></h3>
+                            <button id="nextMonthBtn">Next &gt;</button>
+                        </div>
+                        <div id="calendarBody" class="calendar-grid"></div>
                     </div>
-                    <div id="calendarBody" class="calendar-grid"></div>
                 </div>
                 
                 <div id="reportedQuestionsSection" class="hidden" style="margin-top: 20px;">
@@ -953,18 +920,36 @@
                     <h2 style="margin-top: 15px;">Reported Questions for Review</h2>
                     <div id="reportedQuestionsList"></div>
                 </div>
+                
+                <div id="attendanceRegisterSection" class="hidden" style="margin-top: 20px;">
+                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
+                    <h2 style="margin-top: 15px;">Player Attendance Register</h2>
+                    <div class="form-group">
+                        <label for="attendancePlayerSelect">Select Player:</label>
+                        <select id="attendancePlayerSelect" onchange="renderAdminAttendanceCalendar(this.value)"></select>
+                    </div>
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <button id="adminPrevAttendanceMonthBtn">&lt; Prev</button>
+                            <h3 id="adminAttendanceCalendarMonthYear"></h3>
+                            <button id="adminNextAttendanceMonthBtn">Next &gt;</button>
+                        </div>
+                        <div id="adminAttendanceCalendarBody" class="calendar-grid"></div>
+                    </div>
+                </div>
+
 
             </div>
 
             <div id="help" class="tab-content">
                 <h2>How This App Helps Students (PSC Exam Prep)</h2>
-                <div class="dashboard-card" style="background: linear-gradient(135deg, #2c3e50, #95a5a6);">
-                    <h3>Gamified Learning</h3>
-                    <p>By earning XP and leveling up, your study becomes an engaging game. This increases motivation and makes tedious revision feel rewarding.</p>
+                 <div class="dashboard-card" style="background: linear-gradient(135deg, #2c3e50, #95a5a6);">
+                    <h3>New Gamified XP System</h3>
+                    <p>Earn XP for correct answers and build up daily streaks for massive bonuses! Maintain your streak to climb the ranks from Stone ⚫ to Diamond 💎. But be careful, missing days will break your streak and may even cost you XP!</p>
                 </div>
                 <div class="dashboard-card" style="background: linear-gradient(135deg, #1abc9c, #16a085);">
-                    <h3>Spaced Repetition System (SRS) & Backlog</h3>
-                    <p>The **Revision Plan** uses a scientifically proven Spaced Repetition System. Questions are scheduled for review on specific days (1, 3, 7, 14, 30, 60, 90 days after upload or last mastery) to ensure long-term retention. Crucially, due revisions remain in your **backlog** until you clear them with a successful score (70%+).</p>
+                    <h3>Spaced Repetition System (SRS) & Smart Backlog</h3>
+                    <p>The **Revision Plan** uses a scientifically proven Spaced Repetition System. If you miss a revision, it's added to a smart backlog that only shows you the earliest missed item for each set, preventing clutter and keeping you focused.</p>
                 </div>
                  <div class="dashboard-card" style="background: linear-gradient(135deg, #3498db, #2980b9);">
                     <h3>Flexible Study with PDFs</h3>
@@ -972,12 +957,13 @@
                 </div>
                 <div class="dashboard-card" style="background: linear-gradient(135deg, #e67e22, #d35400);">
                     <h3>Focus & Efficiency</h3>
-                    <p>The time-bound practice mode simulates exam conditions, helping you improve speed and accuracy. The **Question Set Management** allows you or an admin to curate highly relevant study material. The full-screen exam mode helps you focus without distractions.</p>
+                    <p>The time-bound practice mode simulates exam conditions, helping you improve speed and accuracy. The full-screen exam mode helps you focus without distractions.</p>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Modals -->
     <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore"></p><p id="modalTime"></p><p id="modalXPGained"></p><button onclick="closeModal('resultsModal')">Close</button></div></div>
     <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><div id="passwordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="passwordConfirmInput" placeholder="Confirm Password"></div><button id="passwordSubmitBtn"></button><button onclick="closeModal('passwordModal')" class="btn-danger">Cancel</button></div></div>
     <div id="viewDetailsModal" class="modal"><div class="modal-content" id="viewDetailsModalContent" style="text-align: left; max-height: 80vh; overflow-y: auto;"></div></div>
@@ -994,47 +980,51 @@
         <div id="statsModalContent" class="modal-content">
             <h2>Player Statistics</h2>
             <div class="stat-grid">
-                <div class="stat-card"><h4>Level</h4><p id="statsLevel">_</p></div>
-                <div class="stat-card"><h4>XP</h4><p id="statsXP">_</p></div>
-                <div class="stat-card"><h4>Wins</h4><p id="statsWins" class="correct">_</p></div>
-                <div class="stat-card"><h4>Losses</h4><p id="statsLosses" class="wrong">_</p></div>
-                <div class="stat-card"><h4>Correct Answers</h4><p id="statsCorrect" class="correct">_</p></div>
-                <div class="stat-card"><h4>Incorrect Answers</h4><p id="statsIncorrect" class="wrong">_</p></div>
-            </div>
-            <div class="stat-grid">
-                <div class="stat-card"><h4>Avg. Score</h4><p id="statsAvgScore">_</p></div>
-                <div class="stat-card"><h4>Longest Streak</h4><p id="statsStreak">_</p></div>
+                <div class="stat-card"><h4>Title</h4><p id="statsTitle">_</p></div>
+                <div class="stat-card"><h4>Total XP</h4><p id="statsXP">_</p></div>
+                <div class="stat-card"><h4>Current Streak</h4><p id="statsStreak">_</p></div>
+                <div class="stat-card"><h4>Total Correct</h4><p id="statsCorrect" class="correct">_</p></div>
             </div>
             <button onclick="closeModal('statsModal')">Close</button>
+        </div>
+    </div>
+    
+    <!-- NEW: PDF Viewer Modal -->
+    <div id="pdfViewModal" class="modal">
+        <div class="modal-content" style="width: 95%; height: 95%; max-width: 1200px; padding: 10px; box-sizing: border-box;">
+            <iframe id="pdfViewer" style="width: 100%; height: calc(100% - 50px); border: none;"></iframe>
+            <button onclick="closeModal('pdfViewModal')" style="margin-top: 10px;">Close</button>
         </div>
     </div>
 
 
     <script>
+        // --- CONSTANTS ---
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
-
-        // --- GAMIFICATION & UI ---
-        let xp = 0, level = 1, xpToNextLevel = 100;
-        const XP_PER_CORRECT_ANSWER = 10;
         const TIME_PER_QUESTION = 12; 
+        
+        // --- NEW GAMIFICATION & LEVELING SYSTEM ---
+        const LEVEL_CONFIG = [
+            { minXp: 0, title: "Stone ⚫", nextLevelXp: 500 },
+            { minXp: 500, title: "Iron ⚙️", nextLevelXp: 1500 },
+            { minXp: 1500, title: "Bronze 🥉", nextLevelXp: 3500 },
+            { minXp: 3500, title: "Silver 🥈", nextLevelXp: 6000 },
+            { minXp: 6000, title: "Gold 🥇", nextLevelXp: 9000 },
+            { minXp: 9000, title: "Platinum 💠", nextLevelXp: 12000 },
+            { minXp: 12000, title: "Diamond 💎", nextLevelXp: Infinity }
+        ];
+
         const quotes = [
             "The secret to getting ahead is getting started.", 
             "Believe you can and you're halfway there.", 
             "Success is the sum of small efforts, repeated day in and day out.",
             "The mind is everything. What you think you become.",
-            "Strive for progress, not perfection.",
-            "The best way to predict the future is to create it.",
-            "Your hard work today is your success tomorrow.",
-            "Don't watch the clock; do what it does. Keep going.",
-            "The journey of a thousand miles begins with a single step.",
-            "The expert in anything was once a beginner.",
-            "Success doesn't just find you. You have to go out and get it.",
-            "The harder you work for something, the greater you'll feel when you achieve it."
+            "Strive for progress, not perfection."
         ];
         let audioCtx;
 
-        // --- APP LOGIC ---
+        // --- APP STATE ---
         let firebaseConfig = JSON.parse(localStorage.getItem('firebaseConfig')) || null;
         let db = null;
         let isFirebaseConnected = false;
@@ -1046,13 +1036,11 @@
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
         
         const ADMIN_PASSWORD = "2525", SETTINGS_PASSWORD = "2525";
-        let isAdmin = false;
         
         let currentSet = [], currentQuestionIndex = 0, score = 0, timer, timeElapsed = 0, currentPlayerName = '', currentAttempt = null, totalTimeLimit = 0, isRevisionMode = false, currentRevisionKey = null;
         
         let currentEditingSet = null;
         let currentEditingIndex = -1; 
-        // NEW: State for seamless reported question editing
         let editingFromReport = { active: false, reportId: null };
 
         let selectedAvatarUrl = null;
@@ -1060,8 +1048,11 @@
         
         let analyzedQuestionsBySet = {}; 
         
-        let currentCalendarDate = new Date(); // For the new calendar
+        let currentCalendarDate = new Date();
+        let currentAttendanceCalendarDate = new Date();
+        let currentAdminAttendanceDate = new Date();
 
+        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 
         function init() {
@@ -1075,18 +1066,14 @@
             document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
             document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-            // MODIFIED: This block handles automatic login on page reload.
             const lastPlayer = localStorage.getItem('pscLastPlayer');
             if (lastPlayer && playerProfiles[lastPlayer]) {
-                // Automatically log in the last user
-                loginPlayer(lastPlayer, true); // The 'true' flag indicates it's an auto-login
+                loginPlayer(lastPlayer, true); 
             } else {
-                // Otherwise, show the default welcome screen
                 switchPracticeView('welcomeView');
             }
 
             document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
-
             document.getElementById('showAddQuestionsBtn').addEventListener('click', showAddQuestionsSection); 
             
             document.querySelectorAll('.backToSettingsBtn').forEach(btn => {
@@ -1095,6 +1082,7 @@
                     document.getElementById('editQuestionsSection').classList.add('hidden'); 
                     document.getElementById('revisionCalendarSection').classList.add('hidden');
                     document.getElementById('reportedQuestionsSection').classList.add('hidden');
+                    document.getElementById('attendanceRegisterSection').classList.add('hidden');
                     document.getElementById('mainSettings').classList.remove('hidden');
                 });
             });
@@ -1110,8 +1098,6 @@
             });
             renderRevisionPage();
             
-            toggleLeaderboardView('practice');
-            
             document.getElementById('showRevisionCalendarBtn').addEventListener('click', () => {
                 document.getElementById('mainSettings').classList.add('hidden');
                 document.getElementById('revisionCalendarSection').classList.remove('hidden');
@@ -1124,6 +1110,14 @@
                 document.getElementById('reportedQuestionsSection').classList.remove('hidden');
                 renderReportedQuestions();
             });
+
+            document.getElementById('showAttendanceRegisterBtn').addEventListener('click', () => {
+                document.getElementById('mainSettings').classList.add('hidden');
+                document.getElementById('attendanceRegisterSection').classList.remove('hidden');
+                currentAdminAttendanceDate = new Date();
+                const firstPlayer = document.getElementById('attendancePlayerSelect').value;
+                renderAdminAttendanceCalendar(firstPlayer);
+            });
             
             document.getElementById('prevMonthBtn').addEventListener('click', () => {
                 currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
@@ -1134,6 +1128,28 @@
                 renderRevisionCalendar(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth());
             });
             
+             // Attendance calendar navigation
+            document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
+                currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
+                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+            });
+            document.getElementById('nextAttendanceMonthBtn').addEventListener('click', () => {
+                currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
+                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+            });
+            
+             // Admin Attendance calendar navigation
+            document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
+                currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
+                const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+                renderAdminAttendanceCalendar(selectedPlayer);
+            });
+            document.getElementById('adminNextAttendanceMonthBtn').addEventListener('click', () => {
+                currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() + 1);
+                const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+                renderAdminAttendanceCalendar(selectedPlayer);
+            });
+
             window.onclick = function(event) {
                 if (!event.target.matches('.menu-btn')) {
                     var dropdowns = document.getElementsByClassName("dropdown-content");
@@ -1224,46 +1240,23 @@
             if (!db) return;
             db.ref('questionSets').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) {
-                    questionSets = data;
-                    localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                    loadQuestionSets();
-                    updateSetSelects();
-                }
+                if (data) { questionSets = data; localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets)); loadQuestionSets(); updateSetSelects(); }
             });
             db.ref('practiceHistory').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) {
-                    practiceHistory = data;
-                    localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-                    updatePlayerSelects();
-                    if (document.getElementById('leaderboard').classList.contains('active')) showPracticeLeaderboard();
-                }
+                if (data) { practiceHistory = data; localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory)); updatePlayerSelects(); if (document.getElementById('leaderboard').classList.contains('active')) showLeaderboard(); }
             });
             db.ref('revisionProgress').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) {
-                    revisionProgress = data;
-                    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                    renderRevisionPage();
-                }
+                if (data) { revisionProgress = data; localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress)); renderRevisionPage(); }
             });
             db.ref('playerProfiles').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) {
-                    playerProfiles = data;
-                    localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-                    if (currentPlayerName) {
-                        loadPlayerProgress();
-                    }
-                }
+                if (data) { playerProfiles = data; localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles)); if (currentPlayerName) { loadPlayerProgress(); } }
             });
              db.ref('reportedQuestions').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) {
-                    reportedQuestions = data;
-                    localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-                }
+                if (data) { reportedQuestions = data; localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); }
             });
         }
         
@@ -1315,10 +1308,7 @@
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                 localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-                loadQuestionSets();
-                updateSetSelects();
-                updatePlayerSelects();
-                renderRevisionPage(); 
+                loadQuestionSets(); updateSetSelects(); updatePlayerSelects(); renderRevisionPage(); 
             });
         }
         
@@ -1362,16 +1352,9 @@
 
         function clearAllData() {
             showPasswordModal("Clear ALL data (Questions, History, Progress)?", ADMIN_PASSWORD, () => {
-                questionSets = {};
-                practiceHistory = {};
-                revisionProgress = {}; 
-                playerProfiles = {};
-                reportedQuestions = [];
+                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = [];
                 localStorage.clear();
-                if (isFirebaseConnected) { 
-                    db.ref().set(null);
-                }
-                
+                if (isFirebaseConnected) { db.ref().set(null); }
                 init();
                 showNotification('All data cleared!', 'error');
             }, "Enter Admin Password");
@@ -1379,43 +1362,26 @@
         
         function removePlayer() {
             const playerToRemove = document.getElementById('playerToRemoveSelect').value;
-            if (!playerToRemove) {
-                showNotification('Please select a player to remove.', 'warning');
-                return;
-            }
+            if (!playerToRemove) { showNotification('Please select a player to remove.', 'warning'); return; }
 
             showPasswordModal(`Are you sure you want to remove '${playerToRemove}' and all their data?`, ADMIN_PASSWORD, () => {
                 const newPracticeHistory = {};
                 for (const key in practiceHistory) {
-                    if (practiceHistory[key].playerName !== playerToRemove) {
-                        newPracticeHistory[key] = practiceHistory[key];
-                    }
+                    if (practiceHistory[key].playerName !== playerToRemove) { newPracticeHistory[key] = practiceHistory[key]; }
                 }
                 practiceHistory = newPracticeHistory;
-
-                if (revisionProgress[playerToRemove]) {
-                    delete revisionProgress[playerToRemove];
-                }
-                if (playerProfiles[playerToRemove]) {
-                    delete playerProfiles[playerToRemove];
-                }
-                
-                localStorage.removeItem(`pscPlayerProgress_${playerToRemove}`);
+                if (revisionProgress[playerToRemove]) { delete revisionProgress[playerToRemove]; }
+                if (playerProfiles[playerToRemove]) { delete playerProfiles[playerToRemove]; }
                 localStorage.removeItem(`pscPlayerPFP_${playerToRemove}`);
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-                
                 if (isFirebaseConnected) {
                     db.ref('practiceHistory').set(practiceHistory);
                     db.ref(`revisionProgress/${playerToRemove}`).remove();
                     db.ref(`playerProfiles/${playerToRemove}`).remove();
                 }
-
-                if (currentPlayerName === playerToRemove) {
-                    logout();
-                }
-
+                if (currentPlayerName === playerToRemove) { logout(); }
                 updatePlayerSelects();
                 showNotification(`Player '${playerToRemove}' has been removed.`, 'error');
             }, "Enter Admin Password to Confirm");
@@ -1423,22 +1389,15 @@
         
         function clearPlayerHistory() {
             const playerToClear = document.getElementById('playerToClearHistorySelect').value;
-            if (!playerToClear) {
-                showNotification('Please select a player whose history you want to clear.', 'warning');
-                return;
-            }
+            if (!playerToClear) { showNotification('Please select a player whose history you want to clear.', 'warning'); return; }
             showPasswordModal(`Are you sure you want to clear ALL practice and revision history for '${playerToClear}'? This action cannot be undone.`, ADMIN_PASSWORD, () => {
                 const newHistory = {};
                 for (const key in practiceHistory) {
-                    if (practiceHistory[key].playerName !== playerToClear) {
-                        newHistory[key] = practiceHistory[key];
-                    }
+                    if (practiceHistory[key].playerName !== playerToClear) { newHistory[key] = practiceHistory[key]; }
                 }
                 practiceHistory = newHistory;
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-                if (isFirebaseConnected) {
-                    db.ref('practiceHistory').set(practiceHistory);
-                }
+                if (isFirebaseConnected) { db.ref('practiceHistory').set(practiceHistory); }
                 showNotification(`All history for ${playerToClear} has been cleared.`, 'error');
                 updatePlayerSelects();
             }, "Confirm History Deletion");
@@ -1455,17 +1414,15 @@
             }, 'Enter Admin Password to Reset');
         }
 
-        // --- GAMIFICATION & PFP FUNCTIONS ---
+        // --- NEW/MODIFIED GAMIFICATION & PFP FUNCTIONS ---
         function populateAvatars() {
             const avatarContainer = document.getElementById('modalAvatarSelection');
             avatarContainer.innerHTML = '';
             const avatarSeeds = ['Leo', 'Tigger', 'Molly', 'Max', 'Zoe', 'Rocky'];
-            
             avatarSeeds.forEach(seed => {
                 const img = document.createElement('img');
                 const url = `https://api.dicebear.com/8.x/adventurer/svg?seed=${seed}`;
-                img.src = url;
-                img.alt = `Avatar ${seed}`;
+                img.src = url; img.alt = `Avatar ${seed}`;
                 img.onclick = () => {
                     document.querySelectorAll('.avatar-selection img').forEach(i => i.classList.remove('selected'));
                     img.classList.add('selected');
@@ -1481,75 +1438,45 @@
                 document.getElementById('playerPFP').classList.add('hidden');
                 return;
             }
+            const profile = playerProfiles[currentPlayerName] || {};
+            const totalXP = profile.totalXP || 0;
+            const levelInfo = getLevelForXP(totalXP);
+            
+            const xpForCurrentLevel = levelInfo.minXp;
+            const xpForNextLevel = levelInfo.nextLevelXp;
+            
+            const xpProgressInLevel = totalXP - xpForCurrentLevel;
+            const xpNeededForLevel = xpForNextLevel - xpForCurrentLevel;
+
+            const percentage = (xpNeededForLevel > 0 && isFinite(xpNeededForLevel)) ? (xpProgressInLevel / xpNeededForLevel) * 100 : 100;
+
             document.getElementById('playerStats').classList.remove('hidden');
             document.getElementById('playerNameDisplay').textContent = `Player: ${currentPlayerName}`;
-            document.getElementById('playerLevel').textContent = level;
-            document.getElementById('playerXP').textContent = xp;
-            document.getElementById('xpToNextLevel').textContent = xpToNextLevel;
-            document.getElementById('xpBarFill').style.width = `${(xp / xpToNextLevel) * 100}%`;
+            document.getElementById('playerTitle').textContent = levelInfo.title;
+            document.getElementById('playerXP').textContent = totalXP;
+            document.getElementById('xpToNextLevel').textContent = isFinite(xpForNextLevel) ? xpForNextLevel : 'Max';
+            document.getElementById('xpBarFill').style.width = `${percentage}%`;
         }
         
-        function addXP(amount) {
-            xp += amount;
-            while (xp >= xpToNextLevel) {
-                level++; xp -= xpToNextLevel; xpToNextLevel = Math.floor(xpToNextLevel * 1.5);
-                playSound('levelup');
-                showNotification(`🎉 Level Up! You are now Level ${level}!`);
-            }
-            savePlayerProgress();
-            updateProgressUI();
-        }
-
-        function savePlayerProgress() {
-            if (!currentPlayerName) return;
-            
-            if (!playerProfiles[currentPlayerName]) playerProfiles[currentPlayerName] = {};
-
-            playerProfiles[currentPlayerName].level = level;
-            playerProfiles[currentPlayerName].xp = xp;
-            playerProfiles[currentPlayerName].xpToNextLevel = xpToNextLevel;
-            // Password is saved separately
-
+        function savePlayerProfiles() {
             localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-
-            if (isFirebaseConnected) {
-                db.ref(`playerProfiles/${currentPlayerName}/level`).set(level);
-                db.ref(`playerProfiles/${currentPlayerName}/xp`).set(xp);
-                db.ref(`playerProfiles/${currentPlayerName}/xpToNextLevel`).set(xpToNextLevel);
-            }
+            if (isFirebaseConnected) { db.ref('playerProfiles').set(playerProfiles); }
         }
+
 
         function loadPlayerProgress() {
             if (!currentPlayerName) return;
-
-            const profile = playerProfiles[currentPlayerName];
-
-            if (profile) {
-                level = profile.level || 1;
-                xp = profile.xp || 0;
-                xpToNextLevel = profile.xpToNextLevel || 100;
-            } else {
-                level = 1; xp = 0; xpToNextLevel = 100;
-            }
             updateProgressUI();
-
             const pfpDataUrl = localStorage.getItem(`pscPlayerPFP_${currentPlayerName}`);
             const pfpElement = document.getElementById('playerPFP');
-            if (pfpDataUrl) {
-                pfpElement.src = pfpDataUrl;
-            } else {
-                pfpElement.src = `https://api.dicebear.com/8.x/initials/svg?seed=${currentPlayerName}`;
-            }
+            if (pfpDataUrl) { pfpElement.src = pfpDataUrl; } 
+            else { pfpElement.src = `https://api.dicebear.com/8.x/initials/svg?seed=${currentPlayerName}`; }
             pfpElement.classList.remove('hidden');
-            
             renderRevisionPage();
         }
         
         function triggerPFPUpload() {
-            if (!currentPlayerName) {
-                showNotification("Please select a player first.", "error");
-                return;
-            }
+            if (!currentPlayerName) { showNotification("Please select a player first.", "error"); return; }
             document.getElementById('pfpUploadHidden').click();
         }
 
@@ -1558,9 +1485,8 @@
             if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const pfpDataUrl = e.target.result;
-                    localStorage.setItem(`pscPlayerPFP_${currentPlayerName}`, pfpDataUrl);
-                    document.getElementById('playerPFP').src = pfpDataUrl;
+                    localStorage.setItem(`pscPlayerPFP_${currentPlayerName}`, e.target.result);
+                    document.getElementById('playerPFP').src = e.target.result;
                     showNotification("Profile picture updated!");
                 };
                 reader.readAsDataURL(file);
@@ -1571,33 +1497,32 @@
         // --- CORE APP FUNCTIONS ---
         function switchTab(tabName) {
             document.body.classList.remove('practice-active');
-
             document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
             const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
             if(mainTabButton) mainTabButton.classList.add('active');
-
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             
             const openTab = () => {
                 document.getElementById(tabName).classList.add('active');
-                if(tabName === 'leaderboard') toggleLeaderboardView('practice');
+                if(tabName === 'leaderboard') showLeaderboard();
                 if(tabName === 'history') loadHistory();
                 if(tabName === 'revision') renderRevisionPage();
+                if(tabName === 'attendance') {
+                    currentAttendanceCalendarDate = new Date();
+                    renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+                }
                 if(tabName === 'settings') {
                     document.getElementById('addQuestionsSection').classList.add('hidden');
                     document.getElementById('editQuestionsSection').classList.add('hidden');
                     document.getElementById('revisionCalendarSection').classList.add('hidden');
                     document.getElementById('reportedQuestionsSection').classList.add('hidden');
                     document.getElementById('mainSettings').classList.remove('hidden');
-                    editingFromReport.active = false; // Reset state if navigating manually
+                    editingFromReport.active = false;
                 }
             };
 
-            if (tabName === 'settings') {
-                showPasswordModal("Enter Settings Password", SETTINGS_PASSWORD, openTab, "Settings Access");
-            } else {
-                openTab();
-            }
+            if (tabName === 'settings') { showPasswordModal("Enter Settings Password", SETTINGS_PASSWORD, openTab, "Settings Access"); } 
+            else { openTab(); }
         }
         
         function switchPracticeView(viewId) {
@@ -1615,20 +1540,12 @@
             const select = document.getElementById('playerSelect');
             const name = select.value;
             if (!name) return;
-
-            if (!playerProfiles[name]) {
-                playerProfiles[name] = { level: 1, xp: 0, xpToNextLevel: 100, password: '' };
+            if (!playerProfiles[name]) { 
+                playerProfiles[name] = createNewProfile(); 
             }
-
             const profile = playerProfiles[name];
-
-            if (profile.password) {
-                // User has a password, prompt for it
-                showPasswordPrompt(name, profile.password, () => {
-                    loginPlayer(name);
-                });
-            } else {
-                // No password, prompt to create one
+            if (profile.password) { showPasswordPrompt(name, profile.password, () => loginPlayer(name)); } 
+            else {
                 showCreatePasswordPrompt(name, (newPassword) => {
                     profile.password = newPassword;
                     savePlayerProfiles();
@@ -1638,13 +1555,18 @@
             }
         }
 
+        function createNewProfile() {
+            return {
+                password: '', totalXP: 0, totalCorrect: 0,
+                currentStreak: 0, lastActiveDate: null,
+                consecutiveMissedDays: 0, attendance: []
+            };
+        }
+
         function createPlayer() {
             const input = document.getElementById('newPlayerName');
             const name = input.value.trim();
-            if (!name) {
-                showNotification('Please enter a name for the new player.', 'error');
-                return;
-            }
+            if (!name) { showNotification('Please enter a name for the new player.', 'error'); return; }
             if (Object.keys(playerProfiles).some(pName => pName.toLowerCase() === name.toLowerCase())) {
                 showNotification('A player with this name already exists.', 'error');
                 return;
@@ -1656,92 +1578,59 @@
         function confirmAvatar() {
             if (!pendingPlayerName) return;
             
+            closeModal('avatarModal');
+
             showCreatePasswordPrompt(pendingPlayerName, (newPassword) => {
                 currentPlayerName = pendingPlayerName;
                 pendingPlayerName = null;
                 
-                playerProfiles[currentPlayerName] = { 
-                    level: 1, 
-                    xp: 0, 
-                    xpToNextLevel: 100,
-                    password: newPassword
-                };
+                playerProfiles[currentPlayerName] = createNewProfile();
+                playerProfiles[currentPlayerName].password = newPassword;
                 savePlayerProfiles();
                 
                 localStorage.setItem(`pscPlayerPFP_${currentPlayerName}`, selectedAvatarUrl || `https://api.dicebear.com/8.x/initials/svg?seed=${currentPlayerName}`);
-                
                 updatePlayerSelects();
                 document.getElementById('playerSelect').value = currentPlayerName;
                 document.getElementById('newPlayerName').value = '';
-                
                 loginPlayer(currentPlayerName);
-                closeModal('avatarModal');
-
                 selectedAvatarUrl = null;
                 document.querySelectorAll('.avatar-selection img').forEach(i => i.classList.remove('selected'));
             });
         }
         
-        // MODIFIED: Added isAutoLogin flag to suppress notification on reload
         function loginPlayer(name, isAutoLogin = false) {
             currentPlayerName = name;
             localStorage.setItem('pscLastPlayer', currentPlayerName);
-            if (!isAutoLogin) {
-                showNotification(`Welcome, ${currentPlayerName}!`);
-            }
+            
+            // Handle streak and negative XP on login
+            handleDailyLogin();
+
+            if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
             loadPlayerProgress();
             switchPracticeView('practiceSetupView');
-        }
-
-        function savePlayerProfiles() {
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            if (isFirebaseConnected) {
-                db.ref('playerProfiles').set(playerProfiles);
-            }
         }
 
         function updateUserPassword() {
             showPasswordModal("Enter Admin Password to confirm password change", ADMIN_PASSWORD, () => {
                 const userToUpdate = document.getElementById('passwordUserSelect').value;
                 const newPassword = document.getElementById('newUserPassword').value;
-
-                if (!userToUpdate) {
-                    showNotification('Please select a user.', 'warning');
-                    return;
-                }
-                if (!newPassword) {
-                    showNotification('Please enter a new password.', 'warning');
-                    return;
-                }
-
-                if (!playerProfiles[userToUpdate]) {
-                    playerProfiles[userToUpdate] = {};
-                }
+                if (!userToUpdate || !newPassword) { showNotification('Please select a user and enter a new password.', 'warning'); return; }
+                if (!playerProfiles[userToUpdate]) { playerProfiles[userToUpdate] = createNewProfile(); }
                 playerProfiles[userToUpdate].password = newPassword;
                 savePlayerProfiles();
-                
                 document.getElementById('newUserPassword').value = '';
                 showNotification(`Password for ${userToUpdate} has been updated.`, 'success');
-
             }, "Admin Confirmation");
         }
 
-        // --- END Player and Password Functions ---
-
+        // --- Practice Session Functions ---
         function startPracticeWrapper(setName = null, isRev = false, revisionKey = null) {
             if (!currentPlayerName) { return; } 
             const selectedSetName = setName || document.getElementById('practiceSetSelect').value;
-            if (!selectedSetName) { 
-                showNotification('Please select a question set.', 'error'); return; 
-            }
-            
+            if (!selectedSetName) { showNotification('Please select a question set.', 'error'); return; }
             const set = questionSets[selectedSetName];
-            if (set.type === 'pdf') {
-                showNotification('This is a PDF set. Please start revisions from the Revision Plan tab.', 'warning');
-                return;
-            }
-
+            if (set.type === 'pdf') { showNotification('This is a PDF set. Please start revisions from the Revision Plan tab.', 'warning'); return; }
             document.body.classList.add('practice-active');
             switchPracticeView('practiceSessionView');
             startPractice(selectedSetName, isRev, revisionKey);
@@ -1749,47 +1638,30 @@
 
         function startPractice(setName, isRev, revisionKey) { 
             initAudio();
-            isRevisionMode = isRev; 
-            currentRevisionKey = revisionKey;
-            
+            isRevisionMode = isRev; currentRevisionKey = revisionKey;
             currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
             if (currentSet.length === 0) { showNotification('Selected set is empty.', 'error'); return; }
-
             currentQuestionIndex = 0; score = 0; timeElapsed = 0;
             totalTimeLimit = currentSet.length * TIME_PER_QUESTION; 
-            
             currentAttempt = { 
-                playerName: currentPlayerName, 
-                setName: setName, 
-                startTime: new Date().toISOString(), 
-                answers: [], 
-                score: 0, 
-                totalQuestions: currentSet.length,
-                timeLimit: totalTimeLimit,
-                isRevision: isRevisionMode,
-                revisionKey: isRevisionMode ? currentRevisionKey : null
+                playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
+                answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
+                isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
             };
-            
             document.getElementById('practiceScore').textContent = 'Score: 0';
-            
             clearInterval(timer); 
             timer = setInterval(() => { 
                 timeElapsed++; 
                 const remaining = totalTimeLimit - timeElapsed;
                 document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-                if (remaining <= 0) {
-                    endPractice();
-                    showNotification('Time limit reached!', 'error');
-                }
+                if (remaining <= 0) { endPractice(); showNotification('Time limit reached!', 'error'); }
             }, 1000);
-            
             showNextQuestion();
         }
         
         function showNextQuestion() {
             document.getElementById('nextQuestionBtn').classList.add('hidden');
             document.getElementById('reportQuestionBtn').classList.remove('hidden');
-
             if (currentQuestionIndex >= currentSet.length) { endPractice(); return; }
             const question = currentSet[currentQuestionIndex];
             document.getElementById('practiceQuestion').textContent = `${currentQuestionIndex + 1}. ${question.question}`;
@@ -1809,67 +1681,34 @@
             const question = currentSet[currentQuestionIndex];
             const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
             const isCorrect = selectedIndex === correctIndex;
-            
             document.querySelectorAll('.option').forEach((o, i) => {
                 if (i === correctIndex) o.classList.add('correct');
                 else if (i === selectedIndex) o.classList.add('wrong');
             });
-
             const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
             const timeForThisQuestion = timeElapsed - lastAnswerTime;
-
             currentAttempt.answers.push({ 
-                isCorrect, 
-                questionText: question.question,
-                questionOptions: question.options,
-                selectedAnswer: String.fromCharCode(65 + selectedIndex), 
-                correctAnswer: question.correctAnswer,
-                timeTaken: timeForThisQuestion,
-                timeAtAnswer: timeElapsed,
-                isSkipped: false
+                isCorrect, questionText: question.question, questionOptions: question.options,
+                selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: question.correctAnswer,
+                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: false
             });
-
-            if (isCorrect) { 
-                score++; 
-                playSound('correct'); 
-                addXP(XP_PER_CORRECT_ANSWER); 
-                document.getElementById('practiceScore').textContent = `Score: ${score}`; 
-                setTimeout(() => { 
-                    proceedToNextQuestion();
-                }, 200);
-            } 
-            else { 
-                playSound('wrong'); 
-                document.getElementById('nextQuestionBtn').classList.remove('hidden');
-            }
-            
+            if (isCorrect) { score++; playSound('correct'); document.getElementById('practiceScore').textContent = `Score: ${score}`; setTimeout(proceedToNextQuestion, 200); } 
+            else { playSound('wrong'); document.getElementById('nextQuestionBtn').classList.remove('hidden'); }
         }
 
-        function proceedToNextQuestion() {
-            currentQuestionIndex++; 
-            showNextQuestion(); 
-        }
+        function proceedToNextQuestion() { currentQuestionIndex++; showNextQuestion(); }
 
         function skipQuestion() {
             if (currentQuestionIndex >= currentSet.length) { endPractice(); return; }
             const question = currentSet[currentQuestionIndex];
-            
             document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
-            
             const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
             const timeForThisQuestion = timeElapsed - lastAnswerTime;
-
             currentAttempt.answers.push({
-                isCorrect: false,
-                questionText: question.question,
-                questionOptions: question.options,
-                selectedAnswer: 'SKIPPED',
-                correctAnswer: question.correctAnswer,
-                timeTaken: timeForThisQuestion,
-                timeAtAnswer: timeElapsed,
-                isSkipped: true
+                isCorrect: false, questionText: question.question, questionOptions: question.options,
+                selectedAnswer: 'SKIPPED', correctAnswer: question.correctAnswer,
+                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: true
             });
-            
             showNotification('Question skipped.', 'warning');
             proceedToNextQuestion();
         }
@@ -1877,6 +1716,9 @@
         function endPractice() {
             clearInterval(timer);
             const percentage = currentSet.length > 0 ? Math.round((score / currentSet.length) * 100) : 0;
+            
+            const xpEarned = calculateAndApplyXP(score);
+
             currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
             const attemptId = `attempt-${Date.now()}`;
             practiceHistory[attemptId] = currentAttempt;
@@ -1886,46 +1728,154 @@
             if (isRevisionMode) {
                 const success = percentage >= MIN_SCORE_FOR_REVISION_SUCCESS;
                 if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
-                revisionProgress[currentPlayerName][currentRevisionKey] = {
-                    percentage: percentage,
-                    date: new Date().toISOString(),
-                    success: success
-                };
+                revisionProgress[currentPlayerName][currentRevisionKey] = { percentage, date: new Date().toISOString(), success };
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
-                renderRevisionPage(); 
+                renderRevisionPage();
             }
 
             document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
             document.getElementById('modalScore').textContent = `Score: ${score}/${currentSet.length} (${percentage}%)`;
             document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
-            document.getElementById('modalXPGained').textContent = `You earned ${currentAttempt.answers.filter(a => a.isCorrect).length * XP_PER_CORRECT_ANSWER} XP!`;
+            document.getElementById('modalXPGained').textContent = `You earned ${xpEarned} XP!`;
             openModal('resultsModal');
-
             if (percentage >= 75) startConfetti();
-            
             document.body.classList.remove('practice-active');
             switchPracticeView('practiceSetupView'); 
-
-            isRevisionMode = false; 
-            currentRevisionKey = null;
+            isRevisionMode = false; currentRevisionKey = null;
+        }
+        
+        // --- NEW XP, STREAK, and LEVELING LOGIC ---
+        function getTodayDateString() {
+            return new Date().toISOString().split('T')[0];
         }
 
+        function handleDailyLogin() {
+            if (!currentPlayerName) return;
+            const profile = playerProfiles[currentPlayerName];
+            const today = getTodayDateString();
+            const lastDate = profile.lastActiveDate;
+
+            if (lastDate && lastDate < today) {
+                const last = new Date(lastDate);
+                const now = new Date(today);
+                const diffTime = now - last;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays >= 1) { 
+                    // Streak is broken if there was activity, but not today
+                    if (profile.currentStreak > 0) {
+                        showNotification(`Streak broken! You missed ${diffDays} day(s).`, 'warning');
+                        profile.currentStreak = 0;
+                        profile.consecutiveMissedDays = diffDays;
+                    } else {
+                        // Already had a broken streak, add to missed days
+                        profile.consecutiveMissedDays += diffDays;
+                    }
+
+                    let totalDeduction = 0;
+                    // Apply penalty for each day missed since the last penalty check
+                     for(let i=0; i < diffDays; i++){
+                        const dayPenalty = Math.min(50, 2**((profile.consecutiveMissedDays - diffDays + i)));
+                        totalDeduction += dayPenalty;
+                    }
+                    
+                    if(totalDeduction > 0){
+                        profile.totalXP = Math.max(0, profile.totalXP - totalDeduction);
+                        showNotification(`-${totalDeduction} XP for extended absence.`, 'error');
+                    }
+                }
+            }
+            savePlayerProfiles();
+            updateProgressUI();
+        }
+
+        function calculateAndApplyXP(correctAnswers) {
+            if (!currentPlayerName) return 0;
+            const profile = playerProfiles[currentPlayerName];
+            const today = getTodayDateString();
+            const oldLevelInfo = getLevelForXP(profile.totalXP || 0);
+            
+            const scoreXp = correctAnswers;
+            let streakXp = 0;
+
+            const lastDate = profile.lastActiveDate;
+            if (lastDate !== today) {
+                // First activity of the day. Handle attendance and streak.
+                if (!profile.attendance) profile.attendance = [];
+                profile.attendance.push(today);
+                showNotification('Attendance automatically marked for today!', 'success');
+
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayString = yesterday.toISOString().split('T')[0];
+
+                if (lastDate === yesterdayString) {
+                    profile.currentStreak++;
+                } else {
+                    profile.currentStreak = 1; // Broken or new streak
+                }
+
+                // Calculate XP for the current streak day
+                if (profile.currentStreak > 0) {
+                    if (profile.currentStreak >= 7) {
+                        streakXp = 50;
+                    } else {
+                        streakXp = 2 ** (profile.currentStreak - 1);
+                    }
+                }
+                
+                profile.lastActiveDate = today;
+                profile.consecutiveMissedDays = 0;
+            }
+        
+            const totalXpGained = scoreXp + streakXp;
+            profile.totalXP = (profile.totalXP || 0) + totalXpGained;
+            profile.totalCorrect = (profile.totalCorrect || 0) + correctAnswers;
+            
+            const newLevelInfo = getLevelForXP(profile.totalXP);
+            if (newLevelInfo.title !== oldLevelInfo.title) {
+                playSound('levelup');
+                showNotification(`🎉 Title Up! You are now a ${newLevelInfo.title}!`);
+            }
+            
+            savePlayerProfiles();
+            return totalXpGained;
+        }
+
+        function getLevelForXP(xp) {
+            return LEVEL_CONFIG.slice().reverse().find(level => xp >= level.minXp) || LEVEL_CONFIG[0];
+        }
+        
+        function resetAllXP() {
+            showPasswordModal("Reset ALL XP and Streaks for ALL players?", ADMIN_PASSWORD, () => {
+                for (const playerName in playerProfiles) {
+                    const profile = playerProfiles[playerName];
+                    profile.totalXP = 0;
+                    profile.totalCorrect = 0;
+                    profile.currentStreak = 0;
+                    profile.lastActiveDate = null;
+                    profile.consecutiveMissedDays = 0;
+                }
+                savePlayerProfiles();
+                if (currentPlayerName) { loadPlayerProgress(); }
+                showNotification('All player XP and streaks have been reset.', 'error');
+            }, 'Enter Admin Password to Reset');
+        }
+
+        // --- Question Set Management ---
         function loadQuestionSets() {
             const setsList = document.getElementById('setsList');
-            
             const sortedSetNames = Object.keys(questionSets).sort((a, b) => {
                 const dateA = new Date(questionSets[a].uploadDate || 0);
                 const dateB = new Date(questionSets[b].uploadDate || 0);
-                return dateB - dateA; // Sort descending
+                return dateB - dateA;
             });
-
             setsList.innerHTML = sortedSetNames.map(setName => {
                 const set = questionSets[setName];
                 const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
                 const isPdfSet = set.type === 'pdf';
                 const countText = isPdfSet ? 'PDF Set' : `${(set.questions || []).length} questions`;
-
                 return `
                 <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
                     <div>
@@ -1936,7 +1886,6 @@
                         ${!isPdfSet ? `<button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>` : ''}
                         <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
                         <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
-                        ${!isPdfSet ? `<button onclick="downloadSetAsPDF('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px;">PDF</button>` : ''}
                     </div>
                 </div>`;
             }).join('') || '<p>No question sets found.</p>';
@@ -1944,21 +1893,12 @@
 
         function updateSetSelects() {
             const selects = [document.getElementById('practiceSetSelect')];
-            
-            const sortedSetNames = Object.keys(questionSets).sort((a, b) => {
-                const dateA = new Date(questionSets[a].uploadDate || 0);
-                const dateB = new Date(questionSets[b].uploadDate || 0);
-                return dateB - dateA;
-            });
-            
-            // Filter out PDF sets for practice selection
+            const sortedSetNames = Object.keys(questionSets).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
             const practiceSets = sortedSetNames.filter(name => questionSets[name].type !== 'pdf');
-
             selects.forEach(s => {
                 if (!s) return;
                 const currentVal = s.value;
-                s.innerHTML = '<option value="">Select a question set</option>' +
-                practiceSets.map(name => `<option value="${name}">${name}</option>`).join('');
+                s.innerHTML = '<option value="">Select a question set</option>' + practiceSets.map(name => `<option value="${name}">${name}</option>`).join('');
                 s.value = currentVal;
             });
             const startBtn = document.getElementById('startPracticeBtn');
@@ -1966,26 +1906,18 @@
         }
 
         function updatePlayerSelects() {
-            const selects = [document.getElementById('playerSelect'), document.getElementById('historyPlayerSelect'), document.getElementById('playerToRemoveSelect'), document.getElementById('playerToClearHistorySelect'), document.getElementById('passwordUserSelect')];
+            const selects = [document.getElementById('playerSelect'), document.getElementById('playerToRemoveSelect'), document.getElementById('playerToClearHistorySelect'), document.getElementById('passwordUserSelect'), document.getElementById('attendancePlayerSelect')];
             const players = getAllPlayerNames();
-
             selects.forEach(s => {
                 if (!s) return;
                 const currentVal = s.value;
-                s.innerHTML = `<option value="">Select a player</option>` +
-                [...players].sort().map(p => `<option value="${p}">${p}</option>`).join('');
+                s.innerHTML = `<option value="">Select a player</option>` + [...players].sort().map(p => `<option value="${p}">${p}</option>`).join('');
                 s.value = currentVal;
             });
         }
         
         function getAllPlayerNames() {
-            return [...new Set(
-                Object.values(practiceHistory)
-                    .map(a => a.playerName)
-                    .filter(Boolean)
-                    .concat(Object.keys(revisionProgress).filter(Boolean))
-                    .concat(Object.keys(playerProfiles).filter(Boolean))
-            )];
+            return [...new Set(Object.values(practiceHistory).map(a => a.playerName).filter(Boolean).concat(Object.keys(revisionProgress).filter(Boolean)).concat(Object.keys(playerProfiles).filter(Boolean)))];
         }
         
         function addQuestion() {
@@ -1995,22 +1927,20 @@
             if (!setName || !qText || !optsText) { showNotification('All fields are required.', 'error'); return; }
             const options = optsText.split('\n').map(o => o.trim()).filter(Boolean);
             if(options.length !== 4) { showNotification('Please provide exactly 4 options (one per line).', 'error'); return; }
-            
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
-                questionSets[setName] = { 
-                    questions: [], 
-                    uploadDate: uploadDate || new Date().toISOString().split('T')[0],
-                    type: 'questions'
-                };
+                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions' };
             }
             questionSets[setName].questions.push({ question: qText, options, correctAnswer: document.getElementById('correctAnswer').value });
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
+            saveQuestionSets();
             showNotification('Question added!');
-            loadQuestionSets();
-            updateSetSelects();
+            loadQuestionSets(); updateSetSelects();
             document.getElementById('questionText').value = ''; document.getElementById('questionOptions').value = '';
+        }
+
+        function saveQuestionSets(){
+             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
         }
 
         function importBulkQuestions() {
@@ -2018,14 +1948,9 @@
             const bulkText = document.getElementById('bulkQuestions').value.trim();
             if (!setName || !bulkText) { showNotification('Set name and questions are required for bulk import.', 'error'); return; }
             let imported = 0;
-            
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
-                questionSets[setName] = { 
-                    questions: [], 
-                    uploadDate: uploadDate || new Date().toISOString().split('T')[0],
-                    type: 'questions'
-                };
+                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions' };
             }
             bulkText.split('\n').forEach(line => {
                 const parts = line.split('|').map(p => p.trim());
@@ -2034,48 +1959,28 @@
                     imported++;
                 }
             });
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
+            saveQuestionSets();
             showNotification(`${imported} questions imported to ${setName}`);
-            loadQuestionSets();
-            updateSetSelects();
+            loadQuestionSets(); updateSetSelects();
         }
 
         function deleteQuestionSet(setName) {
             showPasswordModal(`Delete "${setName}"?`, ADMIN_PASSWORD, () => {
                 delete questionSets[setName];
-                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                if(isFirebaseConnected) db.ref(`questionSets/${setName}`).remove();
+                saveQuestionSets();
                 showNotification(`Set "${setName}" deleted.`, 'error');
-                loadQuestionSets();
-                updateSetSelects();
+                loadQuestionSets(); updateSetSelects();
             }, 'Enter Admin Password to Delete');
         }
         
         function renameSet(oldName) {
             const newName = prompt("Enter the new name for the question set:", oldName);
-            if (!newName || newName.trim() === '') {
-                showNotification('Set name cannot be empty.', 'warning');
-                return;
-            }
+            if (!newName || newName.trim() === '') { showNotification('Set name cannot be empty.', 'warning'); return; }
             if (newName === oldName) return;
-            if (questionSets[newName]) {
-                showNotification(`A set named "${newName}" already exists.`, 'error');
-                return;
-            }
-
-            // Update questionSets
+            if (questionSets[newName]) { showNotification(`A set named "${newName}" already exists.`, 'error'); return; }
             questionSets[newName] = { ...questionSets[oldName] };
             delete questionSets[oldName];
-
-            // Update practiceHistory
-            Object.keys(practiceHistory).forEach(key => {
-                if (practiceHistory[key].setName === oldName) {
-                    practiceHistory[key].setName = newName;
-                }
-            });
-
-            // Update revisionProgress
+            Object.keys(practiceHistory).forEach(key => { if (practiceHistory[key].setName === oldName) { practiceHistory[key].setName = newName; } });
             Object.keys(revisionProgress).forEach(player => {
                 Object.keys(revisionProgress[player]).forEach(revKey => {
                     if (revKey.startsWith(`${oldName}_RevDay`)) {
@@ -2085,20 +1990,16 @@
                     }
                 });
             });
-
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            saveQuestionSets();
             localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
             localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-
-            if (isFirebaseConnected) {
-                db.ref('questionSets').set(questionSets);
-                db.ref('practiceHistory').set(practiceHistory);
-                db.ref('revisionProgress').set(revisionProgress);
+            if (isFirebaseConnected) { 
+                db.ref('questionSets').set(questionSets); 
+                db.ref('practiceHistory').set(practiceHistory); 
+                db.ref('revisionProgress').set(revisionProgress); 
             }
-
             showNotification(`Set renamed from "${oldName}" to "${newName}".`, 'success');
-            loadQuestionSets();
-            updateSetSelects();
+            loadQuestionSets(); updateSetSelects();
         }
 
         function editQuestionSet(setName) {
@@ -2108,10 +2009,7 @@
             document.getElementById('editQuestionsTitle').textContent = `Edit Questions in Set: ${setName}`;
             document.getElementById('questionEditForm').classList.add('hidden');
             document.getElementById('questionsToEditList').classList.remove('hidden');
-
             const questionsListDiv = document.getElementById('questionsToEditList');
-            questionsListDiv.innerHTML = '';
-
             const questions = questionSets[setName].questions || [];
             questionsListDiv.innerHTML = questions.map((q, index) => `
                 <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -2120,20 +2018,16 @@
                         <button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning" style="margin: 0; padding: 8px 15px;">Edit</button>
                         <button onclick="deleteSpecificQuestion('${setName}', ${index})" class="btn-danger" style="margin: 0; padding: 8px 15px;">Delete</button>
                     </div>
-                </div>
-            `).join('') || '<p>No questions in this set.</p>';
+                </div>`).join('') || '<p>No questions in this set.</p>';
         }
 
         function deleteSpecificQuestion(setName, qIndex) {
             const questionText = questionSets[setName].questions[qIndex].question.substring(0, 30);
             showPasswordModal(`Are you sure you want to delete this question: "${questionText}..."?`, ADMIN_PASSWORD, () => {
                 questionSets[setName].questions.splice(qIndex, 1);
-                
-                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                if (isFirebaseConnected) db.ref('questionSets').set(questionSets);
-
+                saveQuestionSets();
                 showNotification('Question deleted successfully.', 'error');
-                editQuestionSet(setName); // Refresh the list
+                editQuestionSet(setName);
             }, "Confirm Deletion");
         }
 
@@ -2141,30 +2035,21 @@
             if (currentEditingSet === null || currentEditingIndex === -1) return;
             showPasswordModal(`Are you sure you want to delete this question?`, ADMIN_PASSWORD, () => {
                 questionSets[currentEditingSet].questions.splice(currentEditingIndex, 1);
-                
-                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                if (isFirebaseConnected) db.ref('questionSets').set(questionSets);
-
+                saveQuestionSets();
                 showNotification('Question deleted successfully.', 'error');
-                
-                // Return to the list view
                 document.getElementById('questionEditForm').classList.add('hidden');
                 editQuestionSet(currentEditingSet); 
                 currentEditingIndex = -1;
-
             }, "Confirm Deletion");
         }
 
         function editSpecificQuestion(setName, qIndex) {
-            currentEditingIndex = qIndex;
-            currentEditingSet = setName; // Ensure this is set
+            currentEditingIndex = qIndex; currentEditingSet = setName;
             const question = questionSets[setName].questions[qIndex];
-
             document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
             document.getElementById('editQuestionText').value = question.question;
             document.getElementById('editQuestionOptions').value = question.options.join('\n');
             document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-            
             document.getElementById('addQuestionsSection').classList.add('hidden');
             document.getElementById('editQuestionsSection').classList.remove('hidden');
             document.getElementById('questionsToEditList').classList.add('hidden');
@@ -2172,244 +2057,97 @@
         }
 
         function saveEditedQuestion() {
-            const setName = currentEditingSet;
-            const qIndex = currentEditingIndex;
-
+            const setName = currentEditingSet; const qIndex = currentEditingIndex;
             const newQText = document.getElementById('editQuestionText').value.trim();
             const newOptsText = document.getElementById('editQuestionOptions').value.trim();
             const newCorrectAnswer = document.getElementById('editCorrectAnswer').value;
-            
             if (!newQText || !newOptsText) { showNotification('Question text and options are required.', 'error'); return; }
-            
             const newOptions = newOptsText.split('\n').map(o => o.trim()).filter(Boolean);
             if(newOptions.length !== 4) { showNotification('Please provide exactly 4 options.', 'error'); return; }
-
-            questionSets[setName].questions[qIndex] = {
-                question: newQText,
-                options: newOptions,
-                correctAnswer: newCorrectAnswer
-            };
-
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
-
+            questionSets[setName].questions[qIndex] = { question: newQText, options: newOptions, correctAnswer: newCorrectAnswer };
+            saveQuestionSets();
             showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
-            
-            // MODIFIED: Check if editing from report
             if (editingFromReport.active) {
-                dismissReport(editingFromReport.reportId, true); // Dismiss silently
+                dismissReport(editingFromReport.reportId, true);
                 returnToReportedQuestionsView();
             } else {
-                // Original behavior: proceed to next question or back to list
                 const nextQuestionIndex = qIndex + 1;
                 const totalQuestionsInSet = questionSets[setName].questions.length;
-                if (nextQuestionIndex < totalQuestionsInSet) {
-                    editSpecificQuestion(setName, nextQuestionIndex);
-                } else {
-                    showNotification(`Finished editing all questions in ${setName}.`, 'success');
-                    cancelQuestionEdit();
-                }
+                if (nextQuestionIndex < totalQuestionsInSet) { editSpecificQuestion(setName, nextQuestionIndex); } 
+                else { showNotification(`Finished editing all questions in ${setName}.`, 'success'); cancelQuestionEdit(); }
             }
         }
 
         function cancelQuestionEdit() {
-            // MODIFIED: Check if editing from report
-            if (editingFromReport.active) {
-                returnToReportedQuestionsView();
-            } else {
+            if (editingFromReport.active) { returnToReportedQuestionsView(); } 
+            else {
                 document.getElementById('questionEditForm').classList.add('hidden');
                 document.getElementById('addQuestionsSection').classList.remove('hidden');
                 document.getElementById('editQuestionsSection').classList.add('hidden');
-                editQuestionSet(currentEditingSet); // Refresh the list view
+                editQuestionSet(currentEditingSet);
                 currentEditingIndex = -1;
             }
         }
         
-        function toggleLeaderboardView(view) {
-            const practiceBtn = document.getElementById('showPracticeLeaderboardBtn');
-            const revisionBtn = document.getElementById('showRevisionLeaderboardBtn');
-            const practiceView = document.getElementById('practiceLeaderboardView');
-            const revisionView = document.getElementById('revisionLeaderboardView');
-
-            if (view === 'practice') {
-                practiceBtn.classList.add('active');
-                revisionBtn.classList.remove('active');
-                practiceView.classList.remove('hidden');
-                revisionView.classList.add('hidden');
-                showPracticeLeaderboard();
-            } else if (view === 'revision') {
-                revisionBtn.classList.add('active');
-                practiceBtn.classList.remove('active');
-                revisionView.classList.remove('hidden');
-                practiceView.classList.add('hidden');
-                showRevisionLeaderboard();
-            }
-        }
-        
-        function showPracticeLeaderboard() {
-            const latestAttempts = {};
-            Object.values(practiceHistory).filter(a => a.playerName && !a.isRevision).forEach(a => {
-                const key = `${a.playerName}_${a.setName}`;
-                if (!latestAttempts[key] || new Date(a.startTime) > new Date(latestAttempts[key].startTime)) {
-                    latestAttempts[key] = a;
-                }
-            });
-
-            const playerScores = {};
-            Object.values(latestAttempts).forEach(a => {
-                if (!playerScores[a.playerName]) {
-                    playerScores[a.playerName] = { scores: [], totalTime: 0, totalCorrect: 0, wins: 0, losses: 0 };
-                }
-                playerScores[a.playerName].scores.push(a.percentage);
-                playerScores[a.playerName].totalTime += a.timeSpent;
-                playerScores[a.playerName].totalCorrect += a.score;
-                if (a.percentage >= 50) playerScores[a.playerName].wins++;
-                else playerScores[a.playerName].losses++;
-            });
-
-            const finalLeaderboard = Object.keys(playerScores).map(playerName => {
-                const data = playerScores[playerName];
-                const avg = data.scores.reduce((sum, score) => sum + score, 0) / data.scores.length;
+        // --- Leaderboard ---
+        function showLeaderboard() {
+            const players = getAllPlayerNames();
+            const leaderboardData = players.map(name => {
+                const profile = playerProfiles[name] || createNewProfile();
                 return {
-                    playerName: playerName,
-                    averagePercentage: Math.round(avg),
-                    setsAttempted: data.scores.length,
-                    totalTime: data.totalTime,
-                    totalCorrect: data.totalCorrect,
-                    wins: data.wins,
-                    losses: data.losses
+                    name,
+                    title: getLevelForXP(profile.totalXP || 0).title,
+                    totalXP: profile.totalXP || 0,
+                    totalCorrect: profile.totalCorrect || 0,
+                    streak: profile.currentStreak || 0
                 };
             });
 
-            finalLeaderboard.sort((a, b) => {
-                if (b.averagePercentage !== a.averagePercentage) return b.averagePercentage - a.averagePercentage;
-                return b.setsAttempted - a.setsAttempted;
-            });
-            
+            leaderboardData.sort((a, b) => b.totalXP - a.totalXP || b.totalCorrect - a.totalCorrect);
+
             const tbody = document.getElementById('leaderboardTableBody');
-            tbody.innerHTML = finalLeaderboard.map((player, i) => {
-                const highlightClass = player.playerName === currentPlayerName ? 'current-player-highlight' : '';
-                let rankDisplay;
-                switch(i) {
-                    case 0: rankDisplay = '🥇'; break;
-                    case 1: rankDisplay = '🥈'; break;
-                    case 2: rankDisplay = '🥉'; break;
-                    default: rankDisplay = i + 1;
-                }
-                
+            tbody.innerHTML = leaderboardData.map((player, i) => {
+                const highlightClass = player.name === currentPlayerName ? 'current-player-highlight' : '';
+                const winnerClass = i === 0 ? 'winner' : '';
+                let rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
                 return `
-                <tr class="${i === 0 ? 'winner' : ''} ${highlightClass}" style="animation-delay: ${i * 50}ms">
+                <tr class="${winnerClass} ${highlightClass}" style="animation-delay: ${i * 50}ms">
                     <td data-label="Rank">${rankDisplay}</td>
-                    <td data-label="Player">${player.playerName}</td>
-                    <td data-label="Average Score">${player.averagePercentage}%</td>
-                    <td data-label="Sets Attempted">${player.setsAttempted}</td>
-                    <td data-label="W/L Record" class="leaderboard-win-loss">${player.wins}W <span class="loss">${player.losses}L</span></td>
-                    <td data-label="Correct Ans.">${player.totalCorrect}</td>
-                    <td data-label="Total Time">${formatTime(player.totalTime)}</td>
-                </tr>`
-            }).join('') || '<tr><td colspan="7">No practice records found.</td></tr>';
-        }
-        
-        function showRevisionLeaderboard() {
-            const bestRevisionScores = {};
-            // Include PDF revisions, which are marked with 100% on completion
-            for (const player in revisionProgress) {
-                for (const key in revisionProgress[player]) {
-                    const rev = revisionProgress[player][key];
-                    if (rev.success) { // only count successful revisions
-                        const attemptKey = `${player}_${key}`;
-                        bestRevisionScores[attemptKey] = {
-                            playerName: player,
-                            percentage: rev.percentage,
-                            score: rev.percentage === 100 ? 1 : 0 // Simplified metric for PDF vs question sets
-                        };
-                    }
-                }
-            }
-
-
-            const playerScores = {};
-            Object.values(bestRevisionScores).forEach(a => {
-                if (!playerScores[a.playerName]) {
-                    playerScores[a.playerName] = { scores: [], totalCorrect: 0 };
-                }
-                playerScores[a.playerName].scores.push(a.percentage);
-                playerScores[a.playerName].totalCorrect += a.score;
-            });
-            
-            const finalLeaderboard = Object.keys(playerScores).map(playerName => {
-                const data = playerScores[playerName];
-                const avg = data.scores.reduce((sum, score) => sum + score, 0) / data.scores.length;
-                return {
-                    playerName: playerName,
-                    averagePercentage: Math.round(avg),
-                    revisionsDone: data.scores.length,
-                    totalCorrect: data.totalCorrect
-                };
-            });
-
-            finalLeaderboard.sort((a, b) => b.averagePercentage - a.averagePercentage);
-            
-            const tbody = document.getElementById('revisionLeaderboardTableBody');
-            tbody.innerHTML = finalLeaderboard.map((player, i) => {
-                const highlightClass = player.playerName === currentPlayerName ? 'current-player-highlight' : '';
-                let rankDisplay;
-                switch(i) {
-                    case 0: rankDisplay = '🥇'; break;
-                    case 1: rankDisplay = '🥈'; break;
-                    case 2: rankDisplay = '🥉'; break;
-                    default: rankDisplay = i + 1;
-                }
-
-                return `
-                <tr class="${i === 0 ? 'winner' : ''} ${highlightClass}" style="animation-delay: ${i * 50}ms">
-                    <td data-label="Rank">${rankDisplay}</td>
-                    <td data-label="Player">${player.playerName}</td>
-                    <td data-label="Average Score">${player.averagePercentage}%</td>
-                    <td data-label="Revisions Done">${player.revisionsDone}</td>
-                    <td data-label="Correct Ans.">${player.totalCorrect}</td>
+                    <td data-label="Player">${player.name}</td>
+                    <td data-label="Total XP">${player.totalXP}</td>
+                    <td data-label="Streak">${player.streak} day(s)</td>
+                    <td data-label="Title">${player.title}</td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="5">No revision scores found.</td></tr>';
+            }).join('') || '<tr><td colspan="5">No data found. Complete revisions to appear here!</td></tr>';
         }
 
-        function resetLeaderboard() {
-            showPasswordModal("Reset ALL practice scores (leaderboard data)?", ADMIN_PASSWORD, () => {
-                const revisionOnlyHistory = {};
-                for (const key in practiceHistory) {
-                    if (practiceHistory[key].isRevision) {
-                        revisionOnlyHistory[key] = practiceHistory[key];
-                    }
-                }
-                practiceHistory = revisionOnlyHistory;
-                localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-                if(isFirebaseConnected) db.ref('practiceHistory').set(practiceHistory);
-                
-                showPracticeLeaderboard();
-                showNotification('Practice Leaderboard has been reset.', 'error');
-            }, 'Enter Admin Password to Reset');
-        }
 
+        // --- History ---
         function loadHistory() {
             document.getElementById('questionAnalysisView').classList.add('hidden');
             document.getElementById('historyList').classList.remove('hidden');
-
-            const playerName = document.getElementById('historyPlayerSelect').value;
+            
             const listDiv = document.getElementById('historyList');
-            if (!playerName) { listDiv.innerHTML = '<p>Please select a player to view their history.</p>'; return; }
-            
-            const playerAttempts = Object.values(practiceHistory).filter(a => a.playerName === playerName);
-            
+            const promptEl = document.getElementById('historyPrompt');
+            const controlsEl = document.getElementById('historyControls');
+
+            if (!currentPlayerName) { 
+                listDiv.innerHTML = '';
+                promptEl.textContent = 'Please select a player on the Practice tab to view your history.';
+                controlsEl.classList.add('hidden');
+                return; 
+            }
+
+            promptEl.textContent = 'Showing your latest attempt for each question set.';
+            controlsEl.classList.remove('hidden');
+
+            const playerAttempts = Object.values(practiceHistory).filter(a => a.playerName === currentPlayerName);
             const latestHistoryMap = {};
             playerAttempts.forEach(a => {
                 const key = a.setName; 
-                if (!latestHistoryMap[key] || new Date(a.startTime) > new Date(latestHistoryMap[key].startTime)) {
-                    latestHistoryMap[key] = a;
-                }
+                if (!latestHistoryMap[key] || new Date(a.startTime) > new Date(latestHistoryMap[key].startTime)) { latestHistoryMap[key] = a; }
             });
-
-            const attempts = Object.values(latestHistoryMap)
-                .sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
-            
+            const attempts = Object.values(latestHistoryMap).sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
             const timeFormat = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
             listDiv.innerHTML = attempts.map(a => {
                 const isRevText = a.isRevision ? `(Revision: ${a.revisionKey.replace('_RevDay', ' Day ')})` : '(Practice)';
@@ -2417,53 +2155,37 @@
                     <h4>${a.setName} ${isRevText} - ${new Date(a.startTime).toLocaleString('en-US', timeFormat)}</h4>
                     <p>Score: ${a.score}/${a.totalQuestions} (${a.percentage}%) | Time: ${formatTime(a.timeSpent)}</p>
                     <button onclick="viewAttemptDetails('${a.startTime}')">View Details</button>
-                </div>`}).join('') || '<p>No history found for this player.</p>';
+                </div>`}).join('') || '<p>No history found for you. Time to practice!</p>';
         }
 
-        // --- NEW/MODIFIED History Details functions ---
         function viewAttemptDetails(startTime) {
             const attempt = Object.values(practiceHistory).find(a => a.startTime === startTime);
             if (!attempt) return;
-            
-            let detailsHtml = `<h2>Details for ${attempt.setName}</h2>`;
-            
-            // Add new buttons here
-            detailsHtml += `<div style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;">
-                <button onclick="toggleWrongAnswersView(this)">Show Wrong Answers Only</button>
-                <button onclick="downloadSetAsPDF('${attempt.setName}')" class="btn-success">Print Set as PDF</button>
-            </div><div id="attemptDetailsList">`;
-
+            let detailsHtml = `<h2>Details for ${attempt.setName}</h2>
+                <div style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;">
+                    <button onclick="toggleWrongAnswersView(this)">Show Wrong Answers Only</button>
+                </div><div id="attemptDetailsList">`;
             attempt.answers.forEach((ans, index) => {
                 const qText = ans.questionText || 'Question details missing';
                 const qOptions = ans.questionOptions || ['A', 'B', 'C', 'D'];
                 const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
                 const correctText = qOptions[correctIndex] || 'N/A';
-                
-                let answerDisplay;
-                let resultClass;
-
-                if (ans.isCorrect) {
-                    resultClass = 'history-correct';
-                    answerDisplay = `Correct Answer: ${ans.correctAnswer}. ${correctText}`;
-                } else if (ans.isSkipped) {
-                    resultClass = 'wrong-answer';
-                    answerDisplay = `Skipped (Correct: ${ans.correctAnswer}. ${correctText})`;
-                } else {
+                let answerDisplay, resultClass;
+                if (ans.isCorrect) { resultClass = 'history-correct'; answerDisplay = `Correct Answer: ${ans.correctAnswer}. ${correctText}`; } 
+                else if (ans.isSkipped) { resultClass = 'wrong-answer'; answerDisplay = `Skipped (Correct: ${ans.correctAnswer}. ${correctText})`; } 
+                else {
                     resultClass = 'wrong-answer';
                     const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
                     const selectedText = qOptions[selectedIndex] || 'N/A';
                     answerDisplay = `Your Answer: ${ans.selectedAnswer}. ${selectedText} ✗ (Correct: ${ans.correctAnswer}. ${correctText})`;
                 }
-
                 detailsHtml += `
                     <div class="question-detail-item question-set" data-correct="${ans.isCorrect}" style="margin-top:15px; border-left: 4px solid ${ans.isCorrect ? 'var(--secondary-color)' : 'var(--danger-color)'};">
                         <p><strong>${index + 1}. ${qText}</strong></p>
                         <p class="${resultClass}">${answerDisplay}</p>
                     </div>`;
             });
-            
-            detailsHtml += '</div>'; // Close attemptDetailsList div
-            detailsHtml += `<p style="margin-top:20px;">Total Practice Time: ${formatTime(attempt.timeSpent)}</p>`
+            detailsHtml += `</div><p style="margin-top:20px;">Total Practice Time: ${formatTime(attempt.timeSpent)}</p>`;
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml + `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
             openModal('viewDetailsModal');
         }
@@ -2471,155 +2193,84 @@
         function toggleWrongAnswersView(button) {
             const listContainer = document.getElementById('attemptDetailsList');
             const wrongOnly = button.textContent.includes('Wrong');
-            
             listContainer.querySelectorAll('.question-detail-item').forEach(item => {
-                if (wrongOnly && item.dataset.correct === 'true') {
-                    item.style.display = 'none';
-                } else {
-                    item.style.display = 'block';
-                }
+                if (wrongOnly && item.dataset.correct === 'true') { item.style.display = 'none'; } 
+                else { item.style.display = 'block'; }
             });
-
             button.textContent = wrongOnly ? 'Show All Answers' : 'Show Wrong Answers Only';
         }
 
         function showQuestionAnalysis() {
-            const playerName = document.getElementById('historyPlayerSelect').value;
-            if (!playerName) {
-                showNotification('Please select a player to analyze.', 'warning');
-                return;
-            }
-
+            if (!currentPlayerName) { showNotification('Please select a player to analyze.', 'warning'); return; }
             document.getElementById('historyList').classList.add('hidden');
             document.getElementById('questionAnalysisView').classList.remove('hidden');
-
-            analyzedQuestionsBySet = {}; // Clear previous analysis
-
+            analyzedQuestionsBySet = {};
             Object.values(practiceHistory).forEach(attempt => {
-                if (attempt.playerName === playerName && attempt.answers && Array.isArray(attempt.answers)) {
-                    // Ensure the set exists in our analysis object
-                    if (!analyzedQuestionsBySet[attempt.setName]) {
-                        analyzedQuestionsBySet[attempt.setName] = [];
-                    }
-
+                if (attempt.playerName === currentPlayerName && attempt.answers && Array.isArray(attempt.answers)) {
+                    if (!analyzedQuestionsBySet[attempt.setName]) { analyzedQuestionsBySet[attempt.setName] = []; }
                     attempt.answers.forEach((answer, index) => {
                         const prevTime = index > 0 ? (attempt.answers[index - 1].timeAtAnswer || 0) : 0;
                         const timeTaken = (answer.timeAtAnswer || 0) - prevTime;
-
                         analyzedQuestionsBySet[attempt.setName].push({
-                            questionText: answer.questionText || "N/A",
-                            timeTaken: timeTaken,
-                            isCorrect: answer.isCorrect,
-                            isSkipped: answer.isSkipped,
-                            correctAnswer: answer.correctAnswer,
-                            options: answer.questionOptions || [],
+                            questionText: answer.questionText || "N/A", timeTaken, isCorrect: answer.isCorrect,
+                            isSkipped: answer.isSkipped, correctAnswer: answer.correctAnswer, options: answer.questionOptions || [],
                         });
                     });
                 }
             });
-
             if (Object.keys(analyzedQuestionsBySet).length === 0) {
-                document.getElementById('questionAnalysisView').innerHTML = '<p>No question data found for this player.</p><button onclick="loadHistory()">Back to History</button>';
+                document.getElementById('questionAnalysisView').innerHTML = '<p>No question data found for you.</p><button onclick="loadHistory()">Back to History</button>';
                 return;
             }
-
             renderAnalysisInterface(analyzedQuestionsBySet);
         }
 
         function renderAnalysisInterface(questionsBySet) {
             const analysisView = document.getElementById('questionAnalysisView');
-            
-            const setNames = Object.keys(questionsBySet).sort((a, b) => {
-                const dateA = new Date(questionSets[a]?.uploadDate || 0);
-                const dateB = new Date(questionSets[b]?.uploadDate || 0);
-                return dateB - dateA; // Sort descending (latest first)
-            });
-
+            const setNames = Object.keys(questionsBySet).sort((a, b) => new Date(questionSets[b]?.uploadDate || 0) - new Date(questionSets[a]?.uploadDate || 0));
             const setOptions = setNames.map(name => `<option value="${name}">${name}</option>`).join('');
-
-            let viewHTML = `
-                <h3>Question Timing Analysis</h3>
+            let viewHTML = `<h3>Question Timing Analysis</h3>
                 <p>A breakdown of every question you've answered. Select a set to view its analysis.</p>
                 <div style="margin: 15px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
                     <label for="analysisSetSelect" style="font-weight: 600;">Select Set:</label>
-                    <select id="analysisSetSelect" onchange="displayAnalysisForSet(this.value)" style="flex-grow: 1;">
-                        ${setOptions}
-                    </select>
+                    <select id="analysisSetSelect" onchange="displayAnalysisForSet(this.value)" style="flex-grow: 1;">${setOptions}</select>
                     <button onclick="sortCurrentAnalysis('slowest')">Sort Slowest</button>
                     <button onclick="sortCurrentAnalysis('fastest')">Sort Fastest</button>
                     <button onclick="loadHistory()" class="btn-warning">Back</button>
                 </div>
-                <div id="analysisTableContainer"></div>
-            `;
-
+                <div id="analysisTableContainer"></div>`;
             analysisView.innerHTML = viewHTML;
-
-            if (setNames.length > 0) {
-                sortCurrentAnalysis('slowest');
-            }
+            if (setNames.length > 0) { displayAnalysisForSet(setNames[0]); }
         }
 
         function sortCurrentAnalysis(sortBy) {
             const selectElement = document.getElementById('analysisSetSelect');
-            const setName = selectElement ? selectElement.value : Object.keys(analyzedQuestionsBySet)[0];
-
+            if(!selectElement) return;
+            const setName = selectElement.value;
             if (!setName || !analyzedQuestionsBySet[setName]) return;
-
-            if (sortBy === 'slowest') {
-                analyzedQuestionsBySet[setName].sort((a, b) => b.timeTaken - a.timeTaken);
-            } else if (sortBy === 'fastest') {
-                analyzedQuestionsBySet[setName].sort((a, b) => a.timeTaken - b.timeTaken);
-            }
-
+            if (sortBy === 'slowest') { analyzedQuestionsBySet[setName].sort((a, b) => b.timeTaken - a.timeTaken); } 
+            else if (sortBy === 'fastest') { analyzedQuestionsBySet[setName].sort((a, b) => a.timeTaken - b.timeTaken); }
             displayAnalysisForSet(setName);
         }
 
         function displayAnalysisForSet(setName) {
             const container = document.getElementById('analysisTableContainer');
-            if (!setName || !analyzedQuestionsBySet[setName]) {
-                container.innerHTML = "<p>Please select a valid set.</p>";
-                return;
-            }
-
+            if (!setName || !analyzedQuestionsBySet[setName]) { container.innerHTML = "<p>Please select a valid set.</p>"; return; }
             const questions = analyzedQuestionsBySet[setName];
-            let tableHTML = `
-                <div class="history-item" style="border-left-color: var(--primary-color);">
-                    <div style="overflow-x: auto;">
-                        <table class="leaderboard-table">
-                            <thead><tr><th>Question & Answer</th><th>Time Taken</th><th>Result</th></tr></thead>
-                            <tbody>
-            `;
-
+            let tableHTML = `<div class="history-item" style="border-left-color: var(--primary-color);"><div style="overflow-x: auto;"><table class="leaderboard-table">
+                            <thead><tr><th>Question & Answer</th><th>Time Taken</th><th>Result</th></tr></thead><tbody>`;
             questions.forEach(q => {
-                let resultText = 'Incorrect';
-                let resultClass = 'loss';
-                if (q.isSkipped) {
-                    resultText = 'Skipped';
-                    resultClass = '';
-                } else if (q.isCorrect) {
-                    resultText = 'Correct';
-                    resultClass = 'leaderboard-win-loss';
-                }
-
+                let resultText = q.isSkipped ? 'Skipped' : (q.isCorrect ? 'Correct' : 'Incorrect');
+                let resultClass = q.isCorrect ? 'leaderboard-win-loss' : (q.isSkipped ? '' : 'loss');
                 const correctIndex = q.correctAnswer ? q.correctAnswer.charCodeAt(0) - 65 : -1;
-                const correctAnswerText = (correctIndex !== -1 && q.options.length > correctIndex) 
-                                          ? q.options[correctIndex] 
-                                          : 'N/A';
-
+                const correctAnswerText = (correctIndex !== -1 && q.options.length > correctIndex) ? q.options[correctIndex] : 'N/A';
                 tableHTML += `
                     <tr>
-                        <td data-label="Question">
-                            ${q.questionText}
-                            <div class="correct-answer" style="margin-top: 5px; font-size: 0.9em;">
-                               ↳ Answer: ${q.correctAnswer}. ${correctAnswerText}
-                            </div>
-                        </td>
+                        <td data-label="Question">${q.questionText}<div class="correct-answer" style="margin-top: 5px; font-size: 0.9em;">↳ Answer: ${q.correctAnswer}. ${correctAnswerText}</div></td>
                         <td data-label="Time Taken">${q.timeTaken} sec</td>
                         <td data-label="Result"><span class="${resultClass}">${resultText}</span></td>
-                    </tr>
-                `;
+                    </tr>`;
             });
-
             tableHTML += `</tbody></table></div></div>`;
             container.innerHTML = tableHTML;
         }
@@ -2627,105 +2278,92 @@
 
         // --- REVISION FUNCTIONS ---
         function getDaysSince(dateString) {
-            const today = new Date();
-            const uploadDate = new Date(dateString);
-            today.setHours(0, 0, 0, 0);
-            uploadDate.setHours(0, 0, 0, 0);
-            const diffTime = Math.abs(today - uploadDate);
-            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const today = new Date(); const uploadDate = new Date(dateString);
+            today.setHours(0, 0, 0, 0); uploadDate.setHours(0, 0, 0, 0);
+            return Math.floor(Math.abs(today - uploadDate) / (1000 * 60 * 60 * 24));
         }
         
-        // MODIFIED renderRevisionPage to handle PDFs
         function renderRevisionPage() {
             const dueTodayDiv = document.getElementById('dueTodayList');
             const backlogDiv = document.getElementById('backlogList');
             const userPrompt = document.getElementById('revisionUserPrompt');
-            dueTodayDiv.innerHTML = '';
-            backlogDiv.innerHTML = '';
+            dueTodayDiv.innerHTML = ''; backlogDiv.innerHTML = '';
+            if (!currentPlayerName) { userPrompt.classList.remove('hidden'); updateRevisionBadge(0); return; } 
+            else { userPrompt.classList.add('hidden'); }
             
-            if (!currentPlayerName) {
-                userPrompt.classList.remove('hidden');
-                updateRevisionBadge(0);
-                return;
-            } else {
-                userPrompt.classList.add('hidden');
-            }
-            
-            let pendingRevisionsCount = 0; 
-            const revisionItems = []; 
+            const dueTodayItems = [];
+            const backlogItems = new Map(); // Use a map to only store the earliest revision for each set.
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
             for (const setName in questionSets) {
                 const set = questionSets[setName];
                 if (!set || typeof set.uploadDate === 'undefined') continue;
-
                 if (set.type === 'pdf' && !set.pdfDataUrl) continue;
                 if (set.type !== 'pdf' && (!set.questions || set.questions.length === 0)) continue;
-
-                const daysSinceUpload = getDaysSince(set.uploadDate);
+                
+                let earliestMissedDay = null;
 
                 for (const day of revisionIntervals) {
-                    if (daysSinceUpload >= day) { 
+                    const uploadDate = new Date(set.uploadDate);
+                    const revisionDate = new Date(uploadDate.setDate(uploadDate.getDate() + day));
+                    revisionDate.setHours(0,0,0,0);
+
+                    if (revisionDate <= today) { 
                         const revisionKey = `${setName}_RevDay${day}`; 
                         const playerRevisionStatus = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][revisionKey];
                         const isCompleted = playerRevisionStatus && playerRevisionStatus.success;
-
+                        
                         if (!isCompleted) {
-                            revisionItems.push({ 
-                                setName: setName, 
-                                day: day,
-                                type: set.type || 'questions',
-                                isCurrentDay: daysSinceUpload === day
-                            });
-                            pendingRevisionsCount++;
+                            if (revisionDate.getTime() === today.getTime()) {
+                                dueTodayItems.push({ setName, day, type: set.type || 'questions' });
+                            } else {
+                                // This is a backlog item, only store the first one we find
+                                if(earliestMissedDay === null) {
+                                    earliestMissedDay = day;
+                                }
+                            }
                         }
                     }
                 }
+                if (earliestMissedDay !== null) {
+                    backlogItems.set(setName, { setName, day: earliestMissedDay, type: set.type || 'questions' });
+                }
             }
-            
-            const dueTodayItems = revisionItems.filter(item => item.isCurrentDay);
-            const backlogItems = revisionItems.filter(item => !item.isCurrentDay).sort((a,b) => a.day - b.day);
 
-            const renderItem = (item) => {
+            const sortedBacklog = Array.from(backlogItems.values()).sort((a,b) => a.day - b.day);
+
+            const renderItem = (item, isBacklog) => {
                 const key = `${item.setName}_RevDay${item.day}`;
-                let itemHtml = `
-                    <div class="history-item" style="border-left-color: ${item.isCurrentDay ? 'var(--primary-color)' : 'var(--danger-color)'};">
-                        <h4>${item.setName} - Revision Day ${item.day}</h4>`;
-                
+                let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? 'var(--danger-color)' : 'var(--primary-color)'};"><h4>${item.setName} - Revision Day ${item.day}</h4>`;
                 if (item.type === 'pdf') {
-                    itemHtml += `
-                        <p>This is a PDF study set.</p>
+                    itemHtml += `<p>This is a PDF study set.</p>
                         <button onclick="viewRevisionPdf('${item.setName}')">View PDF to Revise</button>
-                        <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success">Mark as Completed</button>
-                    `;
+                        <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success">Mark as Completed</button>`;
                 } else {
                     const status = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][key];
                     const percentage = status ? status.percentage : 0;
                     const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
-                    const buttonClass = status ? 'btn-warning' : 'btn-danger';
-                    itemHtml += `
-                        <p>Total Questions: ${questionSets[item.setName].questions.length}</p>
+                    const buttonClass = status ? 'btn-warning' : 'btn-success';
+                    itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
                         <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
-                        ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}
-                    `;
+                        ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
                 }
-                
-                itemHtml += `</div>`;
-                return itemHtml;
+                itemHtml += `</div>`; return itemHtml;
             };
 
-            dueTodayDiv.innerHTML = dueTodayItems.length > 0 ? dueTodayItems.map(renderItem).join('') : '<p>No revision tasks due today. Good job!</p>';
-            backlogDiv.innerHTML = backlogItems.length > 0 ? backlogItems.map(renderItem).join('') : '<p>Your backlog is clear. Keep it up!</p>';
+            dueTodayDiv.innerHTML = dueTodayItems.length > 0 ? dueTodayItems.map(item => renderItem(item, false)).join('') : '<p>No revision tasks due today. Good job!</p>';
+            backlogDiv.innerHTML = sortedBacklog.length > 0 ? sortedBacklog.map(item => renderItem(item, true)).join('') : '<p>Your backlog is clear. Keep it up!</p>';
             
-            updateRevisionBadge(pendingRevisionsCount);
+            updateRevisionBadge(dueTodayItems.length + sortedBacklog.length);
         }
 
         function updateRevisionBadge(count) {
             const navButton = document.querySelector('nav button[onclick="switchTab(\'revision\')"]');
             navButton.style.position = 'relative';
-            
             let badge = navButton.querySelector('.revision-badge');
             if (badge) badge.remove();
-
             if (count > 0) {
                 badge = document.createElement('span');
                 badge.className = 'revision-badge';
@@ -2735,42 +2373,27 @@
         }
         
         function startRevisionPractice(setName, revisionKey) { 
-            if (!currentPlayerName) {
-                showNotification('Please select a player first from the Dashboard.', 'error');
-                switchTab('practice');
-                return;
-            };
-            
+            if (!currentPlayerName) { showNotification('Please select a player first from the Dashboard.', 'error'); switchTab('practice'); return; };
             switchTab('practice');
             setTimeout(() => startPracticeWrapper(setName, true, revisionKey), 100); 
         }
 
-        // --- CALENDAR FUNCTIONS ---
+        // --- CALENDAR FUNCTIONS (ADMIN & ATTENDANCE) ---
         function getRevisionSchedule() {
             const schedule = {};
             const allPlayers = getAllPlayerNames();
-
             for (const setName in questionSets) {
                 const set = questionSets[setName];
                 if (!set || !set.uploadDate) continue;
-
-                const uploadDate = new Date(set.uploadDate);
-
                 for (const day of revisionIntervals) {
-                    const revisionDate = new Date(uploadDate);
+                    const revisionDate = new Date(set.uploadDate); // Important: re-initialize from original date
                     revisionDate.setDate(revisionDate.getDate() + day);
                     const dateKey = revisionDate.toISOString().split('T')[0];
-
                     const revisionKey = `${setName}_RevDay${day}`;
-                    const playersDue = [];
-
-                    for (const playerName of allPlayers) {
+                    const playersDue = allPlayers.filter(playerName => {
                         const playerStatus = revisionProgress[playerName] && revisionProgress[playerName][revisionKey];
-                        if (!playerStatus || !playerStatus.success) {
-                            playersDue.push(playerName);
-                        }
-                    }
-
+                        return !playerStatus || !playerStatus.success;
+                    });
                     if (playersDue.length > 0) {
                         if (!schedule[dateKey]) schedule[dateKey] = [];
                         schedule[dateKey].push({ setName, day, players: playersDue });
@@ -2783,39 +2406,24 @@
         function renderRevisionCalendar(year, month) {
             const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
             document.getElementById('calendarMonthYear').textContent = `${monthName} ${year}`;
-            
             const schedule = getRevisionSchedule();
             const calendarBody = document.getElementById('calendarBody');
             calendarBody.innerHTML = '';
-            
-            const firstDayOfMonth = new Date(year, month, 1).getDay();
+            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; // Monday as first day
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-            daysOfWeek.forEach(day => {
-                calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`;
-            });
-            
-            for (let i = 0; i < firstDayOfMonth; i++) {
-                calendarBody.innerHTML += `<div class="calendar-day empty"></div>`;
-            }
-
+            const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`; });
+            for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div class="calendar-day empty"></div>`; }
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayCell = document.createElement('div');
-                dayCell.classList.add('calendar-day');
-                dayCell.textContent = day;
-
+                dayCell.classList.add('calendar-day'); dayCell.textContent = day;
                 const today = new Date();
-                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                    dayCell.classList.add('today');
-                }
-
+                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) { dayCell.classList.add('today'); }
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 if (schedule[dateKey]) {
                     dayCell.classList.add('has-revision');
                     const badge = document.createElement('span');
-                    badge.className = 'revision-cal-badge';
-                    badge.textContent = schedule[dateKey].length;
+                    badge.className = 'revision-cal-badge'; badge.textContent = schedule[dateKey].length;
                     dayCell.appendChild(badge);
                     dayCell.onclick = () => showRevisionDetailsForDate(dateKey, schedule[dateKey]);
                 }
@@ -2826,90 +2434,110 @@
         function showRevisionDetailsForDate(dateKey, revisions) {
             const formattedDate = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             let detailsHtml = `<h2>Revisions Due On ${formattedDate}</h2>`;
-            
             revisions.forEach(rev => {
-                detailsHtml += `
-                    <div class="question-set" style="margin-top:15px; border-left-color: var(--primary-color);">
-                        <p><strong>Set: ${rev.setName} (Day ${rev.day})</strong></p>
-                        <p>Due for: ${rev.players.join(', ')}</p>
-                    </div>`;
+                detailsHtml += `<div class="question-set" style="margin-top:15px; border-left-color: var(--primary-color);"><p><strong>Set: ${rev.setName} (Day ${rev.day})</strong></p><p>Due for: ${rev.players.join(', ')}</p></div>`;
             });
-
             detailsHtml += `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml;
             openModal('viewDetailsModal');
         }
 
-        // --- NEW STATS MODAL FUNCTION ---
-        function showPlayerStatsModal() {
-            if (!currentPlayerName) {
-                showNotification("Select a player to see their stats.", "warning");
+        function renderAttendanceCalendar(year, month) {
+             if (!currentPlayerName) {
+                document.getElementById('attendanceCalendarBody').innerHTML = '<p>Please select a player to view attendance.</p>';
+                document.getElementById('attendanceCalendarMonthYear').textContent = '';
                 return;
             }
+            const profile = playerProfiles[currentPlayerName];
+            const attendance = profile.attendance || [];
+            const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
+            document.getElementById('attendanceCalendarMonthYear').textContent = `${monthName} ${year}`;
+            const calendarBody = document.getElementById('attendanceCalendarBody');
+            calendarBody.innerHTML = '';
+            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; // Monday as first day
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`; });
+            for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div class="calendar-day empty"></div>`; }
 
-            const playerAttempts = Object.values(practiceHistory).filter(a => a.playerName === currentPlayerName);
-            let totalCorrect = 0, totalIncorrect = 0, wins = 0, losses = 0;
-            let totalPercentage = 0;
-            const practiceDates = [];
+            const today = new Date();
+            const todayStr = getTodayDateString();
 
-            playerAttempts.forEach(attempt => {
-                const correct = attempt.answers.filter(a => a.isCorrect).length;
-                const incorrect = attempt.answers.length - correct;
-                totalCorrect += correct;
-                totalIncorrect += incorrect;
-                totalPercentage += attempt.percentage;
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.classList.add('calendar-day'); dayCell.textContent = day;
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-                if (attempt.percentage >= 50) wins++;
-                else losses++;
-                
-                practiceDates.push(new Date(attempt.startTime).toISOString().split('T')[0]);
-            });
-
-            const uniqueDates = [...new Set(practiceDates)].sort();
-            let longestStreak = 0, currentStreak = 0;
-            if (uniqueDates.length > 0) {
-                currentStreak = 1;
-                longestStreak = 1;
-                for (let i = 1; i < uniqueDates.length; i++) {
-                    const date1 = new Date(uniqueDates[i-1]);
-                    const date2 = new Date(uniqueDates[i]);
-                    const diffTime = date2 - date1;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays === 1) {
-                        currentStreak++;
-                    } else {
-                        longestStreak = Math.max(longestStreak, currentStreak);
-                        currentStreak = 1;
-                    }
+                if (attendance.includes(dateKey)) {
+                    dayCell.classList.add('present');
                 }
-                longestStreak = Math.max(longestStreak, currentStreak);
+                if (dateKey === todayStr) {
+                    dayCell.classList.add('today');
+                }
+                calendarBody.appendChild(dayCell);
             }
+        }
+        
+        function renderAdminAttendanceCalendar(playerName) {
+            const year = currentAdminAttendanceDate.getFullYear();
+            const month = currentAdminAttendanceDate.getMonth();
+            const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
+            document.getElementById('adminAttendanceCalendarMonthYear').textContent = `${monthName} ${year}`;
+            const calendarBody = document.getElementById('adminAttendanceCalendarBody');
             
-            document.getElementById('statsLevel').textContent = level;
-            document.getElementById('statsXP').textContent = `${xp} / ${xpToNextLevel}`;
-            document.getElementById('statsWins').textContent = wins;
-            document.getElementById('statsLosses').textContent = losses;
-            document.getElementById('statsCorrect').textContent = totalCorrect;
-            document.getElementById('statsIncorrect').textContent = totalIncorrect;
-            document.getElementById('statsAvgScore').textContent = playerAttempts.length > 0 ? `${Math.round(totalPercentage / playerAttempts.length)}%` : 'N/A';
-            document.getElementById('statsStreak').textContent = `${longestStreak} Day(s)`;
+            if (!playerName || !playerProfiles[playerName]) {
+                calendarBody.innerHTML = '<p>Select a player to view their attendance.</p>';
+                return;
+            }
+            const profile = playerProfiles[playerName];
+            const attendance = profile.attendance || [];
+            
+            calendarBody.innerHTML = '';
+            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; // Monday as first day
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`; });
+            for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div class="calendar-day empty"></div>`; }
 
+            const today = new Date();
+            const todayStr = getTodayDateString();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayCell = document.createElement('div');
+                dayCell.classList.add('calendar-day'); dayCell.textContent = day;
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                if (attendance.includes(dateKey)) {
+                    dayCell.classList.add('present');
+                }
+                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                    dayCell.classList.add('today');
+                }
+                calendarBody.appendChild(dayCell);
+            }
+        }
+
+
+        // --- NEW STATS MODAL FUNCTION ---
+        function showPlayerStatsModal() {
+            if (!currentPlayerName) { showNotification("Select a player to see their stats.", "warning"); return; }
+            const profile = playerProfiles[currentPlayerName] || createNewProfile();
+            document.getElementById('statsTitle').textContent = getLevelForXP(profile.totalXP || 0).title;
+            document.getElementById('statsXP').textContent = profile.totalXP || 0;
+            document.getElementById('statsCorrect').textContent = profile.totalCorrect || 0;
+            document.getElementById('statsStreak').textContent = `${profile.currentStreak || 0} Day(s)`;
             openModal('statsModal');
         }
         
-        
         // --- UI & UTILITY FUNCTIONS ---
         function formatTime(totalSeconds) {
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            const pad = (num) => num.toString().padStart(2, '0');
-            return `${pad(minutes)}:${pad(seconds)}`;
+            const minutes = Math.floor(totalSeconds / 60); const seconds = totalSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
 
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.textContent = message;
+            notification.className = 'notification'; notification.textContent = message;
             notification.style.cssText = `position: fixed; top: 20px; right: 20px; padding: 15px; border-radius: 8px; color: white; background: ${type === 'success' ? 'var(--success-color)' : (type === 'error' ? 'var(--danger-color)' : 'var(--warning-color)')}; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2000; transform: translateX(120%); animation: slideInNotification 0.5s forwards;`;
             document.body.appendChild(notification);
             setTimeout(() => {
@@ -2927,38 +2555,26 @@
             document.getElementById('passwordModalPrompt').textContent = prompt;
             const input = document.getElementById('passwordInput');
             const submitBtn = document.getElementById('passwordSubmitBtn');
-            submitBtn.textContent = 'Submit';
-            input.value = '';
-            openModal('passwordModal');
-            input.focus();
+            submitBtn.textContent = 'Submit'; input.value = '';
+            openModal('passwordModal'); input.focus();
             submitBtn.onclick = () => {
-                if (input.value === correctPassword) {
-                    onSuccess(); closeModal('passwordModal');
-                } else { showNotification('Incorrect Password', 'error'); }
+                if (input.value === correctPassword) { onSuccess(); closeModal('passwordModal'); } 
+                else { showNotification('Incorrect Password', 'error'); }
             };
-            input.onkeyup = (event) => {
-                if(event.key === 'Enter') submitBtn.click();
-            }
+            input.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
         }
 
-        // NEW Password Prompts for Users
         function showPasswordPrompt(playerName, correctPassword, onSuccess) {
             document.getElementById('passwordConfirmGroup').classList.add('hidden');
             document.getElementById('passwordModalTitle').textContent = `Login as ${playerName}`;
             document.getElementById('passwordModalPrompt').textContent = 'Please enter your password:';
             const input = document.getElementById('passwordInput');
             const submitBtn = document.getElementById('passwordSubmitBtn');
-            submitBtn.textContent = 'Login';
-            input.value = '';
-            openModal('passwordModal');
-            input.focus();
+            submitBtn.textContent = 'Login'; input.value = '';
+            openModal('passwordModal'); input.focus();
             submitBtn.onclick = () => {
-                if (input.value === correctPassword) {
-                    onSuccess();
-                    closeModal('passwordModal');
-                } else {
-                    showNotification('Incorrect Password', 'error');
-                }
+                if (input.value === correctPassword) { onSuccess(); closeModal('passwordModal'); } 
+                else { showNotification('Incorrect Password', 'error'); }
             };
             input.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
         }
@@ -2970,27 +2586,14 @@
             const passInput = document.getElementById('passwordInput');
             const confirmInput = document.getElementById('passwordConfirmInput');
             const submitBtn = document.getElementById('passwordSubmitBtn');
-            submitBtn.textContent = 'Create Password';
-            passInput.value = '';
-            confirmInput.value = '';
-            openModal('passwordModal');
-            passInput.focus();
-            
+            submitBtn.textContent = 'Create Password'; passInput.value = ''; confirmInput.value = '';
+            openModal('passwordModal'); passInput.focus();
             const handleSubmit = () => {
-                const pass = passInput.value;
-                const confirmPass = confirmInput.value;
-                if (!pass) {
-                    showNotification('Password cannot be empty.', 'error');
-                    return;
-                }
-                if (pass !== confirmPass) {
-                    showNotification('Passwords do not match.', 'error');
-                    return;
-                }
-                onSuccess(pass);
-                closeModal('passwordModal');
+                const pass = passInput.value; const confirmPass = confirmInput.value;
+                if (!pass) { showNotification('Password cannot be empty.', 'error'); return; }
+                if (pass !== confirmPass) { showNotification('Passwords do not match.', 'error'); return; }
+                onSuccess(pass); closeModal('passwordModal');
             };
-
             submitBtn.onclick = handleSubmit;
             passInput.onkeyup = (event) => { if(event.key === 'Enter') confirmInput.focus(); }
             confirmInput.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
@@ -2998,26 +2601,19 @@
         
         function playSound(type) {
              if (!audioCtx) return;
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01);
+            const oscillator = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime); gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01);
             if (type === 'correct') { oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(600, audioCtx.currentTime); oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1); } 
             else if (type === 'wrong') { oscillator.type = 'square'; oscillator.frequency.setValueAtTime(200, audioCtx.currentTime); oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2); } 
             else if (type === 'levelup') { oscillator.type = 'triangle'; oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); oscillator.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.1); oscillator.frequency.linearRampToValueAtTime(660, audioCtx.currentTime + 0.2); }
-            oscillator.start(audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
-            oscillator.stop(audioCtx.currentTime + 0.2);
+            oscillator.start(audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2); oscillator.stop(audioCtx.currentTime + 0.2);
         }
         const confettiCanvas = document.getElementById('confetti-canvas'), confettiCtx = confettiCanvas.getContext('2d');
         let confettiParticles = [], animationFrameId;
         function startConfetti() {
-            confettiCanvas.width = window.innerWidth;
-            confettiCanvas.height = window.innerHeight;
-            confettiParticles = [];
-            for (let i = 0; i < 150; i++) confettiParticles.push(createConfettiParticle());
+            confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight;
+            confettiParticles = Array.from({ length: 150 }, createConfettiParticle);
             animateConfetti();
             setTimeout(stopConfetti, 4000);
         }
@@ -3032,64 +2628,34 @@
             confettiParticles.forEach((p, i) => {
                 p.x += p.vx; p.y += p.vy; p.angle += p.angularVelocity;
                 if (p.y > confettiCanvas.height) confettiParticles.splice(i, 1);
-                confettiCtx.save();
-                confettiCtx.translate(p.x, p.y);
-                confettiCtx.rotate(p.angle);
-                confettiCtx.fillStyle = p.color;
-                confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                confettiCtx.save(); confettiCtx.translate(p.x, p.y); confettiCtx.rotate(p.angle);
+                confettiCtx.fillStyle = p.color; confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
                 confettiCtx.restore();
             });
             if (confettiParticles.length > 0) animationFrameId = requestAnimationFrame(animateConfetti);
         }
 
-        // --- NEW/MODIFIED REPORTING FUNCTIONS ---
+        // --- REPORTING FUNCTIONS ---
         function reportCurrentQuestion() {
             const question = currentSet[currentQuestionIndex];
-            
-            const isAlreadyReported = reportedQuestions.some(
-                r => r.setName === currentAttempt.setName && r.question.question === question.question
-            );
-
-            if (isAlreadyReported) {
-                showNotification('This question has already been reported.', 'warning');
-                return;
-            }
-
-            reportedQuestions.push({
-                reportId: `report-${Date.now()}`,
-                setName: currentAttempt.setName,
-                question: JSON.parse(JSON.stringify(question)), // Deep copy
-                reportedAt: new Date().toISOString(),
-                reportedBy: currentPlayerName
-            });
+            const isAlreadyReported = reportedQuestions.some(r => r.setName === currentAttempt.setName && r.question.question === question.question);
+            if (isAlreadyReported) { showNotification('This question has already been reported.', 'warning'); return; }
+            reportedQuestions.push({ reportId: `report-${Date.now()}`, setName: currentAttempt.setName, question: JSON.parse(JSON.stringify(question)), reportedAt: new Date().toISOString(), reportedBy: currentPlayerName });
             localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-            if (isFirebaseConnected) {
-                db.ref('reportedQuestions').set(reportedQuestions);
-            }
+            if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
             showNotification('Question reported for admin review.', 'success');
-            document.getElementById('reportQuestionBtn').classList.add('hidden'); // Hide after reporting
+            document.getElementById('reportQuestionBtn').classList.add('hidden');
         }
 
         function renderReportedQuestions() {
             const listDiv = document.getElementById('reportedQuestionsList');
-            if (reportedQuestions.length === 0) {
-                listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>';
-                return;
-            }
-            listDiv.innerHTML = reportedQuestions.map((report, index) => {
+            if (reportedQuestions.length === 0) { listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>'; return; }
+            listDiv.innerHTML = reportedQuestions.map(report => {
                 const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
-                return `
-                <div class="question-set" style="border-left-color: var(--danger-color);">
-                    <h4>Set: ${report.setName}</h4>
-                    <p><strong>Question:</strong> ${report.question.question}</p>
-                    <p style="margin-top: 5px;"><strong>Options:</strong> ${report.question.options.join(', ')}</p>
-                    <p><strong>Correct Answer:</strong> ${report.question.correctAnswer} (${correctOpt})</p>
+                return `<div class="question-set" style="border-left-color: var(--danger-color);"><h4>Set: ${report.setName}</h4><p><strong>Question:</strong> ${report.question.question}</p>
+                    <p style="margin-top: 5px;"><strong>Options:</strong> ${report.question.options.join(', ')}</p><p><strong>Correct Answer:</strong> ${report.question.correctAnswer} (${correctOpt})</p>
                     <p style="font-size: 12px; color: #555;">Reported by ${report.reportedBy} on ${new Date(report.reportedAt).toLocaleDateString()}</p>
-                    <div style="margin-top: 10px;">
-                        <button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review & Edit</button>
-                        <button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss Report</button>
-                    </div>
-                </div>`;
+                    <div style="margin-top: 10px;"><button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review & Edit</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss Report</button></div></div>`;
             }).join('');
         }
 
@@ -3101,25 +2667,12 @@
             if (!silent) showNotification('Report dismissed.', 'success');
         }
 
-        // MODIFIED for seamless workflow
         function editReportedQuestion(reportId) {
             const report = reportedQuestions.find(r => r.reportId === reportId);
             if (!report) return;
-
-            const qIndex = (questionSets[report.setName].questions || []).findIndex(
-                q => q.question === report.question.question
-            );
-
-            if (qIndex === -1) {
-                showNotification('Original question not found. It may have been edited or deleted.', 'error');
-                dismissReport(reportId); // Clean up obsolete report
-                return;
-            }
-
-            // Set state for returning after edit
+            const qIndex = (questionSets[report.setName].questions || []).findIndex(q => q.question === report.question.question);
+            if (qIndex === -1) { showNotification('Original question not found. It may have been edited or deleted.', 'error'); dismissReport(reportId); return; }
             editingFromReport = { active: true, reportId: report.reportId };
-
-            // Go directly to the edit form
             document.getElementById('mainSettings').classList.add('hidden');
             editSpecificQuestion(report.setName, qIndex);
         }
@@ -3131,38 +2684,21 @@
             renderReportedQuestions();
         }
 
-        // --- NEW PDF FUNCTIONS ---
+        // --- PDF FUNCTIONS ---
         function createPdfSet() {
             const setName = document.getElementById('pdfSetName').value.trim();
             const fileInput = document.getElementById('pdfFileInput');
             const file = fileInput.files[0];
-
-            if (!setName || !file) {
-                showNotification('Please provide both a set name and a PDF file.', 'error');
-                return;
-            }
-            
-            if (file.size > 4 * 1024 * 1024) { // 4MB limit
-                showNotification('File is too large (max 4MB). Please choose a smaller PDF.', 'error');
-                return;
-            }
-
+            if (!setName || !file) { showNotification('Please provide both a set name and a PDF file.', 'error'); return; }
+            if (file.size > 4 * 1024 * 1024) { showNotification('File is too large (max 4MB). Please choose a smaller PDF.', 'error'); return; }
             const reader = new FileReader();
             reader.onload = (event) => {
                 const pdfDataUrl = event.target.result;
-                questionSets[setName] = {
-                    type: 'pdf',
-                    pdfDataUrl: pdfDataUrl,
-                    uploadDate: new Date().toISOString().split('T')[0]
-                };
-                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
-
+                questionSets[setName] = { type: 'pdf', pdfDataUrl, uploadDate: new Date().toISOString().split('T')[0] };
+                saveQuestionSets();
                 showNotification(`PDF set "${setName}" created successfully!`, 'success');
-                loadQuestionSets();
-                updateSetSelects();
-                document.getElementById('pdfSetName').value = '';
-                fileInput.value = '';
+                loadQuestionSets(); updateSetSelects();
+                document.getElementById('pdfSetName').value = ''; fileInput.value = '';
             };
             reader.readAsDataURL(file);
         }
@@ -3170,79 +2706,27 @@
         function viewRevisionPdf(setName) {
             const set = questionSets[setName];
             if (set && set.type === 'pdf' && set.pdfDataUrl) {
-                window.open(set.pdfDataUrl, '_blank');
+                document.getElementById('pdfViewer').src = set.pdfDataUrl;
+                openModal('pdfViewModal');
             } else {
                 showNotification('Could not find the PDF for this set.', 'error');
             }
         }
 
         function markPdfRevisionAsComplete(revisionKey) {
-            if (!currentPlayerName) {
-                showNotification('Please select a player first.', 'error');
-                return;
-            }
-            if (!revisionProgress[currentPlayerName]) {
-                revisionProgress[currentPlayerName] = {};
-            }
-            revisionProgress[currentPlayerName][revisionKey] = {
-                success: true,
-                date: new Date().toISOString(),
-                percentage: 100 // Mark as 100% for leaderboard purposes
-            };
+            if (!currentPlayerName) { showNotification('Please select a player first.', 'error'); return; }
+            if (!revisionProgress[currentPlayerName]) { revisionProgress[currentPlayerName] = {}; }
+            
+            revisionProgress[currentPlayerName][revisionKey] = { success: true, date: new Date().toISOString(), percentage: 100 };
             localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
             if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
 
-            showNotification('Revision marked as complete!', 'success');
+            const xpEarned = calculateAndApplyXP(0); // Grant streak XP but no score XP
+
+            showNotification(`Revision marked as complete! +${xpEarned} XP`, 'success');
             renderRevisionPage();
         }
-
-        function downloadSetAsPDF(setName) {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const set = questionSets[setName];
-            if (!set || !set.questions || set.questions.length === 0) {
-                showNotification('This set is empty or not a question-based set.', 'warning');
-                return;
-            }
-
-            let y = 20; // Initial Y position
-            const pageHeight = doc.internal.pageSize.height;
-            const margin = 15;
-
-            doc.setFontSize(18);
-            doc.text(setName, margin, y);
-            y += 15;
-
-            doc.setFontSize(12);
-
-            set.questions.forEach((q, index) => {
-                const questionText = `${index + 1}. ${q.question}`;
-                const correctOpt = q.options[q.correctAnswer.charCodeAt(0) - 65];
-                const answerText = `Answer: ${q.correctAnswer}. ${correctOpt}`;
-
-                const questionLines = doc.splitTextToSize(questionText, doc.internal.pageSize.width - margin * 2);
-                const answerLines = doc.splitTextToSize(answerText, doc.internal.pageSize.width - margin * 2);
-
-                const requiredHeight = (questionLines.length + answerLines.length) * 5 + 5;
-
-                if (y + requiredHeight > pageHeight - margin) {
-                    doc.addPage();
-                    y = margin;
-                }
-
-                doc.setFont('helvetica', 'bold');
-                doc.text(questionLines, margin, y);
-                y += questionLines.length * 5;
-
-                doc.setFont('helvetica', 'normal');
-                doc.text(answerLines, margin, y);
-                y += answerLines.length * 5 + 5; // Extra space between questions
-            });
-
-            doc.save(`${setName.replace(/\s/g, '_')}_Questions.pdf`);
-            showNotification('PDF download started!', 'success');
-        }
-
     </script>
 </body>
 </html>
+
