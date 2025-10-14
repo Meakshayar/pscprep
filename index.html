@@ -429,6 +429,15 @@
             width: 90%; max-width: 500px; border-radius: var(--border-radius);
             box-shadow: var(--shadow); text-align: center; animation: slideIn 0.5s;
         }
+        .modal-content.large {
+            max-width: 800px;
+        }
+        .modal-body {
+            max-height: 60vh;
+            overflow-y: auto;
+            text-align: left;
+            margin-top: 20px;
+        }
         @keyframes slideIn {
             from { transform: translateY(-50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -675,6 +684,7 @@
         <nav id="tab-nav">
             <button onclick="switchTab('practice')" class="active">Practice</button>
             <button onclick="switchTab('revision')">Revision Plan</button>
+            <button onclick="switchTab('backlog')">Backlog</button>
             <button onclick="switchTab('leaderboard')">Leaderboard</button>
             <button onclick="switchTab('history')">My History</button>
             <button onclick="switchTab('attendance')">Attendance</button>
@@ -729,27 +739,41 @@
                 </div>
 
             <div id="revision" class="tab-content">
-                <h2>Revision Plan & Smart Backlog</h2>
+                <h2>Revision Plan (Due Today)</h2>
                 <div style="background: linear-gradient(135deg, #a29bfe, #6c5ce7); color: white; padding: 20px; border-radius: var(--border-radius); margin-bottom: 20px;">
                     <h3>Spaced Repetition</h3>
                     <p id="revisionSuccessInfo"></p>
                 </div>
                 <p id="revisionUserPrompt" style="margin-bottom: 15px; color: var(--danger-color); font-weight: 600;" class="hidden">Please select a player on the Practice tab to view your personalized revision plan.</p>
                 
-                <h3>Due Today</h3>
-                <div id="dueTodayList"></div>
-                <hr style="margin: 30px 0;">
-                <h3>Backlog (Earliest Missed First)</h3>
-                <div id="backlogList"></div>
+                <p>This page shows items due for revision today. Missed items from previous days can be found in the 'Backlog' tab.</p>
+                <div id="dueTodayList" style="margin-top: 20px;"></div>
+            </div>
+            
+            <div id="backlog" class="tab-content">
+                <h2>Full Revision Backlog</h2>
+                <p>This tab shows all previously missed revision items. You can only complete one revision per question set per day.</p>
+                <div id="fullBacklogList" style="margin-top: 20px;"></div>
             </div>
 
             <div id="leaderboard" class="tab-content">
-                <h2>Leaderboard</h2>
+                <h2>Leaderboards</h2>
+                <hr style="margin: 20px 0;">
+                <h3>Today's Revision Ranking</h3>
+                <p>Ranking based on total marks earned in revision sessions today.</p>
+                <div style="overflow-x: auto;">
+                    <table class="leaderboard-table">
+                        <thead><tr><th>Rank</th><th>Player</th><th>Today's Score</th></tr></thead>
+                        <tbody id="todayLeaderboardTableBody"></tbody>
+                    </table>
+                </div>
+                <hr style="margin: 30px 0;">
+                <h3>Total XP Ranking</h3>
                 <p>Ranking based on total Experience Points (XP). Ties are broken by total correct answers.</p>
                 <div style="overflow-x: auto;">
                     <table class="leaderboard-table">
                         <thead><tr><th>Rank</th><th>Player</th><th>Total XP</th><th>Streak</th><th>Title</th></tr></thead>
-                        <tbody id="leaderboardTableBody"></tbody>
+                        <tbody id="xpLeaderboardTableBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -855,6 +879,13 @@
 
                         <hr style="margin: 30px 0;">
                         <h3>Add Questions Manually</h3>
+                         <div class="form-group">
+                            <label for="setCategory">Set Category (for timer):</label>
+                            <select id="setCategory">
+                                <option value="gk">GK (10s Practice / 10s Revision)</option>
+                                <option value="math">Math (45s Practice / 45s Revision)</option>
+                            </select>
+                        </div>
                         <div class="form-group">
                             <label for="setUploadDate">Set Upload Date (for new sets):</label>
                             <input type="date" id="setUploadDate">
@@ -881,10 +912,17 @@
                         <hr style="margin: 20px 0;">
                         <h3>Bulk Import</h3>
                         <div class="form-group">
+                            <label>Select Target Set:</label>
+                            <select id="bulkSetSelect" onchange="toggleNewBulkSetName()"></select>
+                        </div>
+                        <div class="form-group" id="newBulkSetNameGroup" style="display:none;">
+                            <label>New Set Name:</label>
+                            <input type="text" id="bulkSetName" placeholder="Enter name for the new question set" />
+                        </div>
+                        <div class="form-group">
                             <label>Paste questions (Format: Question | Opt1 | Opt2 | Opt3 | Opt4 | CorrectLetter):</label>
                             <textarea id="bulkQuestions" rows="6"></textarea>
                         </div>
-                        <input type="text" id="bulkSetName" placeholder="Enter Question Set Name for Bulk Import" />
                         <button onclick="importBulkQuestions()">Import Questions</button>
                         <div id="savedSets" style="margin-top: 30px;">
                             <h3>Your Question Sets</h3>
@@ -896,6 +934,13 @@
                 <div id="editQuestionsSection" class="hidden" style="margin-top: 20px;">
                     <button id="backToSetListBtn" class="btn-warning">&larr; Back to Set Management</button>
                     <h3 id="editQuestionsTitle" style="margin-top: 15px;">Edit Questions in Set: </h3>
+                    <div class="form-group">
+                        <label for="editSetCategory">Set Category:</label>
+                        <select id="editSetCategory" onchange="updateSetCategory()">
+                            <option value="gk">GK</option>
+                            <option value="math">Math</option>
+                        </select>
+                    </div>
                     <div id="questionsToEditList" style="margin-top: 15px;"></div>
                     <div id="questionEditForm" class="hidden" style="border: 1px solid #ddd; padding: 20px; border-radius: var(--border-radius); margin-top: 20px;">
                         <h4>Editing Question <span id="currentQuestionIndexDisplay"></span></h4>
@@ -957,12 +1002,8 @@
                     <p>Earn XP for correct answers and build up daily streaks for massive bonuses! Maintain your streak to climb the ranks from Stone ⚫ to Diamond 💎. But be careful, missing days will break your streak and may even cost you XP!</p>
                 </div>
                 <div class="dashboard-card" style="background: linear-gradient(135deg, #1abc9c, #16a085);">
-                    <h3>Spaced Repetition System (SRS) & Smart Backlog</h3>
-                    <p>The **Revision Plan** uses a scientifically proven Spaced Repetition System. If you miss a revision, it's added to a smart backlog that only shows you the earliest missed item for each set, preventing clutter and keeping you focused.</p>
-                </div>
-                 <div class="dashboard-card" style="background: linear-gradient(135deg, #3498db, #2980b9);">
-                    <h3>Flexible Study with PDFs</h3>
-                    <p>You can now upload PDF files as study sets. The app will schedule them for revision just like regular question sets, ensuring you revisit your notes and documents at optimal intervals for learning.</p>
+                    <h3>Spaced Repetition System (SRS) & Backlog</h3>
+                    <p>The <strong>Revision Plan</strong> tab shows items due for revision today, based on a scientifically proven Spaced Repetition System. If you miss a revision, it moves to the <strong>Backlog</strong> tab, which contains a complete list of all past-due items, allowing you to catch up at your own pace.</p>
                 </div>
                 <div class="dashboard-card" style="background: linear-gradient(135deg, #e67e22, #d35400);">
                     <h3>Focus & Efficiency</h3>
@@ -975,7 +1016,8 @@
     <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore"></p><p id="modalTime"></p><p id="modalXPGained"></p><button onclick="closeModal('resultsModal')">Close</button></div></div>
     <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><div id="passwordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="passwordConfirmInput" placeholder="Confirm Password"></div><button id="passwordSubmitBtn"></button><button onclick="closeModal('passwordModal')" class="btn-danger">Cancel</button></div></div>
     <div id="viewDetailsModal" class="modal"><div class="modal-content" id="viewDetailsModalContent" style="text-align: left; max-height: 80vh; overflow-y: auto;"></div></div>
-    
+    <div id="wrongAnswersModal" class="modal"><div class="modal-content large"><h2>Questions You Missed</h2><div id="wrongAnswersBody" class="modal-body"></div><button onclick="closeModal('wrongAnswersModal')" style="margin-top: 20px;">Close</button></div></div>
+
     <div id="avatarModal" class="modal">
         <div class="modal-content">
             <h3>Choose Your Avatar</h3>
@@ -1009,7 +1051,6 @@
         // --- CONSTANTS ---
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
-        const TIME_PER_QUESTION = 12; 
         
         // --- NEW GAMIFICATION & LEVELING SYSTEM ---
         const LEVEL_CONFIG = [
@@ -1041,11 +1082,13 @@
         let revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {}; 
         let playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
+        let dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
         
         const ADMIN_PASSWORD = "2525", SETTINGS_PASSWORD = "2525";
         
         let currentSet = [], currentQuestionIndex = 0, score = 0, timer, timeElapsed = 0, currentPlayerName = '', currentAttempt = null, totalTimeLimit = 0, isRevisionMode = false, currentRevisionKey = null;
-        
+        let practiceInProgress = false;
+
         let currentEditingSet = null;
         let currentEditingIndex = -1; 
         let editingFromReport = { active: false, reportId: null };
@@ -1234,11 +1277,11 @@
             });
             db.ref('practiceHistory').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) { practiceHistory = data; localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory)); updatePlayerSelects(); if (document.getElementById('leaderboard').classList.contains('active')) showLeaderboard(); }
+                if (data) { practiceHistory = data; localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory)); updatePlayerSelects(); if (document.getElementById('leaderboard').classList.contains('active')) showLeaderboards(); }
             });
             db.ref('revisionProgress').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) { revisionProgress = data; localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress)); renderRevisionPage(); }
+                if (data) { revisionProgress = data; localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress)); renderRevisionPage(); renderBacklogPage(); }
             });
             db.ref('playerProfiles').on('value', snapshot => {
                 const data = snapshot.val();
@@ -1247,6 +1290,10 @@
              db.ref('reportedQuestions').on('value', snapshot => {
                 const data = snapshot.val();
                 if (data) { reportedQuestions = data; localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); }
+            });
+            db.ref('dailyRevisionScores').on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) { dailyRevisionScores = data; localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores)); }
             });
         }
         
@@ -1281,6 +1328,7 @@
             db.ref('revisionProgress').set(revisionProgress); 
             db.ref('playerProfiles').set(playerProfiles);
             db.ref('reportedQuestions').set(reportedQuestions);
+            db.ref('dailyRevisionScores').set(dailyRevisionScores);
             showNotification('All data synced to Firebase!');
         }
 
@@ -1293,18 +1341,20 @@
                 if(data.revisionProgress) revisionProgress = data.revisionProgress;
                 if(data.playerProfiles) playerProfiles = data.playerProfiles;
                 if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
+                if(data.dailyRevisionScores) dailyRevisionScores = data.dailyRevisionScores;
                 localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                 localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-                loadQuestionSets(); updateSetSelects(); updatePlayerSelects(); renderRevisionPage(); 
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                loadQuestionSets(); updateSetSelects(); updatePlayerSelects(); renderRevisionPage(); renderBacklogPage(); 
             });
         }
         
         // --- DATA MANAGEMENT ---
         function exportData() {
-            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions };
+            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1326,11 +1376,13 @@
                         if(data.revisionProgress) revisionProgress = data.revisionProgress;
                         if(data.playerProfiles) playerProfiles = data.playerProfiles;
                         if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
+                        if(data.dailyRevisionScores) dailyRevisionScores = data.dailyRevisionScores;
                         localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                         localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                         localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                         localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                         localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+                        localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
                         init();
                         showNotification('Data imported successfully!');
                     } catch (err) { showNotification('Invalid import file', 'error'); }
@@ -1342,7 +1394,7 @@
 
         function clearAllData() {
             showPasswordModal("Clear ALL data (Questions, History, Progress)?", ADMIN_PASSWORD, () => {
-                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = [];
+                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {};
                 localStorage.clear();
                 if (isFirebaseConnected) { db.ref().set(null); }
                 init();
@@ -1370,12 +1422,21 @@
 
                 // 4. Remove PFP
                 localStorage.removeItem(`pscPlayerPFP_${playerToRemove}`);
+                
+                // 5. Remove daily scores
+                Object.keys(dailyRevisionScores).forEach(date => {
+                    if (dailyRevisionScores[date][playerToRemove]) {
+                        delete dailyRevisionScores[date][playerToRemove];
+                    }
+                });
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
 
-                // 5. Sync with Firebase
+                // 6. Sync with Firebase
                 if (isFirebaseConnected) {
                     historyKeysToDelete.forEach(key => db.ref(`practiceHistory/${key}`).remove());
                     db.ref(`revisionProgress/${playerToRemove}`).remove();
                     db.ref(`playerProfiles/${playerToRemove}`).remove();
+                    db.ref('dailyRevisionScores').set(dailyRevisionScores);
                 }
                 
                 if (currentPlayerName === playerToRemove) { logout(); } 
@@ -1400,7 +1461,6 @@
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                 showNotification(`All history for ${playerToClear} has been cleared.`, 'error');
                 
-                // We don't need to update selects as the player still exists
             }, "Confirm History Deletion");
         }
 
@@ -1411,6 +1471,7 @@
                 localStorage.removeItem('pscRevisionProgress');
                 if (isFirebaseConnected) { db.ref('revisionProgress').remove(); }
                 renderRevisionPage();
+                renderBacklogPage();
                 showNotification('All Revision Progress has been reset.', 'error');
             }, 'Enter Admin Password to Reset');
         }
@@ -1474,6 +1535,7 @@
             else { pfpElement.src = `https://api.dicebear.com/8.x/initials/svg?seed=${currentPlayerName}`; }
             pfpElement.classList.remove('hidden');
             renderRevisionPage();
+            renderBacklogPage();
         }
         
         function triggerPFPUpload() {
@@ -1505,9 +1567,10 @@
             
             const openTab = () => {
                 document.getElementById(tabName).classList.add('active');
-                if(tabName === 'leaderboard') showLeaderboard();
+                if(tabName === 'leaderboard') showLeaderboards();
                 if(tabName === 'history') loadHistory();
                 if(tabName === 'revision') renderRevisionPage();
+                if(tabName === 'backlog') renderBacklogPage();
                 if(tabName === 'attendance') {
                     currentAttendanceCalendarDate = new Date();
                     renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
@@ -1533,6 +1596,16 @@
         function showAddQuestionsSection() {
             document.getElementById('addQuestionsSection').classList.remove('hidden');
             document.getElementById('mainSettings').classList.add('hidden');
+            
+            // Populate bulk upload dropdown
+            const bulkSelect = document.getElementById('bulkSetSelect');
+            const setNames = Object.keys(questionSets).filter(name => questionSets[name].type !== 'pdf').sort();
+            const currentVal = bulkSelect.value;
+            bulkSelect.innerHTML = `<option value="">-- Select an existing set --</option>`;
+            bulkSelect.innerHTML += setNames.map(name => `<option value="${name}">${name}</option>`).join('');
+            bulkSelect.innerHTML += `<option value="_new_">** Create a New Set **</option>`;
+            bulkSelect.value = '_new_'; // CORRECTION 1: Set default value to new set
+            toggleNewBulkSetName(); 
         }
         
         // --- NEW/MODIFIED Player and Password Functions ---
@@ -1602,13 +1675,13 @@
             currentPlayerName = name;
             localStorage.setItem('pscLastPlayer', currentPlayerName);
             
-            // Handle streak and negative XP on login
             handleDailyLogin();
 
             if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
             loadPlayerProgress();
             switchPracticeView('practiceSetupView');
+            updateAllBadges();
         }
 
         function updateUserPassword() {
@@ -1629,6 +1702,21 @@
             if (!currentPlayerName) { return; } 
             const selectedSetName = setName || document.getElementById('practiceSetSelect').value;
             if (!selectedSetName) { showNotification('Please select a question set.', 'error'); return; }
+
+            if (isRev) {
+                const todayStr = getTodayDateString();
+                const hasRevisedToday = Object.values(practiceHistory).some(attempt => 
+                    attempt.playerName === currentPlayerName &&
+                    attempt.setName === selectedSetName &&
+                    attempt.isRevision &&
+                    attempt.startTime.startsWith(todayStr)
+                );
+                if (hasRevisedToday) {
+                    showNotification("You have already completed a revision for this set today. Please try again tomorrow.", "warning");
+                    return;
+                }
+            }
+
             const set = questionSets[selectedSetName];
             if (set.type === 'pdf') { showNotification('This is a PDF set. Please start revisions from the Revision Plan tab.', 'warning'); return; }
             document.body.classList.add('practice-active');
@@ -1637,12 +1725,29 @@
         }
 
         function startPractice(setName, isRev, revisionKey) { 
+            if (practiceInProgress) return;
+            practiceInProgress = true;
             initAudio();
             isRevisionMode = isRev; currentRevisionKey = revisionKey;
             currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
-            if (currentSet.length === 0) { showNotification('Selected set is empty.', 'error'); return; }
+            if (currentSet.length === 0) { 
+                showNotification('Selected set is empty.', 'error'); 
+                practiceInProgress = false;
+                switchPracticeView('practiceSetupView');
+                return; 
+            }
+            
+            const set = questionSets[setName];
+            const category = set.category || 'gk';
+            let timePerQuestion;
+            if (category === 'math') {
+                timePerQuestion = 45;
+            } else { // GK
+                timePerQuestion = 10; // CORRECTION 2: Changed from `isRevisionMode ? 5 : 10` to always be 10.
+            }
+
             currentQuestionIndex = 0; score = 0; timeElapsed = 0;
-            totalTimeLimit = currentSet.length * TIME_PER_QUESTION; 
+            totalTimeLimit = currentSet.length * timePerQuestion; 
             currentAttempt = { 
                 playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
                 answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
@@ -1654,15 +1759,21 @@
                 timeElapsed++; 
                 const remaining = totalTimeLimit - timeElapsed;
                 document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-                if (remaining <= 0) { endPractice(); showNotification('Time limit reached!', 'error'); }
+                if (remaining <= 0) { 
+                    showNotification('Time limit reached!', 'error'); 
+                    endPractice();
+                }
             }, 1000);
             showNextQuestion();
         }
         
         function showNextQuestion() {
+            if (currentQuestionIndex >= currentSet.length) { 
+                endPractice(); 
+                return; 
+            }
             document.getElementById('nextQuestionBtn').classList.add('hidden');
             document.getElementById('reportQuestionBtn').classList.remove('hidden');
-            if (currentQuestionIndex >= currentSet.length) { endPractice(); return; }
             const question = currentSet[currentQuestionIndex];
             document.getElementById('practiceQuestion').textContent = `${currentQuestionIndex + 1}. ${question.question}`;
             const optionsDiv = document.getElementById('practiceOptions');
@@ -1699,7 +1810,7 @@
         function proceedToNextQuestion() { currentQuestionIndex++; showNextQuestion(); }
 
         function skipQuestion() {
-            if (currentQuestionIndex >= currentSet.length) { endPractice(); return; }
+            if (currentQuestionIndex >= currentSet.length) { return; }
             const question = currentSet[currentQuestionIndex];
             document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
             const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
@@ -1714,22 +1825,29 @@
         }
 
         function endPractice() {
+            if (!practiceInProgress) return;
+            practiceInProgress = false;
             clearInterval(timer);
-            const percentage = currentSet.length > 0 ? Math.round((score / currentSet.length) * 100) : 0;
+
+            const totalQuestions = currentSet ? currentSet.length : currentAttempt.totalQuestions;
+            const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
             
             let xpEarned = 0;
             let xpMessage = '';
             if (isRevisionMode) {
                 xpEarned = calculateAndApplyXP(score); // Full XP for revisions
                 xpMessage = `You earned ${xpEarned} XP!`;
+                
+                const todayStr = getTodayDateString();
+                if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
+                if (!dailyRevisionScores[todayStr][currentPlayerName]) dailyRevisionScores[todayStr][currentPlayerName] = 0;
+                dailyRevisionScores[todayStr][currentPlayerName] += score;
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                if (isFirebaseConnected) db.ref('dailyRevisionScores').set(dailyRevisionScores);
+
             } else {
-                // For regular practice, only award daily streak/login XP, not score-based XP
                 xpEarned = calculateAndApplyXP(0);
-                if (xpEarned > 0) {
-                    xpMessage = `You earned ${xpEarned} XP for your daily activity! Score-based XP is for revisions.`;
-                } else {
-                    xpMessage = 'XP for correct answers is awarded during revision sessions.';
-                }
+                xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP for your daily activity! Score-based XP is for revisions.` : 'XP for correct answers is awarded during revision sessions.';
             }
 
             currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
@@ -1745,17 +1863,25 @@
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
                 renderRevisionPage();
+                renderBacklogPage();
             }
 
             document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
-            document.getElementById('modalScore').textContent = `Score: ${score}/${currentSet.length} (${percentage}%)`;
+            document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
             document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
             document.getElementById('modalXPGained').textContent = xpMessage;
             openModal('resultsModal');
             if (percentage >= 75) startConfetti();
+
+            // CORRECTION 3: Automatically show wrong answers if any
+            const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
+            if (wrongAnswers.length > 0) {
+                showWrongAnswersPopup(wrongAnswers);
+            }
+            
             document.body.classList.remove('practice-active');
             switchPracticeView('practiceSetupView'); 
-            isRevisionMode = false; currentRevisionKey = null;
+            isRevisionMode = false; currentRevisionKey = null; currentSet = [];
         }
         
         // --- NEW XP, STREAK, and LEVELING LOGIC ---
@@ -1769,27 +1895,24 @@
             const today = getTodayDateString();
             const lastDate = profile.lastActiveDate;
 
-            if (lastDate && lastDate < today) {
+            if (lastDate && /\d{4}-\d{2}-\d{2}/.test(lastDate) && lastDate < today) {
                 const last = new Date(lastDate);
                 const now = new Date(today);
                 const diffTime = now - last;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
-                if (diffDays >= 1) { 
-                    // Streak is broken if there was activity, but not today
+                if (diffDays > 1) { // BUG FIX: Only break streak if more than 1 day has passed
                     if (profile.currentStreak > 0) {
-                        showNotification(`Streak broken! You missed ${diffDays} day(s).`, 'warning');
+                        showNotification(`Streak broken! You missed ${diffDays - 1} day(s).`, 'warning');
                         profile.currentStreak = 0;
-                        profile.consecutiveMissedDays = diffDays;
+                        profile.consecutiveMissedDays = diffDays -1;
                     } else {
-                        // Already had a broken streak, add to missed days
-                        profile.consecutiveMissedDays += diffDays;
+                        profile.consecutiveMissedDays += diffDays -1;
                     }
 
                     let totalDeduction = 0;
-                    // Apply penalty for each day missed since the last penalty check
-                     for(let i=0; i < diffDays; i++){
-                        const dayPenalty = Math.min(50, 2**((profile.consecutiveMissedDays - diffDays + i)));
+                     for(let i=0; i < diffDays - 1; i++){
+                        const dayPenalty = Math.min(50, 2**((profile.consecutiveMissedDays - (diffDays-1) + i)));
                         totalDeduction += dayPenalty;
                     }
                     
@@ -1814,7 +1937,6 @@
 
             const lastDate = profile.lastActiveDate;
             if (lastDate !== today) {
-                // First activity of the day. Handle attendance and streak.
                 if (!profile.attendance) profile.attendance = [];
                 if (!profile.attendance.includes(today)) {
                     profile.attendance.push(today);
@@ -1826,18 +1948,13 @@
                 const yesterdayString = yesterday.toISOString().split('T')[0];
 
                 if (lastDate === yesterdayString) {
-                    profile.currentStreak++;
+                    profile.currentStreak = (profile.currentStreak || 0) + 1;
                 } else {
-                    profile.currentStreak = 1; // Broken or new streak
+                    profile.currentStreak = 1; 
                 }
 
-                // Calculate XP for the current streak day
                 if (profile.currentStreak > 0) {
-                    if (profile.currentStreak >= 7) {
-                        streakXp = 50;
-                    } else {
-                        streakXp = 2 ** (profile.currentStreak - 1);
-                    }
+                    streakXp = profile.currentStreak >= 7 ? 50 : (10 * (profile.currentStreak - 1));
                 }
                 
                 profile.lastActiveDate = today;
@@ -1873,6 +1990,9 @@
                     profile.consecutiveMissedDays = 0;
                 }
                 savePlayerProfiles();
+                dailyRevisionScores = {};
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                if (isFirebaseConnected) db.ref('dailyRevisionScores').set({});
                 if (currentPlayerName) { loadPlayerProgress(); }
                 showNotification('All player XP and streaks have been reset.', 'error');
             }, 'Enter Admin Password to Reset');
@@ -1891,10 +2011,11 @@
                 const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
                 const isPdfSet = set.type === 'pdf';
                 const countText = isPdfSet ? 'PDF Set' : `${(set.questions || []).length} questions`;
+                const categoryText = set.category ? `(${set.category.toUpperCase()})` : '';
                 return `
                 <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
                     <div>
-                        <h4 style="margin-bottom: 3px;">${setName} (${countText})</h4>
+                        <h4 style="margin-bottom: 3px;">${setName} ${categoryText} (${countText})</h4>
                         <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
                     </div>
                     <div style="display: flex; flex-wrap: wrap;">
@@ -1944,7 +2065,8 @@
             if(options.length !== 4) { showNotification('Please provide exactly 4 options (one per line).', 'error'); return; }
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
-                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions' };
+                const category = document.getElementById('setCategory').value;
+                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category };
             }
             questionSets[setName].questions.push({ question: qText, options, correctAnswer: document.getElementById('correctAnswer').value });
             saveQuestionSets();
@@ -1958,14 +2080,34 @@
             if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
         }
 
+        function toggleNewBulkSetName() {
+            const select = document.getElementById('bulkSetSelect');
+            const newNameGroup = document.getElementById('newBulkSetNameGroup');
+            if (select.value === '_new_') {
+                newNameGroup.style.display = 'block';
+                document.getElementById('bulkSetName').value = '';
+            } else {
+                newNameGroup.style.display = 'none';
+            }
+        }
+
         function importBulkQuestions() {
-            const setName = document.getElementById('bulkSetName').value.trim();
+            const select = document.getElementById('bulkSetSelect');
+            let setName;
+            if (select.value === '_new_') {
+                setName = document.getElementById('bulkSetName').value.trim();
+            } else {
+                setName = select.value;
+            }
+
             const bulkText = document.getElementById('bulkQuestions').value.trim();
-            if (!setName || !bulkText) { showNotification('Set name and questions are required for bulk import.', 'error'); return; }
+            if (!setName || !bulkText) { showNotification('A set name/selection and questions are required for bulk import.', 'error'); return; }
+            
             let imported = 0;
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
-                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions' };
+                const category = document.getElementById('setCategory').value;
+                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category };
             }
             bulkText.split('\n').forEach(line => {
                 const parts = line.split('|').map(p => p.trim());
@@ -1975,8 +2117,11 @@
                 }
             });
             saveQuestionSets();
-            showNotification(`${imported} questions imported to ${setName}`);
-            loadQuestionSets(); updateSetSelects();
+            showNotification(`${imported} questions imported to "${setName}"`);
+            loadQuestionSets(); 
+            updateSetSelects();
+            document.getElementById('bulkQuestions').value = '';
+            showAddQuestionsSection(); // Repopulate the dropdown with new set if created
         }
 
         function deleteQuestionSet(setName) {
@@ -2024,6 +2169,7 @@
             document.getElementById('editQuestionsTitle').textContent = `Edit Questions in Set: ${setName}`;
             document.getElementById('questionEditForm').classList.add('hidden');
             document.getElementById('questionsToEditList').classList.remove('hidden');
+            document.getElementById('editSetCategory').value = questionSets[setName].category || 'gk';
             const questionsListDiv = document.getElementById('questionsToEditList');
             const questions = questionSets[setName].questions || [];
             questionsListDiv.innerHTML = questions.map((q, index) => `
@@ -2034,6 +2180,14 @@
                         <button onclick="deleteSpecificQuestion('${setName}', ${index})" class="btn-danger" style="margin: 0; padding: 8px 15px;">Delete</button>
                     </div>
                 </div>`).join('') || '<p>No questions in this set.</p>';
+        }
+
+        function updateSetCategory() {
+            if (currentEditingSet && questionSets[currentEditingSet]) {
+                questionSets[currentEditingSet].category = document.getElementById('editSetCategory').value;
+                saveQuestionSets();
+                showNotification(`Category for ${currentEditingSet} updated.`, 'success');
+            }
         }
 
         function deleteSpecificQuestion(setName, qIndex) {
@@ -2105,7 +2259,12 @@
         }
         
         // --- Leaderboard ---
-        function showLeaderboard() {
+        function showLeaderboards() {
+            showXpLeaderboard();
+            showTodayLeaderboard();
+        }
+
+        function showXpLeaderboard() {
             const players = getAllPlayerNames();
             const leaderboardData = players.map(name => {
                 const profile = playerProfiles[name] || createNewProfile();
@@ -2120,7 +2279,7 @@
 
             leaderboardData.sort((a, b) => b.totalXP - a.totalXP || b.totalCorrect - a.totalCorrect);
 
-            const tbody = document.getElementById('leaderboardTableBody');
+            const tbody = document.getElementById('xpLeaderboardTableBody');
             tbody.innerHTML = leaderboardData.map((player, i) => {
                 const highlightClass = player.name === currentPlayerName ? 'current-player-highlight' : '';
                 const winnerClass = i === 0 ? 'winner' : '';
@@ -2134,6 +2293,27 @@
                     <td data-label="Title">${player.title}</td>
                 </tr>`;
             }).join('') || '<tr><td colspan="5">No data found. Complete revisions to appear here!</td></tr>';
+        }
+
+        function showTodayLeaderboard() {
+            const todayStr = getTodayDateString();
+            const todayScores = dailyRevisionScores[todayStr] || {};
+            const leaderboardData = Object.entries(todayScores)
+                .map(([name, score]) => ({ name, score }))
+                .sort((a, b) => b.score - a.score);
+
+            const tbody = document.getElementById('todayLeaderboardTableBody');
+            tbody.innerHTML = leaderboardData.map((player, i) => {
+                 const highlightClass = player.name === currentPlayerName ? 'current-player-highlight' : '';
+                const winnerClass = i === 0 ? 'winner' : '';
+                let rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
+                return `
+                <tr class="${winnerClass} ${highlightClass}" style="animation-delay: ${i * 50}ms">
+                    <td data-label="Rank">${rankDisplay}</td>
+                    <td data-label="Player">${player.name}</td>
+                    <td data-label="Score">${player.score}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="3">No revision scores for today yet.</td></tr>';
         }
 
 
@@ -2185,19 +2365,20 @@
                 const qOptions = ans.questionOptions || ['A', 'B', 'C', 'D'];
                 const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
                 const correctText = qOptions[correctIndex] || 'N/A';
-                let answerDisplay, resultClass;
-                if (ans.isCorrect) { resultClass = 'history-correct'; answerDisplay = `Correct Answer: ${ans.correctAnswer}. ${correctText}`; } 
-                else if (ans.isSkipped) { resultClass = 'wrong-answer'; answerDisplay = `Skipped (Correct: ${ans.correctAnswer}. ${correctText})`; } 
-                else {
-                    resultClass = 'wrong-answer';
+                let answerDisplay;
+                if (ans.isCorrect) { 
+                    answerDisplay = `<p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
+                } else if (ans.isSkipped) { 
+                    answerDisplay = `<p class="wrong-answer">Skipped</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
+                } else {
                     const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
                     const selectedText = qOptions[selectedIndex] || 'N/A';
-                    answerDisplay = `Your Answer: ${ans.selectedAnswer}. ${selectedText} ✗ (Correct: ${ans.correctAnswer}. ${correctText})`;
+                    answerDisplay = `<p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${selectedText}</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`;
                 }
                 detailsHtml += `
-                    <div class="question-detail-item question-set" data-correct="${ans.isCorrect}" style="margin-top:15px; border-left: 4px solid ${ans.isCorrect ? 'var(--secondary-color)' : 'var(--danger-color)'};">
+                    <div class="question-detail-item question-set" data-correct="${ans.isCorrect}" style="margin-top:15px; border-left: 4px solid ${ans.isCorrect ? 'var(--success-color)' : 'var(--danger-color)'};">
                         <p><strong>${index + 1}. ${qText}</strong></p>
-                        <p class="${resultClass}">${answerDisplay}</p>
+                        ${answerDisplay}
                     </div>`;
             });
             detailsHtml += `</div><p style="margin-top:20px;">Total Practice Time: ${formatTime(attempt.timeSpent)}</p>`;
@@ -2290,100 +2471,122 @@
             container.innerHTML = tableHTML;
         }
 
-
         // --- REVISION FUNCTIONS ---
-        function getDaysSince(dateString) {
-            const today = new Date(); const uploadDate = new Date(dateString);
-            today.setHours(0, 0, 0, 0); uploadDate.setHours(0, 0, 0, 0);
-            return Math.floor(Math.abs(today - uploadDate) / (1000 * 60 * 60 * 24));
-        }
-        
-        function renderRevisionPage() {
-            const dueTodayDiv = document.getElementById('dueTodayList');
-            const backlogDiv = document.getElementById('backlogList');
-            const userPrompt = document.getElementById('revisionUserPrompt');
-            dueTodayDiv.innerHTML = ''; backlogDiv.innerHTML = '';
-            if (!currentPlayerName) { userPrompt.classList.remove('hidden'); updateRevisionBadge(0); return; } 
-            else { userPrompt.classList.add('hidden'); }
-            
-            const dueTodayItems = [];
-            const backlogItems = new Map(); // Use a map to only store the earliest revision for each set.
+        function getRevisionItems() {
+            if (!currentPlayerName) return { dueToday: [], backlog: [], all: [] };
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const allMissedItems = [];
+            const today = new Date(); today.setHours(0, 0, 0, 0);
 
             for (const setName in questionSets) {
                 const set = questionSets[setName];
                 if (!set || typeof set.uploadDate === 'undefined') continue;
                 if (set.type === 'pdf' && !set.pdfDataUrl) continue;
                 if (set.type !== 'pdf' && (!set.questions || set.questions.length === 0)) continue;
-                
-                let earliestMissedDay = null;
 
                 for (const day of revisionIntervals) {
                     const uploadDate = new Date(set.uploadDate);
                     const revisionDate = new Date(uploadDate.setDate(uploadDate.getDate() + day));
                     revisionDate.setHours(0,0,0,0);
 
-                    if (revisionDate <= today) { 
-                        const revisionKey = `${setName}_RevDay${day}`; 
+                    if (revisionDate <= today) {
+                        const revisionKey = `${setName}_RevDay${day}`;
                         const playerRevisionStatus = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][revisionKey];
                         const isCompleted = playerRevisionStatus && playerRevisionStatus.success;
-                        
+
                         if (!isCompleted) {
-                            if (revisionDate.getTime() === today.getTime()) {
-                                dueTodayItems.push({ setName, day, type: set.type || 'questions' });
-                            } else {
-                                // This is a backlog item, only store the first one we find
-                                if(earliestMissedDay === null) {
-                                    earliestMissedDay = day;
-                                }
-                            }
+                            allMissedItems.push({ setName, day, type: set.type || 'questions', revisionDate });
                         }
                     }
                 }
-                if (earliestMissedDay !== null) {
-                    backlogItems.set(setName, { setName, day: earliestMissedDay, type: set.type || 'questions' });
-                }
             }
 
-            const sortedBacklog = Array.from(backlogItems.values()).sort((a,b) => a.day - b.day);
-
-            const renderItem = (item, isBacklog) => {
-                const key = `${item.setName}_RevDay${item.day}`;
-                let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? 'var(--danger-color)' : 'var(--primary-color)'};"><h4>${item.setName} - Revision Day ${item.day}</h4>`;
-                if (item.type === 'pdf') {
-                    itemHtml += `<p>This is a PDF study set.</p>
-                        <button onclick="viewRevisionPdf('${item.setName}')">View PDF to Revise</button>
-                        <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success">Mark as Completed</button>`;
-                } else {
-                    const status = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][key];
-                    const percentage = status ? status.percentage : 0;
-                    const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
-                    const buttonClass = status ? 'btn-warning' : 'btn-success';
-                    itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
-                        <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
-                        ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
-                }
-                itemHtml += `</div>`; return itemHtml;
-            };
-
-            dueTodayDiv.innerHTML = dueTodayItems.length > 0 ? dueTodayItems.map(item => renderItem(item, false)).join('') : '<p>No revision tasks due today. Good job!</p>';
-            backlogDiv.innerHTML = sortedBacklog.length > 0 ? sortedBacklog.map(item => renderItem(item, true)).join('') : '<p>Your backlog is clear. Keep it up!</p>';
+            const dueTodayItems = allMissedItems.filter(item => item.revisionDate.getTime() === today.getTime());
             
-            updateRevisionBadge(dueTodayItems.length + sortedBacklog.length);
+            const backlogItemsMap = new Map();
+            allMissedItems.filter(item => item.revisionDate.getTime() < today.getTime()).forEach(item => {
+                if (!backlogItemsMap.has(item.setName) || item.day < backlogItemsMap.get(item.setName).day) {
+                    backlogItemsMap.set(item.setName, item);
+                }
+            });
+            const backlogItems = Array.from(backlogItemsMap.values()).sort((a,b) => a.day - b.day);
+            
+            // CORRECTION 4: Changed sorting to group by set name first
+            const fullBacklog = allMissedItems.filter(item => item.revisionDate.getTime() < today.getTime()).sort((a,b) => a.setName.localeCompare(b.setName) || a.revisionDate - b.revisionDate);
+
+            return { dueToday: dueTodayItems, backlog: backlogItems, all: fullBacklog };
         }
 
-        function updateRevisionBadge(count) {
-            const navButton = document.querySelector('nav button[onclick="switchTab(\'revision\')"]');
-            navButton.style.position = 'relative';
-            let badge = navButton.querySelector('.revision-badge');
-            if (badge) badge.remove();
+        function renderRevisionPage() {
+            const dueTodayDiv = document.getElementById('dueTodayList');
+            const userPrompt = document.getElementById('revisionUserPrompt');
+            updateAllBadges(); // Call the new unified badge function
+
+            if (!currentPlayerName) { 
+                userPrompt.classList.remove('hidden'); 
+                dueTodayDiv.innerHTML = '';
+                return;
+            } 
+            else { 
+                userPrompt.classList.add('hidden'); 
+            }
+            
+            const { dueToday } = getRevisionItems();
+            dueTodayDiv.innerHTML = dueToday.length > 0 ? dueToday.map(item => renderRevisionItem(item, false)).join('') : '<p>No revision tasks due today. Good job!</p>';
+        }
+
+        function renderBacklogPage() {
+            const backlogDiv = document.getElementById('fullBacklogList');
+            updateAllBadges();
+            if (!currentPlayerName) { 
+                backlogDiv.innerHTML = '<p>Please select a player to view the backlog.</p>'; 
+                return; 
+            }
+            const { all: fullBacklog } = getRevisionItems();
+            backlogDiv.innerHTML = fullBacklog.length > 0 ? fullBacklog.map(item => renderRevisionItem(item, true)).join('') : '<p>Your backlog is clear. Keep it up!</p>';
+        }
+
+        function renderRevisionItem(item, isBacklog) {
+            const key = `${item.setName}_RevDay${item.day}`;
+            let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? 'var(--danger-color)' : 'var(--primary-color)'};"><h4>${item.setName} - Revision Day ${item.day}</h4>`;
+            if (item.type === 'pdf') {
+                itemHtml += `<p>This is a PDF study set.</p>
+                    <button onclick="viewRevisionPdf('${item.setName}')">View PDF to Revise</button>
+                    <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success">Mark as Completed</button>`;
+            } else {
+                const status = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][key];
+                const percentage = status ? status.percentage : 0;
+                const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
+                const buttonClass = status ? 'btn-warning' : 'btn-success';
+                itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
+                    <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
+                    ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
+            }
+            itemHtml += `</div>`; return itemHtml;
+        }
+
+        function updateAllBadges() {
+            const { dueToday, all: fullBacklog } = getRevisionItems();
+
+            // Update Revision Tab Badge
+            const revisionButton = document.querySelector('nav button[onclick="switchTab(\'revision\')"]');
+            updateBadgeOnButton(revisionButton, dueToday.length);
+
+            // Update Backlog Tab Badge
+            const backlogButton = document.querySelector('nav button[onclick="switchTab(\'backlog\')"]');
+            updateBadgeOnButton(backlogButton, fullBacklog.length);
+        }
+
+        function updateBadgeOnButton(button, count) {
+            if (!button) return;
+            button.style.position = 'relative';
+            let badge = button.querySelector('.revision-badge');
+            if (badge) badge.remove(); // Remove existing badge first
             if (count > 0) {
                 badge = document.createElement('span');
                 badge.className = 'revision-badge';
                 badge.textContent = count;
-                navButton.appendChild(badge);
+                button.appendChild(badge);
             }
         }
         
@@ -2461,7 +2664,6 @@
             daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`; });
             for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div class="calendar-day empty"></div>`; }
 
-            const today = new Date();
             const todayStr = getTodayDateString();
 
             for (let day = 1; day <= daysInMonth; day++) {
@@ -2538,6 +2740,27 @@
             document.getElementById('statsCorrect').textContent = profile.totalCorrect || 0;
             document.getElementById('statsStreak').textContent = `${profile.currentStreak || 0} Day(s)`;
             openModal('statsModal');
+        }
+
+        function showWrongAnswersPopup(wrongAnswers) {
+            const body = document.getElementById('wrongAnswersBody');
+            body.innerHTML = wrongAnswers.map((ans, index) => {
+                const qOptions = ans.questionOptions || [];
+                const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
+                const correctText = qOptions[correctIndex] || 'N/A';
+                let yourAnswerText = "Skipped";
+                if (!ans.isSkipped) {
+                    const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
+                    yourAnswerText = qOptions[selectedIndex] || 'N/A';
+                }
+                return `
+                    <div class="question-set" style="margin-top:15px; border-left: 4px solid var(--danger-color);">
+                        <p><strong>${index + 1}. ${ans.questionText}</strong></p>
+                        <p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${yourAnswerText}</p>
+                        <p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>
+                    </div>`;
+            }).join('');
+            openModal('wrongAnswersModal');
         }
         
         // --- UI & UTILITY FUNCTIONS ---
@@ -2732,10 +2955,11 @@
             localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
             if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
 
-            const xpEarned = calculateAndApplyXP(0); // Grant streak XP but no score XP
+            const xpEarned = calculateAndApplyXP(0); 
 
             showNotification(`Revision marked as complete! +${xpEarned} XP`, 'success');
             renderRevisionPage();
+            renderBacklogPage();
         }
     </script>
 </body>
