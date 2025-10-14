@@ -1834,11 +1834,21 @@
         }
 
         function endPractice() {
-            if (!practiceInProgress) return;
+            // CORRECTED: Added a null check for currentAttempt to prevent script-halting errors.
+            if (!practiceInProgress || !currentAttempt) {
+                // If the function is called in an invalid state, safely reset the view.
+                practiceInProgress = false;
+                clearInterval(timer);
+                document.body.classList.remove('practice-active');
+                switchPracticeView('practiceSetupView');
+                return;
+            }
+            
             practiceInProgress = false;
             clearInterval(timer);
 
-            const totalQuestions = currentSet ? currentSet.length : currentAttempt.totalQuestions;
+            // CORRECTED: Changed to use the more reliable totalQuestions stored in the attempt object.
+            const totalQuestions = currentAttempt.totalQuestions;
             const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
             
             let xpEarned = 0;
