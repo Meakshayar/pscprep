@@ -1834,10 +1834,29 @@
             
             let xpEarned = 0;
             let xpMessage = '';
+
             if (isRevisionMode) {
-                xpEarned = calculateAndApplyXP(score); // Full XP for revisions
-                xpMessage = `You earned ${xpEarned} XP!`;
+                // MODIFICATION: Check question set upload date before awarding XP
+                const CUTOFF_DATE = new Date('2025-10-13T00:00:00');
+                const setName = currentAttempt.setName;
+                const setUploadDateStr = questionSets[setName]?.uploadDate;
+                // Treat sets with no upload date as old to prevent accidental XP gain
+                const setUploadDate = setUploadDateStr ? new Date(setUploadDateStr + 'T00:00:00') : new Date(0); 
+
+                const isEligibleForXp = setUploadDate >= CUTOFF_DATE;
+
+                if (isEligibleForXp) {
+                    xpEarned = calculateAndApplyXP(score); // Full XP for eligible revisions
+                    xpMessage = `You earned ${xpEarned} XP!`;
+                } else {
+                    xpEarned = calculateAndApplyXP(0); // Only applies daily/streak bonus, no score-based XP
+                    xpMessage = `Score added to today's ranking. Total XP is only awarded for revisions on sets from after 13-10-2025.`;
+                    if (xpEarned > 0) {
+                        xpMessage += ` Daily activity bonus of ${xpEarned} XP applied.`;
+                    }
+                }
                 
+                // This part remains unchanged: always add to daily score leaderboard
                 const todayStr = getTodayDateString();
                 if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
                 if (!dailyRevisionScores[todayStr][currentPlayerName]) dailyRevisionScores[todayStr][currentPlayerName] = 0;
