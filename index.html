@@ -730,9 +730,12 @@
                     <div id="practiceOptions"></div>
                     <div class="score" id="practiceScore" style="margin-top: 20px;">Score: 0</div>
                     <div style="text-align: center; margin-top: 10px;">
-                        <button onclick="skipQuestion()" class="btn-warning">Skip Now</button>
-                        <button onclick="endPractice()" class="btn-danger">End Practice</button>
+                        <button onclick="skipQuestion()" class="btn-warning" id="skipQuestionBtn">Skip Now</button>
+                        <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn">End Practice</button>
                         <button id="reportQuestionBtn" onclick="reportCurrentQuestion()" class="btn-warning" style="background: #e67e22; margin-top: 20px;">Report Question</button>
+                    </div>
+                    <div id="nextQuestionContainer" class="hidden" style="text-align: center; margin-top: 15px;">
+                        <button onclick="proceedToNextQuestion()" class="btn-success">Next Question</button>
                     </div>
                 </div>
                 </div>
@@ -1771,6 +1774,10 @@
                 endPractice();
                 return;
             }
+            document.getElementById('nextQuestionContainer').classList.add('hidden');
+            document.getElementById('skipQuestionBtn').disabled = false;
+            document.getElementById('endPracticeBtn').disabled = false;
+
             document.getElementById('reportQuestionBtn').classList.remove('hidden');
             const question = currentSet[currentQuestionIndex];
             document.getElementById('practiceQuestion').textContent = `${currentQuestionIndex + 1}. ${question.question}`;
@@ -1806,10 +1813,13 @@
                 score++;
                 playSound('correct');
                 document.getElementById('practiceScore').textContent = `Score: ${score}`;
-                setTimeout(proceedToNextQuestion, 800);
+                // MODIFIED: Removed setTimeout for immediate progression.
+                proceedToNextQuestion();
             } else {
                 playSound('wrong');
-                setTimeout(proceedToNextQuestion, 1200);
+                document.getElementById('nextQuestionContainer').classList.remove('hidden');
+                document.getElementById('skipQuestionBtn').disabled = true;
+                document.getElementById('endPracticeBtn').disabled = true;
             }
         }
 
@@ -1834,9 +1844,7 @@
         }
 
         function endPractice() {
-            // CORRECTED: Added a null check for currentAttempt to prevent script-halting errors.
             if (!practiceInProgress || !currentAttempt) {
-                // If the function is called in an invalid state, safely reset the view.
                 practiceInProgress = false;
                 clearInterval(timer);
                 document.body.classList.remove('practice-active');
@@ -1847,7 +1855,6 @@
             practiceInProgress = false;
             clearInterval(timer);
 
-            // CORRECTED: Changed to use the more reliable totalQuestions stored in the attempt object.
             const totalQuestions = currentAttempt.totalQuestions;
             const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
             
@@ -1906,7 +1913,8 @@
             document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
             document.getElementById('modalXPGained').textContent = xpMessage;
             openModal('resultsModal');
-            if (percentage >= 75) startConfetti();
+            
+            if (percentage > 70) startConfetti();
 
             const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
             if (wrongAnswers.length > 0) {
