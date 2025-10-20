@@ -114,24 +114,7 @@
             position: relative;
         }
 
-        /* --- NEW ADMIN LOGIN BUTTON --- */
-        #adminLoginBtn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: var(--border-radius);
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        #adminLoginBtn:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
+        /* --- ADMIN LOGIN BUTTON (REMOVED from here) --- */
 
         /* --- NEW DROPDOWN STYLES --- */
         .header-menu {
@@ -298,6 +281,23 @@
             box-shadow: 0 0 8px rgba(142, 68, 173, 0.3);
             outline: none;
         }
+
+        /* --- FIX 2: Practice Section Layout --- */
+        #practiceSetupView .form-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; 
+        }
+        #practiceSetupView .form-group label {
+            margin-bottom: 5px; 
+            margin-top: 0;
+            font-weight: 600;
+        }
+        #practiceSetupView .form-group select {
+            margin-top: 0;
+            flex-grow: 1; /* Make selects fill height */
+        }
+        /* --- End Fix 2 --- */
 
         button {
             background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
@@ -714,8 +714,6 @@
     <canvas id="confetti-canvas"></canvas>
     <div class="container">
         <header>
-            <button id="adminLoginBtn" onclick="showAdminLogin()">Admin Login</button>
-
             <div class="header-menu">
                 <button class="menu-btn" onclick="toggleMenu()">&#9776;</button>
                 <div id="myDropdown" class="dropdown-content">
@@ -765,6 +763,7 @@
                         <h4>Or Create a New Player:</h4>
                         <input type="text" id="newPlayerName" placeholder="Enter new player name" class="styled-input">
                         <button onclick="createPlayer()">Create Player</button>
+                        <button id="adminLoginBtn" onclick="showAdminLogin()" style="background: var(--dark-color); margin-top: 15px;">Admin Access</button>
                     </div>
                 </div>
                 
@@ -776,7 +775,7 @@
                     <hr style="margin: 20px 0;">
                     <h2>Start Practice</h2>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%;">
                         <div class="form-group">
                             <label>Select Subject:</label>
                             <select id="subjectSelect" onchange="populatePracticeSetSelect(this.value)" class="styled-select"></select>
@@ -1289,7 +1288,8 @@
             if (auth) auth.signOut(); // Sign out from Firebase Auth
             isAdmin = false;
             document.getElementById('adminTabButton').classList.add('hidden');
-            document.getElementById('adminLoginBtn').classList.remove('hidden');
+            // FIX 3: Show admin login button on welcome screen
+            // document.getElementById('adminLoginBtn').classList.remove('hidden'); // This button is on welcomeView now
 
             currentPlayerName = '';
             localStorage.removeItem('pscLastPlayer');
@@ -1712,47 +1712,96 @@
         
         // --- NEW/MODIFIED Player and Password Functions ---
         
-        // --- NEW ADMIN LOGIN FUNCTIONS ---
+        // --- FIX 3: REBUILT ADMIN LOGIN FUNCTIONS ---
         function showAdminLogin() {
-            document.getElementById('passwordConfirmGroup').classList.add('hidden');
-            document.getElementById('passwordModalTitle').textContent = `Admin Login`;
-            document.getElementById('passwordModalPrompt').textContent = 'Please enter admin email and password:';
-            const emailInput = document.getElementById('passwordInput');
-            emailInput.type = "email";
-            emailInput.placeholder = "Admin Email";
-            
-            const passConfirmGroup = document.getElementById('passwordConfirmGroup');
-            passConfirmGroup.classList.remove('hidden');
-            const passInput = document.getElementById('passwordConfirmInput');
-            passInput.placeholder = "Admin Password";
-            
-            const submitBtn = document.getElementById('passwordSubmitBtn');
-            submitBtn.textContent = 'Login'; 
-            emailInput.value = ''; passInput.value = '';
+            if (!db) {
+                showNotification('Firebase not connected. Cannot log in as admin.', 'error');
+                return;
+            }
 
-            openModal('passwordModal'); 
-            emailInput.focus();
-            
-            submitBtn.onclick = () => {
-                const email = emailInput.value;
-                const password = passInput.value;
-                if (!email || !password) {
-                    showNotification('Email and Password are required.', 'error');
-                    return;
-                }
+            const emailInput = document.getElementById('passwordInput');
+            const passInput = document.getElementById('passwordConfirmInput');
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+            const titleEl = document.getElementById('passwordModalTitle');
+            const promptEl = document.getElementById('passwordModalPrompt');
+            const confirmGroup = document.getElementById('passwordConfirmGroup');
+
+            // Check for first-time setup
+            db.ref('adminConfig/adminUID').once('value').then(snapshot => {
+                const adminExists = snapshot.exists();
                 
-                auth.signInWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        handleAdminLogin(userCredential.user);
-                        closeModal('passwordModal');
-                    })
-                    .catch((error) => {
-                        showNotification(`Admin Login Failed: ${error.message}`, 'error');
-                    });
-            };
-            
-            passInput.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
-            emailInput.onkeyup = (event) => { if(event.key === 'Enter') passInput.focus(); }
+                if (adminExists) {
+                    // --- SUBSEQUENT LOGIN ---
+                    titleEl.textContent = 'Admin Login';
+                    promptEl.textContent = 'Please enter admin email and password:';
+                    emailInput.type = "email";
+                    emailInput.placeholder = "Admin Email";
+                    confirmGroup.classList.remove('hidden');
+                    passInput.placeholder = "Admin Password";
+                    submitBtn.textContent = 'Login'; 
+                    emailInput.value = ''; passInput.value = '';
+                    openModal('passwordModal'); 
+                    emailInput.focus();
+                    
+                    submitBtn.onclick = () => {
+                        const email = emailInput.value;
+                        const password = passInput.value;
+                        if (!email || !password) { showNotification('Email and Password are required.', 'error'); return; }
+                        
+                        auth.signInWithEmailAndPassword(email, password)
+                            .then((userCredential) => {
+                                // Verify this user is THE admin
+                                if (userCredential.user.uid === snapshot.val()) {
+                                    handleAdminLogin(userCredential.user);
+                                    closeModal('passwordModal');
+                                } else {
+                                    showNotification('Login successful, but you are not the designated admin.', 'error');
+                                    auth.signOut();
+                                }
+                            })
+                            .catch((error) => { showNotification(`Admin Login Failed: ${error.message}`, 'error'); });
+                    };
+                    
+                    passInput.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
+                    emailInput.onkeyup = (event) => { if(event.key === 'Enter') passInput.focus(); }
+                    
+                } else {
+                    // --- FIRST TIME SETUP ---
+                    titleEl.textContent = 'Create Admin Account';
+                    promptEl.textContent = 'No admin found. Please create the admin account.';
+                    emailInput.type = "email";
+                    emailInput.placeholder = "New Admin Email";
+                    confirmGroup.classList.remove('hidden');
+                    passInput.placeholder = "New Admin Password";
+                    submitBtn.textContent = 'Create Account'; 
+                    emailInput.value = ''; passInput.value = '';
+                    openModal('passwordModal'); 
+                    emailInput.focus();
+
+                    submitBtn.onclick = () => {
+                        const email = emailInput.value;
+                        const password = passInput.value;
+                        if (!email || !password) { showNotification('Email and Password are required.', 'error'); return; }
+                        
+                        auth.createUserWithEmailAndPassword(email, password)
+                            .then((userCredential) => {
+                                // Save this user as THE admin
+                                db.ref('adminConfig').set({ adminUID: userCredential.user.uid })
+                                    .then(() => {
+                                        handleAdminLogin(userCredential.user);
+                                        closeModal('passwordModal');
+                                        showNotification('Admin account created successfully!', 'success');
+                                    });
+                            })
+                            .catch((error) => { showNotification(`Admin creation failed: ${error.message}`, 'error'); });
+                    };
+                    
+                    passInput.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
+                    emailInput.onkeyup = (event) => { if(event.key === 'Enter') passInput.focus(); }
+                }
+            }).catch(err => {
+                showNotification('Error checking admin status: ' + err.message, 'error');
+            });
 
             // Reset input types on close
             const originalOnClose = document.querySelector('#passwordModal .btn-danger').onclick;
@@ -1765,10 +1814,9 @@
         }
 
         function handleAdminLogin(user) {
-            // In a real app, you'd check user.uid against a secure list or custom claim
-            // For this demo, any successful login via auth is considered "admin"
+            // This function is called after successful admin verification
             isAdmin = true;
-            document.getElementById('adminLoginBtn').classList.add('hidden');
+            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is on welcomeView
             document.getElementById('adminTabButton').classList.remove('hidden');
             switchTab('admin');
             showNotification('Admin login successful!', 'success');
@@ -1847,7 +1895,7 @@
 
             currentPlayerName = name;
             localStorage.setItem('pscLastPlayer', currentPlayerName);
-            document.getElementById('adminLoginBtn').classList.add('hidden');
+            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is on welcomeView
             
             handleDailyLogin();
 
@@ -2846,7 +2894,7 @@
 
         // Timing analysis functions REMOVED
 
-        // --- REVISION FUNCTIONS (UPDATED per 4.3) ---
+        // --- REVISION FUNCTIONS (FIX 1) ---
         function getRevisionItems() {
             if (!currentPlayerName) return { dueToday: [], backlog: [] };
 
@@ -2855,17 +2903,31 @@
             
             const playerRevisionProgress = revisionProgress[currentPlayerName] || {};
 
+            // FIX 1: Check if a revision for this SET was done today
+            const todayStr = getTodayDateString();
+            const revisedSetsToday = new Set();
+            Object.values(practiceHistory).forEach(attempt => {
+                if (attempt.playerName === currentPlayerName &&
+                    attempt.isRevision &&
+                    attempt.startTime.startsWith(todayStr)) 
+                {
+                    revisedSetsToday.add(attempt.setName);
+                }
+            });
+
             for (const setName in questionSets) {
                 const set = questionSets[setName]; // This is metadata
                 if (!set || typeof set.uploadDate === 'undefined') continue;
                 
                 // Skip sets with no questions or PDF
                 if (set.type === 'pdf' && !set.pdfDataUrl && !questionCache[setName]) {
-                    // We don't know if a PDF exists unless we've loaded it.
                     // This logic is tricky. We'll assume metadata is correct.
                 } else if (set.type !== 'pdf' && (set.questionCount || 0) === 0) {
                     continue; // Skip empty question sets
                 }
+
+                // FIX 1: Check if this set was revised today
+                const hasRevisedSetToday = revisedSetsToday.has(setName);
 
                 for (const day of revisionIntervals) {
                     const uploadDate = new Date(set.uploadDate);
@@ -2885,15 +2947,19 @@
                                 revisionDate, 
                                 revisionKey,
                                 questionCount: set.questionCount || 0,
-                                status: playerRevisionStatus // For retry logic
+                                status: playerRevisionStatus, // For retry logic
+                                hasRevisedSetToday: hasRevisedSetToday // Pass this info
                             });
                         }
                     }
                 }
             }
 
-            const dueTodayItems = allMissedItems.filter(item => item.revisionDate.getTime() === today.getTime());
-            const fullBacklog = allMissedItems.filter(item => item.revisionDate.getTime() < today.getTime());
+            // FIX 1: Filter items where a revision for the set was already done today
+            const filteredMissedItems = allMissedItems.filter(item => !item.hasRevisedSetToday);
+
+            const dueTodayItems = filteredMissedItems.filter(item => item.revisionDate.getTime() === today.getTime());
+            const fullBacklog = filteredMissedItems.filter(item => item.revisionDate.getTime() < today.getTime());
 
             // 4.3: Group and sort backlog
             const groups = {};
@@ -2930,10 +2996,11 @@
                 userPrompt.classList.add('hidden'); 
             }
             
+            // FIX 1: getRevisionItems now returns the pre-filtered list
             const { dueToday } = getRevisionItems();
             dueTodayDiv.innerHTML = dueToday.length > 0 
                 ? dueToday.map(item => renderRevisionItem(item, false)).join('') 
-                : '<p>No revision tasks due today. Good job!</p>';
+                : '<p>No revision tasks due today. (Or you may have already completed them!)</p>';
         }
 
         // 4.3: Render grouped backlog
@@ -2944,6 +3011,7 @@
                 backlogDiv.innerHTML = '<p>Please select a player to view the backlog.</p>'; 
                 return; 
             }
+            // FIX 1: getRevisionItems now returns the pre-filtered list
             const { backlog: sortedGroups } = getRevisionItems();
             
             backlogDiv.innerHTML = sortedGroups.length > 0 
@@ -2953,7 +3021,7 @@
                         ${group.items.map(item => renderRevisionItemContent(item, true)).join('')}
                     </div>
                 `).join('') 
-                : '<p>Your backlog is clear. Keep it up!</p>';
+                : '<p>Your backlog is clear. (Or you may have completed items for today!)</p>';
         }
 
         // Renders the full box for an item (used in Due Today)
@@ -2973,18 +3041,25 @@
             
             const key = item.revisionKey;
             
+            // FIX 1: Button is now correctly enabled/disabled based on filter
+            const buttonDisabled = item.hasRevisedSetToday ? 'disabled' : '';
+
             if (item.type === 'pdf') {
                 itemHtml += `<p>This is a PDF study set.</p>
-                    <button onclick="viewRevisionPdf('${item.setName}')">View PDF to Revise</button>
-                    <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success">Mark as Completed</button>`;
+                    <button onclick="viewRevisionPdf('${item.setName}')" ${buttonDisabled}>View PDF to Revise</button>
+                    <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success" ${buttonDisabled}>Mark as Completed</button>`;
             } else {
                 const status = item.status;
                 const percentage = status ? status.percentage : 0;
                 const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
                 const buttonClass = status ? 'btn-warning' : 'btn-success';
                 itemHtml += `<p>Total Questions: ${item.questionCount}</p>
-                    <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
+                    <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}" ${buttonDisabled}>${buttonText}</button>
                     ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
+            }
+
+            if (item.hasRevisedSetToday) {
+                itemHtml += `<p style="font-size: 12px; color: var(--success-color); margin-top: 5px;">You completed a revision for this set today.</p>`;
             }
             itemHtml += `</div>`; 
             return itemHtml;
@@ -3358,8 +3433,10 @@
                 let isValid = false;
                 if (correctPasswordOrAction === "ADMIN_ACTION") {
                     const currentUser = auth.currentUser;
+                    // FIX 3: This logic is to confirm an admin action by re-entering their email
                     isValid = (isAdmin && currentUser && input.value === currentUser.email);
                 } else {
+                    // This is for legacy password prompts (e.g., player login)
                     isValid = (input.value === correctPasswordOrAction);
                 }
 
