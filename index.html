@@ -10,6 +10,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
     <style>
         :root {
@@ -112,6 +113,25 @@
             text-align: center;
             position: relative;
         }
+
+        /* --- NEW ADMIN LOGIN BUTTON --- */
+        #adminLoginBtn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        #adminLoginBtn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
 
         /* --- NEW DROPDOWN STYLES --- */
         .header-menu {
@@ -620,6 +640,42 @@
         }
         /* --- END CALENDAR STYLES --- */
 
+        /* --- NEW ADMIN TAB STYLES --- */
+        #admin-tab-nav {
+            display: flex;
+            background: #ecf0f1;
+            flex-wrap: wrap;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        #admin-tab-nav button {
+            background: none;
+            border: none;
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark-color);
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        #admin-tab-nav button:hover {
+            background: #bdc3c7;
+            color: white;
+        }
+        #admin-tab-nav button.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        .admin-tab-content {
+            padding: 20px 0;
+        }
+        .admin-tab-content.hidden {
+            display: none;
+        }
+        /* --- END ADMIN TAB STYLES --- */
+
         /* --- RESPONSIVE ADJUSTMENTS --- */
         @media screen and (max-width: 600px) {
             body { padding: 5px; }
@@ -658,12 +714,14 @@
     <canvas id="confetti-canvas"></canvas>
     <div class="container">
         <header>
+            <button id="adminLoginBtn" onclick="showAdminLogin()">Admin Login</button>
+
             <div class="header-menu">
                 <button class="menu-btn" onclick="toggleMenu()">&#9776;</button>
                 <div id="myDropdown" class="dropdown-content">
-                    <button onclick="switchTab('settings')">Settings</button>
                     <button onclick="switchTab('help')">How it Works</button>
                     <button onclick="triggerPFPUpload()">Change Profile Pic</button>
+                    <button onclick="logout()">Logout</button>
                 </div>
             </div>
 
@@ -688,6 +746,7 @@
             <button onclick="switchTab('leaderboard')">Leaderboard</button>
             <button onclick="switchTab('history')">My History</button>
             <button onclick="switchTab('attendance')">Attendance</button>
+            <button id="adminTabButton" onclick="switchTab('admin')" class="hidden">Admin</button>
         </nav>
         
         <main>
@@ -716,11 +775,19 @@
                     </div>
                     <hr style="margin: 20px 0;">
                     <h2>Start Practice</h2>
-                    <div class="form-group">
-                        <label>Select Question Set:</label>
-                        <select id="practiceSetSelect" class="styled-select"></select>
-                        <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled>Start Practice</button>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Select Subject:</label>
+                            <select id="subjectSelect" onchange="populatePracticeSetSelect(this.value)" class="styled-select"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Question Set:</label>
+                            <select id="practiceSetSelect" class="styled-select"></select>
+                        </div>
                     </div>
+                    <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled>Start Practice</button>
+                    
                 </div>
 
                 <div id="practiceSessionView" class="view-stage hidden">
@@ -754,7 +821,7 @@
             
             <div id="backlog" class="tab-content">
                 <h2>Full Revision Backlog</h2>
-                <p>This tab shows all previously missed revision items. You can only complete one revision per question set per day.</p>
+                <p>This tab shows all previously missed revision items, grouped by set and sorted by the most recently missed. You can only complete one revision per question set per day.</p>
                 <div id="fullBacklogList" style="margin-top: 20px;"></div>
             </div>
 
@@ -783,12 +850,8 @@
             <div id="history" class="tab-content">
                 <h2>My Practice History</h2>
                 <p id="historyPrompt">Showing your latest attempt for each question set.</p>
-                <div id="historyControls" class="hidden" style="margin-bottom: 15px;">
-                    <button onclick="showQuestionAnalysis()">Analyze Question Timings</button>
-                </div>
                 <div id="historyList"></div>
-                <div id="questionAnalysisView" class="hidden" style="margin-top: 20px;"></div>
-            </div>
+                </div>
             
             <div id="attendance" class="tab-content">
                 <h2>My Attendance & Revisions</h2>
@@ -808,9 +871,18 @@
                 </div>
             </div>
 
-            <div id="settings" class="tab-content">
-                <div id="mainSettings">
-                    <h2>Settings</h2>
+            <div id="admin" class="tab-content">
+                <nav id="admin-tab-nav">
+                    <button onclick="switchAdminTab('adminMain')" class="active">Main Settings</button>
+                    <button onclick="switchAdminTab('adminQuestionSets')">Question Sets</button>
+                    <button id="adminReportedTabBtn" onclick="switchAdminTab('adminReported')">Reported</button>
+                    <button onclick="switchAdminTab('adminAttendance')">Attendance</button>
+                    <button onclick="switchAdminTab('adminHistory')">User History</button>
+                    <button onclick="switchAdminTab('adminBacklogs')">Backlog Mgt</button>
+                </nav>
+
+                <div id="adminMain" class="admin-tab-content">
+                    <h2>Admin Settings</h2>
                     <h3>Firebase Configuration</h3>
                     <div class="form-group">
                         <label>Firebase Configuration JSON:</label>
@@ -853,33 +925,14 @@
                         <select id="playerToClearHistorySelect"></select>
                         <button onclick="clearPlayerHistory()" class="btn-danger">Clear Player History</button>
                     </div>
-                    <hr style="margin: 20px 0;">
+                    </div>
 
-                    <h3>Admin Actions</h3>
-                    <button id="showAddQuestionsBtn">Manage Question Sets</button>
-                    <button id="showReportedQuestionsBtn">View Reported Questions</button>
-                    <button id="showAttendanceRegisterBtn">View Attendance & Revision Register</button>
-                </div>
-
-                <div id="addQuestionsSection" class="hidden" style="margin-top: 20px;">
-                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
+                <div id="adminQuestionSets" class="admin-tab-content hidden" style="margin-top: 20px;">
                     <h2>Manage Question Sets</h2>
                     <div id="addQuestionsContent">
-                        <div style="background: #f0f4f8; padding: 20px; border-radius: var(--border-radius); margin-bottom: 30px; border: 1px solid #ddd;">
-                            <h3>Create PDF Study Set</h3>
-                            <div class="form-group">
-                                <label>Set Name for PDF:</label>
-                                <input type="text" id="pdfSetName" placeholder="e.g., History Notes Chapter 1">
-                            </div>
-                            <div class="form-group">
-                                <label>Upload PDF File:</label>
-                                <input type="file" id="pdfFileInput" accept=".pdf" style="padding: 5px;">
-                            </div>
-                            <button onclick="createPdfSet()">Create PDF Set</button>
-                        </div>
-
+                        
                         <hr style="margin: 30px 0;">
-                        <h3>Add Questions Manually</h3>
+                        <h3>Bulk Import</h3>
                          <div class="form-group">
                             <label for="setCategory">Set Category (for timer):</label>
                             <select id="setCategory">
@@ -892,26 +945,9 @@
                             <input type="date" id="setUploadDate">
                         </div>
                         <div class="form-group">
-                            <label>Question Set Name:</label>
-                            <input type="text" id="setName" placeholder="e.g., General Knowledge Set 1">
+                            <label for="setSubject">Subject (for new sets):</label>
+                            <input type="text" id="setSubject" placeholder="e.g., History, Physics, etc.">
                         </div>
-                        <div class="form-group">
-                            <label>Question:</label>
-                            <textarea id="questionText" placeholder="Enter your question here..." rows="2"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Options (one per line):</label>
-                            <textarea id="questionOptions" placeholder="Option A&#10;Option B&#10;Option C&#10;Option D" rows="4"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Correct Answer:</label>
-                            <select id="correctAnswer">
-                                <option value="A">A</option> <option value="B">B</option> <option value="C">C</option> <option value="D">D</option>
-                            </select>
-                        </div>
-                        <button onclick="addQuestion()">Add Question</button>
-                        <hr style="margin: 20px 0;">
-                        <h3>Bulk Import</h3>
                         <div class="form-group">
                             <label>Select Target Set:</label>
                             <select id="bulkSetSelect" onchange="toggleNewBulkSetName()"></select>
@@ -932,7 +968,7 @@
                     </div>
                 </div>
 
-                <div id="editQuestionsSection" class="hidden" style="margin-top: 20px;">
+                <div id="editQuestionsSection" class="admin-tab-content hidden" style="margin-top: 20px;">
                     <button id="backToSetListBtn" class="btn-warning">&larr; Back to Set Management</button>
                     <h3 id="editQuestionsTitle" style="margin-top: 15px;">Edit Questions in Set: </h3>
                     <div class="form-group">
@@ -943,6 +979,7 @@
                         </select>
                     </div>
                     <div id="questionsToEditList" style="margin-top: 15px;"></div>
+                    
                     <div id="questionEditForm" class="hidden" style="border: 1px solid #ddd; padding: 20px; border-radius: var(--border-radius); margin-top: 20px;">
                         <h4>Editing Question <span id="currentQuestionIndexDisplay"></span></h4>
                         <div class="form-group">
@@ -965,14 +1002,12 @@
                     </div>
                 </div>
                 
-                <div id="reportedQuestionsSection" class="hidden" style="margin-top: 20px;">
-                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
+                <div id="adminReported" class="admin-tab-content hidden" style="margin-top: 20px;">
                     <h2 style="margin-top: 15px;">Reported Questions for Review</h2>
                     <div id="reportedQuestionsList"></div>
                 </div>
                 
-                <div id="attendanceRegisterSection" class="hidden" style="margin-top: 20px;">
-                    <button class="backToSettingsBtn">&larr; Back to Settings</button>
+                <div id="adminAttendance" class="admin-tab-content hidden" style="margin-top: 20px;">
                     <h2 style="margin-top: 15px;">Player Attendance & Revision Register</h2>
                     <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                         <p>Legend:</p>
@@ -980,7 +1015,7 @@
                         <div style="display:flex; align-items:center; gap: 5px;"><div style="width:15px; height:15px; position:relative; background:#eee; border-radius:4px;"><span style="position:absolute; bottom:1px; right:1px; width:6px; height:6px; background:var(--primary-color); border-radius:50%;"></span></div> Revision Due</div>
                     </div>
                     <div class="form-group">
-                        <label for="attendancePlayerSelect">Select Player:</label>
+                        <label for="attendancePlayerSelect">Select Player (Flags for 3+ days absence):</label>
                         <select id="attendancePlayerSelect" onchange="renderAdminAttendanceCalendar(this.value)"></select>
                     </div>
                     <div class="calendar-container">
@@ -993,6 +1028,24 @@
                     </div>
                 </div>
 
+                <div id="adminHistory" class="admin-tab-content hidden" style="margin-top: 20px;">
+                    <h2 style="margin-top: 15px;">Full User Practice History</h2>
+                    <div class="form-group">
+                        <label for="historyPlayerSelect">Select Player:</label>
+                        <select id="historyPlayerSelect" onchange="loadAdminHistory(this.value)"></select>
+                    </div>
+                    <div id="adminHistoryList" style="max-height: 60vh; overflow-y: auto;"></div>
+                </div>
+
+                <div id="adminBacklogs" class="admin-tab-content hidden" style="margin-top: 20px;">
+                    <h2 style="margin-top: 15px;">Manage User Backlogs</h2>
+                    <p>Use this tool to manually mark a backlog item as 'Completed' for a user if it's stuck due to a bug.</p>
+                    <div class="form-group">
+                        <label for="backlogPlayerSelect">Select Player:</label>
+                        <select id="backlogPlayerSelect" onchange="loadAdminBacklogs(this.value)"></select>
+                    </div>
+                    <div id="adminBacklogList" style="max-height: 60vh; overflow-y: auto;"></div>
+                </div>
 
             </div>
 
@@ -1074,18 +1127,32 @@
         let audioCtx;
 
         // --- APP STATE ---
-        let firebaseConfig = JSON.parse(localStorage.getItem('firebaseConfig')) || null;
+        // FIREBASE MIGRATION: Updated config
+        let firebaseConfig = JSON.parse(localStorage.getItem('firebaseConfig')) || {
+            apiKey: "AIzaSyCBrnqUFD4GSkvcSGCu6nBk-7aT-5OUMD4",
+            authDomain: "pscprep-b58a9.firebaseapp.com",
+            databaseURL: "https://pscprep-b58a9-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "pscprep-b58a9",
+            storageBucket: "pscprep-b58a9.appspot.com",
+            messagingSenderId: "593969785527",
+            appId: "1:593969785527:web:e53a3dd9359b80716fbb32"
+        };
         let db = null;
+        let auth = null; // Added for Firebase Auth
         let isFirebaseConnected = false;
+        let isAdmin = false; // Added for admin access
         
-        let questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+        // OPTIMIZATION: `questionSets` now only holds METADATA. `questionCache` holds loaded data.
+        let questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {}; // Holds metadata only
+        let questionCache = JSON.parse(localStorage.getItem('pscQuestionCache')) || {}; // Holds full question/PDF data
+        
         let practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
         let revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {}; 
         let playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
         let dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
         
-        const ADMIN_PASSWORD = "2525", SETTINGS_PASSWORD = "2525";
+        // PASSWORDS REMOVED
         
         let currentSet = [], currentQuestionIndex = 0, score = 0, timer, timeElapsed = 0, practiceStartTime = 0, currentPlayerName = '', currentAttempt = null, totalTimeLimit = 0, isRevisionMode = false, currentRevisionKey = null;
         let practiceInProgress = false;
@@ -1096,8 +1163,6 @@
 
         let selectedAvatarUrl = null;
         let pendingPlayerName = null;
-        
-        let analyzedQuestionsBySet = {}; 
         
         let currentAttendanceCalendarDate = new Date();
         let currentAdminAttendanceDate = new Date();
@@ -1130,27 +1195,25 @@
         }
         
         function loadLocalData() {
+            // OPTIMIZATION: Load metadata and cache
             questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+            questionCache = JSON.parse(localStorage.getItem('pscQuestionCache')) || {};
+            
             practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
             revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
             playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
             reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
             dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
-            loadQuestionSets(); // This populates the UI with local data
+            loadQuestionSetsList(); // This populates the ADMIN UI
             updatePlayerSelects();
         }
 
         function setupEventListeners() {
             document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
-            document.getElementById('showAddQuestionsBtn').addEventListener('click', showAddQuestionsSection);
             
             document.querySelectorAll('.backToSettingsBtn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    document.getElementById('addQuestionsSection').classList.add('hidden');
-                    document.getElementById('editQuestionsSection').classList.add('hidden');
-                    document.getElementById('reportedQuestionsSection').classList.add('hidden');
-                    document.getElementById('attendanceRegisterSection').classList.add('hidden');
-                    document.getElementById('mainSettings').classList.remove('hidden');
+                    switchAdminTab('adminMain');
                 });
             });
 
@@ -1159,24 +1222,9 @@
                     returnToReportedQuestionsView();
                 } else {
                     document.getElementById('editQuestionsSection').classList.add('hidden');
-                    document.getElementById('addQuestionsSection').classList.remove('hidden');
+                    document.getElementById('adminQuestionSets').classList.remove('hidden');
                     currentEditingSet = null;
                 }
-            });
-            
-            document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
-                document.getElementById('mainSettings').classList.add('hidden');
-                document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-                renderReportedQuestions();
-            });
-
-            document.getElementById('showAttendanceRegisterBtn').addEventListener('click', () => {
-                document.getElementById('mainSettings').classList.add('hidden');
-                document.getElementById('attendanceRegisterSection').classList.remove('hidden');
-                currentAdminAttendanceDate = new Date();
-                updatePlayerSelects(); // Ensure dropdown is populated
-                const firstPlayer = document.getElementById('attendancePlayerSelect').value;
-                if(firstPlayer) renderAdminAttendanceCalendar(firstPlayer);
             });
             
             document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
@@ -1238,6 +1286,11 @@
             if (playerProfileListener && db) db.ref(`playerProfiles/${currentPlayerName}`).off('value', playerProfileListener);
             if (revisionProgressListener && db) db.ref(`revisionProgress/${currentPlayerName}`).off('value', revisionProgressListener);
             
+            if (auth) auth.signOut(); // Sign out from Firebase Auth
+            isAdmin = false;
+            document.getElementById('adminTabButton').classList.add('hidden');
+            document.getElementById('adminLoginBtn').classList.remove('hidden');
+
             currentPlayerName = '';
             localStorage.removeItem('pscLastPlayer');
             window.location.reload();
@@ -1247,23 +1300,13 @@
 
         // --- FIREBASE FUNCTIONS (REFACTORED) ---
         function initializeFirebase() {
-            if (!firebaseConfig) {
-                firebaseConfig = {
-                    apiKey: "AIzaSyCF7gt8mnbQ1wWCb1wl_mHlmNh02Ssff8g",
-                    authDomain: "new-psc.firebaseapp.com",
-                    databaseURL: "https://new-psc-default-rtdb.firebaseio.com",
-                    projectId: "new-psc",
-                    storageBucket: "new-psc.appspot.com",
-                    messagingSenderId: "189806791539",
-                    appId: "1:189806791539:web:2c5ec45561e6822d93d306"
-                };
-                localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
-            }
+            // Config is now set by default from MIGRATION
             document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
             
             try {
                 if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
+                auth = firebase.auth(); // Initialize Auth
                 updateFirebaseStatus('Connecting...', false);
                 
                 db.ref('.info/connected').on('value', snapshot => {
@@ -1285,16 +1328,18 @@
 
         function fetchInitialDataFromFirebase() {
             if (!db) return;
-            // Fetch data that is mostly static or needed for login screen
-            db.ref('questionSets').once('value').then(snapshot => {
+            // OPTIMIZATION: Fetch ONLY metadata for question sets
+            db.ref('questionSetMetadata').once('value').then(snapshot => {
                 const data = snapshot.val();
                 if (data) { 
                     questionSets = data; 
                     localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets)); 
-                    loadQuestionSets(); 
-                    updateSetSelects(); 
+                    loadQuestionSetsList(); // Update admin UI
+                    populateSubjectSelect(); // Update user UI
+                    updateSetSelects(); // Update admin bulk-upload dropdown
                 }
             });
+            // Fetch profiles for login list
             db.ref('playerProfiles').once('value').then(snapshot => {
                 const data = snapshot.val();
                 if (data) { 
@@ -1303,11 +1348,13 @@
                     updatePlayerSelects(); 
                 }
             });
+            // Fetch reported questions for admin badge
              db.ref('reportedQuestions').once('value').then(snapshot => {
                 const data = snapshot.val();
                 if (data) { 
                     reportedQuestions = data; 
                     localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); 
+                    updateReportedBadge();
                 }
             });
         }
@@ -1343,23 +1390,44 @@
         
         function syncToFirebase() {
             if (!isFirebaseConnected) { showNotification('Firebase not connected', 'error'); return; }
-            // Sync everything - this is an admin action, so it's okay to be heavy.
-            db.ref('questionSets').set(questionSets);
+            // This is a heavy operation, split into metadata and questions
+            
+            const metadata = {};
+            const questions = {};
+            const pdfs = {};
+
+            for (const setName in questionSets) {
+                const set = questionSets[setName];
+                // Create metadata entry
+                metadata[setName] = {
+                    subject: set.subject || 'Uncategorized',
+                    category: set.category || 'gk',
+                    uploadDate: set.uploadDate || getTodayDateString(),
+                    type: set.type || 'questions',
+                    questionCount: set.questionCount || 0
+                };
+            }
+            // This is complex because local `questionSets` only has metadata
+            // `syncToFirebase` should probably just sync non-question data
             db.ref('practiceHistory').set(practiceHistory);
             db.ref('revisionProgress').set(revisionProgress); 
             db.ref('playerProfiles').set(playerProfiles);
             db.ref('reportedQuestions').set(reportedQuestions);
             db.ref('dailyRevisionScores').set(dailyRevisionScores);
-            showNotification('All data synced to Firebase!');
+            // Manually re-sync question metadata
+            db.ref('questionSetMetadata').set(questionSets);
+
+            showNotification('Non-question data synced to Firebase!');
+            showNotification('Question sets must be synced via the Admin->Question Sets panel.', 'warning');
         }
         
         // --- DATA MANAGEMENT ---
         function exportData() {
-            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores };
+            const data = { questionSets, questionCache, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = 'psc-prep-backup.json'; a.click();
+            a.href = url; a.download = 'psc-prep-backup-full.json'; a.click();
             URL.revokeObjectURL(url);
         }
 
@@ -1373,17 +1441,21 @@
                     try {
                         const data = JSON.parse(event.target.result);
                         if(data.questionSets) questionSets = data.questionSets;
+                        if(data.questionCache) questionCache = data.questionCache;
                         if(data.practiceHistory) practiceHistory = data.practiceHistory;
                         if(data.revisionProgress) revisionProgress = data.revisionProgress;
                         if(data.playerProfiles) playerProfiles = data.playerProfiles;
                         if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
                         if(data.dailyRevisionScores) dailyRevisionScores = data.dailyRevisionScores;
+                        
                         localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                        localStorage.setItem('pscQuestionCache', JSON.stringify(questionCache));
                         localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                         localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                         localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                         localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
                         localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                        
                         init();
                         showNotification('Data imported successfully!');
                     } catch (err) { showNotification('Invalid import file', 'error'); }
@@ -1394,21 +1466,25 @@
         }
 
         function clearAllData() {
-            showPasswordModal("Clear ALL data (Questions, History, Progress)?", ADMIN_PASSWORD, () => {
-                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {};
+            if (!isAdmin) { showNotification('Admin access required.', 'error'); return; }
+            showPasswordModal("Clear ALL data (Questions, History, Progress)?", "ADMIN_ACTION", () => {
+                questionSets = {}; questionCache = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {};
                 localStorage.clear();
-                if (isFirebaseConnected) { db.ref().set(null); }
+                if (isFirebaseConnected) { 
+                    db.ref().set(null); // This clears the ENTIRE database
+                }
                 init();
                 showNotification('All data cleared!', 'error');
-            }, "Enter Admin Password");
+            }, "Enter Admin Email to Confirm", "admin-email");
         }
         
         function removePlayer() {
+            if (!isAdmin) { showNotification('Admin access required.', 'error'); return; }
             const playerToRemove = document.getElementById('playerToRemoveSelect').value;
             if (!playerToRemove) { return; }
 
-            showPasswordModal(`Are you sure you want to remove '${playerToRemove}' and all their data?`, ADMIN_PASSWORD, () => {
-                // 1. Remove profile and revision progress from local and Firebase
+            showPasswordModal(`Are you sure you want to remove '${playerToRemove}' and all their data?`, "ADMIN_ACTION", () => {
+                // 1. Remove profile and revision progress
                 delete playerProfiles[playerToRemove];
                 delete revisionProgress[playerToRemove];
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
@@ -1418,7 +1494,7 @@
                     db.ref(`revisionProgress/${playerToRemove}`).remove();
                 }
 
-                // 2. Remove history (this is slower, needs to be done carefully)
+                // 2. Remove history
                 const historyKeysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToRemove);
                 historyKeysToDelete.forEach(key => {
                     delete practiceHistory[key];
@@ -1442,14 +1518,15 @@
                 else { updatePlayerSelects(); }
 
                 showNotification(`Player '${playerToRemove}' has been removed.`, 'error');
-            }, "Enter Admin Password to Confirm");
+            }, "Enter Admin Email to Confirm", "admin-email");
         }
 
         function clearPlayerHistory() {
+            if (!isAdmin) { showNotification('Admin access required.', 'error'); return; }
             const playerToClear = document.getElementById('playerToClearHistorySelect').value;
             if (!playerToClear) { return; }
             
-            showPasswordModal(`Are you sure you want to clear ALL practice and revision history for '${playerToClear}'? This action cannot be undone.`, ADMIN_PASSWORD, () => {
+            showPasswordModal(`Are you sure you want to clear ALL practice and revision history for '${playerToClear}'?`, "ADMIN_ACTION", () => {
                 const keysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToClear);
                 
                 keysToDelete.forEach(key => {
@@ -1460,19 +1537,20 @@
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                 showNotification(`All history for ${playerToClear} has been cleared.`, 'error');
                 
-            }, "Confirm History Deletion");
+            }, "Confirm History Deletion", "admin-email");
         }
 
 
         function resetRevisionProgress() {
-            showPasswordModal("Reset ALL Revision Progress for ALL players?", ADMIN_PASSWORD, () => {
+            if (!isAdmin) { showNotification('Admin access required.', 'error'); return; }
+            showPasswordModal("Reset ALL Revision Progress for ALL players?", "ADMIN_ACTION", () => {
                 revisionProgress = {};
                 localStorage.removeItem('pscRevisionProgress');
                 if (isFirebaseConnected) { db.ref('revisionProgress').remove(); }
                 renderRevisionPage();
                 renderBacklogPage();
                 showNotification('All Revision Progress has been reset.', 'error');
-            }, 'Enter Admin Password to Reset');
+            }, 'Enter Admin Email to Reset', "admin-email");
         }
 
         // --- NEW/MODIFIED GAMIFICATION & PFP FUNCTIONS ---
@@ -1574,40 +1652,130 @@
                     currentAttendanceCalendarDate = new Date();
                     renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
                 }
-                if(tabName === 'settings') {
-                    document.getElementById('addQuestionsSection').classList.add('hidden');
-                    document.getElementById('editQuestionsSection').classList.add('hidden');
-                    document.getElementById('reportedQuestionsSection').classList.add('hidden');
-                    document.getElementById('mainSettings').classList.remove('hidden');
-                    editingFromReport.active = false;
+                if(tabName === 'admin') {
+                    if (!isAdmin) {
+                        showNotification('You do not have permission to view this tab.', 'error');
+                        switchTab('practice'); // default to practice
+                        return;
+                    }
+                    // Default to main admin tab
+                    switchAdminTab('adminMain');
                 }
             };
+            
+            // Password check removed
+            openTab();
+        }
 
-            if (tabName === 'settings') { showPasswordModal("Enter Settings Password", SETTINGS_PASSWORD, openTab, "Settings Access"); } 
-            else { openTab(); }
+        // --- NEW ADMIN TAB SWITCHER ---
+        function switchAdminTab(tabId) {
+            document.querySelectorAll('.admin-tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabId}')"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // Specific loads
+            if (tabId === 'adminQuestionSets') {
+                document.getElementById('addQuestionsContent').classList.remove('hidden');
+                document.getElementById('editQuestionsSection').classList.add('hidden');
+                loadQuestionSetsList();
+                updateSetSelects();
+            }
+            if (tabId === 'adminReported') {
+                renderReportedQuestions();
+            }
+            if (tabId === 'adminAttendance') {
+                currentAdminAttendanceDate = new Date();
+                const firstPlayer = document.getElementById('attendancePlayerSelect').value;
+                if(firstPlayer) renderAdminAttendanceCalendar(firstPlayer);
+            }
+            if (tabId === 'adminHistory') {
+                const firstPlayer = document.getElementById('historyPlayerSelect').value;
+                if(firstPlayer) loadAdminHistory(firstPlayer);
+            }
+             if (tabId === 'adminBacklogs') {
+                const firstPlayer = document.getElementById('backlogPlayerSelect').value;
+                if(firstPlayer) loadAdminBacklogs(firstPlayer);
+            }
         }
         
         function switchPracticeView(viewId) {
             document.querySelectorAll('#practice .view-stage').forEach(view => view.classList.add('hidden'));
             document.getElementById(viewId).classList.remove('hidden');
-        }
 
-        function showAddQuestionsSection() {
-            document.getElementById('addQuestionsSection').classList.remove('hidden');
-            document.getElementById('mainSettings').classList.add('hidden');
-            
-            // Populate bulk upload dropdown
-            const bulkSelect = document.getElementById('bulkSetSelect');
-            const setNames = Object.keys(questionSets).filter(name => questionSets[name].type !== 'pdf').sort();
-            const currentVal = bulkSelect.value;
-            bulkSelect.innerHTML = `<option value="">-- Select an existing set --</option>`;
-            bulkSelect.innerHTML += setNames.map(name => `<option value="${name}">${name}</option>`).join('');
-            bulkSelect.innerHTML += `<option value="_new_">** Create a New Set **</option>`;
-            bulkSelect.value = '_new_'; 
-            toggleNewBulkSetName(); 
+            if (viewId === 'practiceSetupView') {
+                populateSubjectSelect(); // Repopulate subjects when view is shown
+            }
         }
         
         // --- NEW/MODIFIED Player and Password Functions ---
+        
+        // --- NEW ADMIN LOGIN FUNCTIONS ---
+        function showAdminLogin() {
+            document.getElementById('passwordConfirmGroup').classList.add('hidden');
+            document.getElementById('passwordModalTitle').textContent = `Admin Login`;
+            document.getElementById('passwordModalPrompt').textContent = 'Please enter admin email and password:';
+            const emailInput = document.getElementById('passwordInput');
+            emailInput.type = "email";
+            emailInput.placeholder = "Admin Email";
+            
+            const passConfirmGroup = document.getElementById('passwordConfirmGroup');
+            passConfirmGroup.classList.remove('hidden');
+            const passInput = document.getElementById('passwordConfirmInput');
+            passInput.placeholder = "Admin Password";
+            
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+            submitBtn.textContent = 'Login'; 
+            emailInput.value = ''; passInput.value = '';
+
+            openModal('passwordModal'); 
+            emailInput.focus();
+            
+            submitBtn.onclick = () => {
+                const email = emailInput.value;
+                const password = passInput.value;
+                if (!email || !password) {
+                    showNotification('Email and Password are required.', 'error');
+                    return;
+                }
+                
+                auth.signInWithEmailAndPassword(email, password)
+                    .then((userCredential) => {
+                        handleAdminLogin(userCredential.user);
+                        closeModal('passwordModal');
+                    })
+                    .catch((error) => {
+                        showNotification(`Admin Login Failed: ${error.message}`, 'error');
+                    });
+            };
+            
+            passInput.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
+            emailInput.onkeyup = (event) => { if(event.key === 'Enter') passInput.focus(); }
+
+            // Reset input types on close
+            const originalOnClose = document.querySelector('#passwordModal .btn-danger').onclick;
+            document.querySelector('#passwordModal .btn-danger').onclick = () => {
+                emailInput.type = "password";
+                emailInput.placeholder = "";
+                passInput.placeholder = "Confirm Password";
+                closeModal('passwordModal');
+            };
+        }
+
+        function handleAdminLogin(user) {
+            // In a real app, you'd check user.uid against a secure list or custom claim
+            // For this demo, any successful login via auth is considered "admin"
+            isAdmin = true;
+            document.getElementById('adminLoginBtn').classList.add('hidden');
+            document.getElementById('adminTabButton').classList.remove('hidden');
+            switchTab('admin');
+            showNotification('Admin login successful!', 'success');
+        }
+        // --- END ADMIN LOGIN FUNCTIONS ---
+
+
         function handlePlayerSelection() {
             const select = document.getElementById('playerSelect');
             const name = select.value;
@@ -1679,10 +1847,10 @@
 
             currentPlayerName = name;
             localStorage.setItem('pscLastPlayer', currentPlayerName);
+            document.getElementById('adminLoginBtn').classList.add('hidden');
             
             handleDailyLogin();
 
-            // --- REFACTORED: Attach specific listeners for the current player ---
             if (isFirebaseConnected && db) {
                 // 1. Listen to this user's profile
                 const playerRef = db.ref(`playerProfiles/${currentPlayerName}`);
@@ -1713,7 +1881,8 @@
         }
 
         function updateUserPassword() {
-            showPasswordModal("Enter Admin Password to confirm password change", ADMIN_PASSWORD, () => {
+            if (!isAdmin) { showNotification('Admin access required.', 'error'); return; }
+            showPasswordModal("Enter Admin Email to confirm password change", "ADMIN_ACTION", () => {
                 const userToUpdate = document.getElementById('passwordUserSelect').value;
                 const newPassword = document.getElementById('newUserPassword').value;
                 if (!userToUpdate || !newPassword) { showNotification('Please select a user and enter a new password.', 'warning'); return; }
@@ -1722,14 +1891,65 @@
                 savePlayerProfiles();
                 document.getElementById('newUserPassword').value = '';
                 showNotification(`Password for ${userToUpdate} has been updated.`, 'success');
-            }, "Admin Confirmation");
+            }, "Admin Confirmation", "admin-email");
         }
 
         // --- Practice Session Functions ---
-        function startPracticeWrapper(setName = null, isRev = false, revisionKey = null) {
+
+        // OPTIMIZATION: Refactored to be async and load questions on demand
+        async function getQuestionSetData(setName) {
+            if (!setName) return null;
+            
+            // 1. Check local cache
+            if (questionCache[setName]) {
+                return questionCache[setName];
+            }
+            
+            // 2. Check metadata for type
+            const setMeta = questionSets[setName];
+            if (!setMeta) {
+                showNotification(`Error: Metadata for set "${setName}" not found.`, 'error');
+                return null;
+            }
+
+            let path;
+            if (setMeta.type === 'pdf') {
+                path = `questionSetPdf/${setName}`;
+            } else {
+                path = `questionSetQuestions/${setName}`;
+            }
+
+            // 3. Fetch from Firebase
+            if (isFirebaseConnected && db) {
+                try {
+                    const snapshot = await db.ref(path).once('value');
+                    const data = snapshot.val();
+                    if (data) {
+                        // 4. Save to cache and local storage
+                        questionCache[setName] = data;
+                        localStorage.setItem('pscQuestionCache', JSON.stringify(questionCache));
+                        return data;
+                    } else {
+                        showNotification(`Error: Could not find data for set "${setName}" in database.`, 'error');
+                        return null;
+                    }
+                } catch (err) {
+                    showNotification(`Error fetching set data: ${err.message}`, 'error');
+                    return null;
+                }
+            } else {
+                showNotification('Firebase not connected. Cannot load question set.', 'error');
+                return null;
+            }
+        }
+
+        async function startPracticeWrapper(setName = null, isRev = false, revisionKey = null) {
             if (!currentPlayerName) { return; } 
             const selectedSetName = setName || document.getElementById('practiceSetSelect').value;
             if (!selectedSetName) { showNotification('Please select a question set.', 'error'); return; }
+
+            const setMeta = questionSets[selectedSetName];
+            if (!setMeta) { showNotification('Cannot find metadata for selected set.', 'error'); return; }
 
             if (isRev) {
                 const todayStr = getTodayDateString();
@@ -1744,29 +1964,33 @@
                     return;
                 }
             }
+            
+            if (setMeta.type === 'pdf') { 
+                showNotification('This is a PDF set. Please start revisions from the Revision Plan tab.', 'warning'); 
+                return; 
+            }
+            
+            // OPTIMIZATION: Load set data on demand
+            const setData = await getQuestionSetData(selectedSetName);
+            if (!setData || !setData.questions || setData.questions.length === 0) {
+                showNotification('Selected set is empty or could not be loaded.', 'error');
+                return;
+            }
 
-            const set = questionSets[selectedSetName];
-            if (set.type === 'pdf') { showNotification('This is a PDF set. Please start revisions from the Revision Plan tab.', 'warning'); return; }
             document.body.classList.add('practice-active');
             switchPracticeView('practiceSessionView');
-            startPractice(selectedSetName, isRev, revisionKey);
+            startPractice(selectedSetName, setMeta, setData, isRev, revisionKey);
         }
 
-        function startPractice(setName, isRev, revisionKey) { 
+        function startPractice(setName, setMeta, setData, isRev, revisionKey) { 
             if (practiceInProgress) return;
             practiceInProgress = true;
             initAudio();
             isRevisionMode = isRev; currentRevisionKey = revisionKey;
-            currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
-            if (currentSet.length === 0) { 
-                showNotification('Selected set is empty.', 'error'); 
-                practiceInProgress = false;
-                switchPracticeView('practiceSetupView');
-                return; 
-            }
             
-            const set = questionSets[setName];
-            const category = set.category || 'gk';
+            currentSet = [...(setData.questions || [])].sort(() => Math.random() - 0.5);
+            
+            const category = setMeta.category || 'gk';
             let timePerQuestion;
             if (category === 'math') {
                 timePerQuestion = 45;
@@ -1783,7 +2007,6 @@
             };
             document.getElementById('practiceScore').textContent = 'Score: 0';
             
-            // --- ROBUST TIMER IMPLEMENTATION ---
             clearInterval(timer); 
             practiceStartTime = Date.now();
             timer = setInterval(() => { 
@@ -1794,7 +2017,7 @@
                 
                 if (remaining <= 0) { 
                     showNotification('Time limit reached!', 'error'); 
-                    endPractice(); // This will clear the interval
+                    endPractice(); 
                 }
             }, 1000);
             showNextQuestion();
@@ -1874,11 +2097,10 @@
         }
 
         function endPractice() {
-            // --- TIMER FIX: Add a guard to prevent multiple executions ---
             if (!practiceInProgress) {
                 return;
             }
-            practiceInProgress = false; // Set this immediately
+            practiceInProgress = false; 
             clearInterval(timer);
 
             if (!currentAttempt) {
@@ -1935,7 +2157,6 @@
                 const success = percentage >= MIN_SCORE_FOR_REVISION_SUCCESS;
                 revisionProgress[currentPlayerName][currentRevisionKey] = { percentage, date: new Date().toISOString(), success };
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                // Update Firebase specifically for this user's revision progress
                 if (isFirebaseConnected) db.ref(`revisionProgress/${currentPlayerName}`).set(revisionProgress[currentPlayerName]);
                 renderRevisionPage();
                 renderBacklogPage();
@@ -1997,7 +2218,6 @@
                     }
                 }
             }
-            // Do not save here, will be saved in calculateAndApplyXP
         }
 
         function calculateAndApplyXP(correctAnswers) {
@@ -2045,7 +2265,6 @@
                 showNotification(`🎉 Title Up! You are now a ${newLevelInfo.title}!`);
             }
             
-            // This is a critical save point for the profile
             localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
             if(isFirebaseConnected) db.ref(`playerProfiles/${currentPlayerName}`).set(profile);
             
@@ -2057,7 +2276,8 @@
         }
         
         function resetAllXP() {
-            showPasswordModal("Reset ALL XP and Streaks for ALL players?", ADMIN_PASSWORD, () => {
+            if (!isAdmin) { showNotification('Admin access required.', 'error'); return; }
+            showPasswordModal("Reset ALL XP and Streaks for ALL players?", "ADMIN_ACTION", () => {
                 for (const playerName in playerProfiles) {
                     const profile = playerProfiles[playerName];
                     profile.totalXP = 0;
@@ -2072,11 +2292,12 @@
                 if (isFirebaseConnected) db.ref('dailyRevisionScores').set({});
                 if (currentPlayerName) { loadPlayerProgress(); }
                 showNotification('All player XP and streaks have been reset.', 'error');
-            }, 'Enter Admin Password to Reset');
+            }, 'Enter Admin Email to Reset', "admin-email");
         }
 
-        // --- Question Set Management ---
-        function loadQuestionSets() {
+        // --- Question Set Management (OPTIMIZED) ---
+        function loadQuestionSetsList() {
+            // This populates the ADMIN list of question sets
             const setsList = document.getElementById('setsList');
             if (!setsList) return;
             const sortedSetNames = Object.keys(questionSets).sort((a, b) => {
@@ -2088,13 +2309,22 @@
                 const set = questionSets[setName];
                 const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
                 const isPdfSet = set.type === 'pdf';
-                const countText = isPdfSet ? 'PDF Set' : `${(set.questions || []).length} questions`;
+                const countText = isPdfSet ? 'PDF Set' : `${set.questionCount || 0} questions`;
                 const categoryText = set.category ? `(${set.category.toUpperCase()})` : '';
+                const subjectText = set.subject || 'Uncategorized';
+                
+                // Use btoa to create valid ID from setName
+                const setNameId = btoa(encodeURIComponent(setName)); 
+
                 return `
                 <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
                     <div>
                         <h4 style="margin-bottom: 3px;">${setName} ${categoryText} (${countText})</h4>
                         <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
+                        <p style="font-size: 12px; color: #555;">Subject: <span id="subject-display-${setNameId}">${subjectText}</span>
+                            <input type="text" id="subject-input-${setNameId}" placeholder="New Subject" style="width: 120px; font-size: 12px; padding: 5px; margin-left: 10px;">
+                            <button onclick="updateSubject('${setName}')" class="btn-warning" style="margin: 2px; padding: 4px 8px; font-size: 12px;">Set Subject</button>
+                        </p>
                     </div>
                     <div style="display: flex; flex-wrap: wrap;">
                         ${!isPdfSet ? `<button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>` : ''}
@@ -2105,53 +2335,110 @@
             }).join('') || '<p>No question sets found.</p>';
         }
 
-        function updateSetSelects() {
-            const selects = [document.getElementById('practiceSetSelect')];
-            const sortedSetNames = Object.keys(questionSets).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
-            const practiceSets = sortedSetNames.filter(name => questionSets[name].type !== 'pdf');
-            selects.forEach(s => {
-                if (!s) return;
-                const currentVal = s.value;
-                s.innerHTML = '<option value="">Select a question set</option>' + practiceSets.map(name => `<option value="${name}">${name}</option>`).join('');
-                s.value = currentVal;
-            });
-            const startBtn = document.getElementById('startPracticeBtn');
-            if(startBtn) startBtn.disabled = practiceSets.length === 0;
+        function updateSubject(setName) {
+            if (!isAdmin) return;
+            const setNameId = btoa(encodeURIComponent(setName));
+            const newSubject = document.getElementById(`subject-input-${setNameId}`).value.trim();
+            if (!newSubject) {
+                showNotification('Please enter a subject name.', 'warning');
+                return;
+            }
+            questionSets[setName].subject = newSubject;
+            saveQuestionSetMetadata(setName); // Save just this one
+            document.getElementById(`subject-display-${setNameId}`).textContent = newSubject;
+            document.getElementById(`subject-input-${setNameId}`).value = '';
+            showNotification('Subject updated!', 'success');
         }
 
-        function updatePlayerSelects() {
-            const selects = [document.getElementById('playerSelect'), document.getElementById('playerToRemoveSelect'), document.getElementById('playerToClearHistorySelect'), document.getElementById('passwordUserSelect'), document.getElementById('attendancePlayerSelect')];
-            const players = Object.keys(playerProfiles).sort();
-            selects.forEach(s => {
-                if (!s) return;
-                const currentVal = s.value;
-                s.innerHTML = `<option value="">Select a player</option>` + players.map(p => `<option value="${p}">${p}</option>`).join('');
-                if (players.includes(currentVal)) s.value = currentVal;
+        // Populates USER practice tab subject select
+        function populateSubjectSelect() {
+            const subjectSelect = document.getElementById('subjectSelect');
+            if (!subjectSelect) return;
+            
+            const subjects = new Set();
+            Object.values(questionSets).forEach(set => {
+                if (set.subject) subjects.add(set.subject);
+                else subjects.add('Uncategorized');
             });
+            
+            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>' + 
+                                      [...subjects].sort().map(s => `<option value="${s}">${s}</option>`).join('');
+            populatePracticeSetSelect(""); // Clear question set list
+        }
+
+        // Populates USER practice tab question set select
+        function populatePracticeSetSelect(subject) {
+            const setSelect = document.getElementById('practiceSetSelect');
+            const startBtn = document.getElementById('startPracticeBtn');
+            if (!subject) {
+                setSelect.innerHTML = '<option value="">-- Select Subject First --</option>';
+                if(startBtn) startBtn.disabled = true;
+                return;
+            }
+            
+            const setsInSubject = Object.keys(questionSets).filter(setName => {
+                const set = questionSets[setName];
+                const setSubject = set.subject || 'Uncategorized';
+                return setSubject === subject && set.type !== 'pdf';
+            }).sort((a,b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
+            
+            if (setsInSubject.length > 0) {
+                setSelect.innerHTML = setsInSubject.map(name => `<option value="${name}">${name}</option>`).join('');
+                if(startBtn) startBtn.disabled = false;
+            } else {
+                setSelect.innerHTML = '<option value="">-- No sets in this subject --</option>';
+                if(startBtn) startBtn.disabled = true;
+            }
+        }
+
+        // Populates ADMIN bulk upload dropdown
+        function updateSetSelects() {
+            const bulkSelect = document.getElementById('bulkSetSelect');
+            if (!bulkSelect) return;
+            
+            const setNames = Object.keys(questionSets).filter(name => questionSets[name].type !== 'pdf').sort();
+            const currentVal = bulkSelect.value;
+            bulkSelect.innerHTML = `<option value="">-- Select an existing set --</option>`;
+            bulkSelect.innerHTML += setNames.map(name => `<option value="${name}">${name}</option>`).join('');
+            bulkSelect.innerHTML += `<option value="_new_">** Create a New Set **</option>`;
+            bulkSelect.value = '_new_'; 
+            toggleNewBulkSetName(); 
+        }
+
+        // OPTIMIZATION: New functions to save data to new DB structure
+        function saveQuestionSetMetadata(setName) {
+            const set = questionSets[setName];
+            if (!set) return;
+
+            // Create clean metadata
+            const metadata = {
+                subject: set.subject || 'Uncategorized',
+                category: set.category || 'gk',
+                uploadDate: set.uploadDate || getTodayDateString(),
+                type: set.type || 'questions',
+                questionCount: set.questionCount || 0
+            };
+            
+            questionSets[setName] = metadata; // Update local metadata
+            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets)); // Save all metadata
+            
+            if (isFirebaseConnected) {
+                db.ref(`questionSetMetadata/${setName}`).set(metadata);
+            }
         }
         
-        function addQuestion() {
-            const setName = document.getElementById('setName').value.trim();
-            const qText = document.getElementById('questionText').value.trim();
-            const optsText = document.getElementById('questionOptions').value.trim();
-            if (!setName || !qText || !optsText) { showNotification('All fields are required.', 'error'); return; }
-            const options = optsText.split('\n').map(o => o.trim()).filter(Boolean);
-            if(options.length !== 4) { showNotification('Please provide exactly 4 options (one per line).', 'error'); return; }
-            if(!questionSets[setName]) {
-                const uploadDate = document.getElementById('setUploadDate').value;
-                const category = document.getElementById('setCategory').value;
-                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category };
+        async function saveQuestionSetData(setName, setData) {
+            // setData is { questions: [...] }
+            questionCache[setName] = setData; // Update local cache
+            localStorage.setItem('pscQuestionCache', JSON.stringify(questionCache));
+            
+            if (isFirebaseConnected) {
+                try {
+                    await db.ref(`questionSetQuestions/${setName}`).set(setData);
+                } catch (err) {
+                    showNotification(`Error saving questions: ${err.message}`, 'error');
+                }
             }
-            questionSets[setName].questions.push({ question: qText, options, correctAnswer: document.getElementById('correctAnswer').value });
-            saveQuestionSets();
-            showNotification('Question added!');
-            loadQuestionSets(); updateSetSelects();
-            document.getElementById('questionText').value = ''; document.getElementById('questionOptions').value = '';
-        }
-
-        function saveQuestionSets(){
-             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
         }
 
         function toggleNewBulkSetName() {
@@ -2165,11 +2452,14 @@
             }
         }
 
-        function importBulkQuestions() {
+        async function importBulkQuestions() {
+            if (!isAdmin) return;
             const select = document.getElementById('bulkSetSelect');
             let setName;
+            let isNewSet = false;
             if (select.value === '_new_') {
                 setName = document.getElementById('bulkSetName').value.trim();
+                isNewSet = true;
             } else {
                 setName = select.value;
             }
@@ -2178,146 +2468,211 @@
             if (!setName || !bulkText) { showNotification('A set name/selection and questions are required for bulk import.', 'error'); return; }
             
             let imported = 0;
-            if(!questionSets[setName]) {
-                const uploadDate = document.getElementById('setUploadDate').value;
+            let questionsData;
+
+            if (isNewSet) {
+                questionsData = { questions: [] };
+                const uploadDate = document.getElementById('setUploadDate').value || getTodayDateString();
                 const category = document.getElementById('setCategory').value;
-                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category };
+                const subject = document.getElementById('setSubject').value.trim() || 'Uncategorized';
+                // Create new metadata
+                questionSets[setName] = { uploadDate, category, subject, type: 'questions', questionCount: 0 };
+            } else {
+                // Fetch existing questions
+                questionsData = await getQuestionSetData(setName);
+                if (!questionsData) {
+                    showNotification('Could not load existing set to append questions.', 'error');
+                    return;
+                }
             }
+
             bulkText.split('\n').forEach(line => {
                 const parts = line.split('|').map(p => p.trim());
                 if(parts.length === 6) {
-                    questionSets[setName].questions.push({ question: parts[0], options: parts.slice(1, 5), correctAnswer: parts[5].toUpperCase() });
+                    questionsData.questions.push({ question: parts[0], options: parts.slice(1, 5), correctAnswer: parts[5].toUpperCase() });
                     imported++;
                 }
             });
-            saveQuestionSets();
+            
+            // Update metadata count
+            questionSets[setName].questionCount = questionsData.questions.length;
+
+            // Save both metadata and question data
+            saveQuestionSetMetadata(setName);
+            await saveQuestionSetData(setName, questionsData);
+            
             showNotification(`${imported} questions imported to "${setName}"`);
-            loadQuestionSets(); 
+            loadQuestionSetsList(); 
             updateSetSelects();
             document.getElementById('bulkQuestions').value = '';
-            showAddQuestionsSection(); // Repopulate the dropdown with new set if created
+            document.getElementById('bulkSetName').value = '';
+            document.getElementById('setSubject').value = '';
         }
 
         function deleteQuestionSet(setName) {
-            showPasswordModal(`Delete "${setName}"?`, ADMIN_PASSWORD, () => {
+            if (!isAdmin) return;
+            showPasswordModal(`Delete "${setName}" and all its questions?`, "ADMIN_ACTION", () => {
                 delete questionSets[setName];
-                saveQuestionSets();
+                delete questionCache[setName];
+                
+                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                localStorage.setItem('pscQuestionCache', JSON.stringify(questionCache));
+                
+                if (isFirebaseConnected) {
+                    db.ref(`questionSetMetadata/${setName}`).remove();
+                    db.ref(`questionSetQuestions/${setName}`).remove();
+                    db.ref(`questionSetPdf/${setName}`).remove(); // Clean up all paths
+                }
                 showNotification(`Set "${setName}" deleted.`, 'error');
-                loadQuestionSets(); updateSetSelects();
-            }, 'Enter Admin Password to Delete');
+                loadQuestionSetsList(); 
+                updateSetSelects();
+            }, 'Enter Admin Email to Delete', "admin-email");
         }
         
         function renameSet(oldName) {
-            const newName = prompt("Enter the new name for the question set:", oldName);
-            if (!newName || newName.trim() === '') { showNotification('Set name cannot be empty.', 'warning'); return; }
-            if (newName === oldName) return;
-            if (questionSets[newName]) { showNotification(`A set named "${newName}" already exists.`, 'error'); return; }
-            questionSets[newName] = { ...questionSets[oldName] };
-            delete questionSets[oldName];
-            Object.keys(practiceHistory).forEach(key => { if (practiceHistory[key].setName === oldName) { practiceHistory[key].setName = newName; } });
-            Object.keys(revisionProgress).forEach(player => {
-                Object.keys(revisionProgress[player]).forEach(revKey => {
-                    if (revKey.startsWith(`${oldName}_RevDay`)) {
-                        const newRevKey = revKey.replace(oldName, newName);
-                        revisionProgress[player][newRevKey] = revisionProgress[player][revKey];
-                        delete revisionProgress[player][revKey];
-                    }
-                });
-            });
-            saveQuestionSets();
-            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-            if (isFirebaseConnected) { 
-                db.ref('questionSets').set(questionSets); 
-                db.ref('practiceHistory').set(practiceHistory); 
-                db.ref('revisionProgress').set(revisionProgress); 
-            }
-            showNotification(`Set renamed from "${oldName}" to "${newName}".`, 'success');
-            loadQuestionSets(); updateSetSelects();
+            // This is now extremely complex as it requires copying/deleting in multiple Firebase paths
+            // For now, this will only rename locally.
+            if (!isAdmin) return;
+            showNotification('Renaming sets is disabled due to new database structure. Please delete and re-import.', 'error');
+            return;
+            
+            // const newName = prompt("Enter the new name for the question set:", oldName);
+            // if (!newName || newName.trim() === '' || newName === oldName) return;
+            // if (questionSets[newName]) { showNotification(`A set named "${newName}" already exists.`, 'error'); return; }
+            
+            // // This is a placeholder, a true rename requires a server-side function or complex multi-path client logic
+            // questionSets[newName] = { ...questionSets[oldName] };
+            // delete questionSets[oldName];
+            // saveQuestionSets(); // This is not ideal
+            // showNotification(`Set renamed locally. Full DB rename is complex.`, 'warning');
+            // loadQuestionSetsList(); updateSetSelects();
         }
 
-        function editQuestionSet(setName) {
+        async function editQuestionSet(setName) {
             currentEditingSet = setName;
-            document.getElementById('addQuestionsSection').classList.add('hidden');
-            document.getElementById('editQuestionsSection').classList.remove('hidden');
+            switchAdminTab('editQuestionsSection'); // Switch to the edit view
+            document.getElementById('adminQuestionSets').classList.add('hidden'); // Hide set list
+            
             document.getElementById('editQuestionsTitle').textContent = `Edit Questions in Set: ${setName}`;
             document.getElementById('questionEditForm').classList.add('hidden');
             document.getElementById('questionsToEditList').classList.remove('hidden');
             document.getElementById('editSetCategory').value = questionSets[setName].category || 'gk';
+            
             const questionsListDiv = document.getElementById('questionsToEditList');
-            const questions = questionSets[setName].questions || [];
-            questionsListDiv.innerHTML = questions.map((q, index) => `
-                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <p style="flex-grow: 1;"><strong>${index + 1}.</strong> ${q.question.substring(0, 80)}...</p>
+            questionsListDiv.innerHTML = '<p>Loading questions...</p>';
+
+            const setData = await getQuestionSetData(setName);
+            if (!setData || !setData.questions) {
+                 questionsListDiv.innerHTML = '<p>Could not load questions for this set.</p>';
+                 return;
+            }
+            
+            const questions = setData.questions;
+            
+            // 3.1: Show full question and answer
+            questionsListDiv.innerHTML = questions.map((q, index) => {
+                const correctIndex = q.correctAnswer.charCodeAt(0) - 65;
+                const correctText = (q.options && q.options[correctIndex]) ? q.options[correctIndex] : 'N/A';
+                
+                return `
+                <div class="history-item" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
+                    <p style="flex-grow: 1;">
+                        <strong>${index + 1}. ${q.question}</strong>
+                        <br>
+                        <span class="correct-answer" style="font-size: 0.9em;">Answer: ${q.correctAnswer}. ${correctText}</span>
+                    </p>
                     <div>
                         <button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning" style="margin: 0; padding: 8px 15px;">Edit</button>
                         <button onclick="deleteSpecificQuestion('${setName}', ${index})" class="btn-danger" style="margin: 0; padding: 8px 15px;">Delete</button>
                     </div>
-                </div>`).join('') || '<p>No questions in this set.</p>';
+                </div>`
+            }).join('') || '<p>No questions in this set.</p>';
         }
 
         function updateSetCategory() {
+            if (!isAdmin) return;
             if (currentEditingSet && questionSets[currentEditingSet]) {
                 questionSets[currentEditingSet].category = document.getElementById('editSetCategory').value;
-                saveQuestionSets();
+                saveQuestionSetMetadata(currentEditingSet); // Save updated metadata
                 showNotification(`Category for ${currentEditingSet} updated.`, 'success');
             }
         }
 
-        function deleteSpecificQuestion(setName, qIndex) {
-            const questionText = questionSets[setName].questions[qIndex].question.substring(0, 30);
-            showPasswordModal(`Are you sure you want to delete this question: "${questionText}..."?`, ADMIN_PASSWORD, () => {
-                questionSets[setName].questions.splice(qIndex, 1);
-                saveQuestionSets();
+        async function deleteSpecificQuestion(setName, qIndex) {
+            if (!isAdmin) return;
+            
+            const setData = await getQuestionSetData(setName);
+            if (!setData || !setData.questions) { showNotification('Could not load set data.', 'error'); return; }
+
+            const questionText = setData.questions[qIndex].question.substring(0, 30);
+            
+            showPasswordModal(`Are you sure you want to delete this question: "${questionText}..."?`, "ADMIN_ACTION", async () => {
+                setData.questions.splice(qIndex, 1); // Remove from cached data
+                questionSets[setName].questionCount = setData.questions.length; // Update metadata count
+                
+                await saveQuestionSetData(setName, setData); // Save question data
+                saveQuestionSetMetadata(setName); // Save metadata
+                
                 showNotification('Question deleted successfully.', 'error');
-                editQuestionSet(setName);
-            }, "Confirm Deletion");
+                editQuestionSet(setName); // Refresh edit view
+            }, "Confirm Deletion", "admin-email");
         }
 
-        function deleteCurrentEditedQuestion() {
+        async function deleteCurrentEditedQuestion() {
             if (currentEditingSet === null || currentEditingIndex === -1) return;
-            showPasswordModal(`Are you sure you want to delete this question?`, ADMIN_PASSWORD, () => {
-                questionSets[currentEditingSet].questions.splice(currentEditingIndex, 1);
-                saveQuestionSets();
-                showNotification('Question deleted successfully.', 'error');
-                document.getElementById('questionEditForm').classList.add('hidden');
-                editQuestionSet(currentEditingSet); 
-                currentEditingIndex = -1;
-            }, "Confirm Deletion");
+            await deleteSpecificQuestion(currentEditingSet, currentEditingIndex);
+            cancelQuestionEdit(); // Go back to list
         }
 
-        function editSpecificQuestion(setName, qIndex) {
-            currentEditingIndex = qIndex; currentEditingSet = setName;
-            const question = questionSets[setName].questions[qIndex];
+        async function editSpecificQuestion(setName, qIndex) {
+            currentEditingIndex = qIndex; 
+            currentEditingSet = setName;
+            
+            const setData = await getQuestionSetData(setName);
+            if (!setData || !setData.questions) { showNotification('Could not load set data.', 'error'); return; }
+            
+            const question = setData.questions[qIndex];
+            if (!question) { showNotification('Could not find question.', 'error'); return; }
+            
             document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
             document.getElementById('editQuestionText').value = question.question;
-            document.getElementById('editQuestionOptions').value = question.options.join('\n');
+            document.getElementById('editQuestionOptions').value = (question.options || []).join('\n');
             document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-            document.getElementById('addQuestionsSection').classList.add('hidden');
-            document.getElementById('editQuestionsSection').classList.remove('hidden');
+            
             document.getElementById('questionsToEditList').classList.add('hidden');
             document.getElementById('questionEditForm').classList.remove('hidden');
         }
 
-        function saveEditedQuestion() {
-            const setName = currentEditingSet; const qIndex = currentEditingIndex;
+        async function saveEditedQuestion() {
+            if (!isAdmin) return;
+            const setName = currentEditingSet; 
+            const qIndex = currentEditingIndex;
+            
             const newQText = document.getElementById('editQuestionText').value.trim();
             const newOptsText = document.getElementById('editQuestionOptions').value.trim();
             const newCorrectAnswer = document.getElementById('editCorrectAnswer').value;
             if (!newQText || !newOptsText) { showNotification('Question text and options are required.', 'error'); return; }
+            
             const newOptions = newOptsText.split('\n').map(o => o.trim()).filter(Boolean);
             if(newOptions.length !== 4) { showNotification('Please provide exactly 4 options.', 'error'); return; }
-            questionSets[setName].questions[qIndex] = { question: newQText, options: newOptions, correctAnswer: newCorrectAnswer };
-            saveQuestionSets();
+            
+            // Get current set data
+            const setData = await getQuestionSetData(setName);
+            if (!setData || !setData.questions) { showNotification('Could not load set data to save.', 'error'); return; }
+            
+            // Update the question
+            setData.questions[qIndex] = { question: newQText, options: newOptions, correctAnswer: newCorrectAnswer };
+            
+            // Save data back
+            await saveQuestionSetData(setName, setData);
+            
             showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
+            
             if (editingFromReport.active) {
                 dismissReport(editingFromReport.reportId, true);
                 returnToReportedQuestionsView();
             } else {
-                const nextQuestionIndex = qIndex + 1;
-                const totalQuestionsInSet = questionSets[setName].questions.length;
-                if (nextQuestionIndex < totalQuestionsInSet) { editSpecificQuestion(setName, nextQuestionIndex); } 
-                else { showNotification(`Finished editing all questions in ${setName}.`, 'success'); cancelQuestionEdit(); }
+                cancelQuestionEdit(); // Go back to the list view
             }
         }
 
@@ -2325,9 +2680,7 @@
             if (editingFromReport.active) { returnToReportedQuestionsView(); } 
             else {
                 document.getElementById('questionEditForm').classList.add('hidden');
-                document.getElementById('addQuestionsSection').classList.remove('hidden');
-                document.getElementById('editQuestionsSection').classList.add('hidden');
-                editQuestionSet(currentEditingSet);
+                editQuestionSet(currentEditingSet); // Refresh list
                 currentEditingIndex = -1;
             }
         }
@@ -2339,7 +2692,6 @@
                 showTodayLeaderboard();
                 return;
             }
-            // Fetch fresh data for leaderboards on-demand
              db.ref('dailyRevisionScores').once('value').then(snapshot => {
                 dailyRevisionScores = snapshot.val() || {};
                 localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
@@ -2349,6 +2701,7 @@
                 playerProfiles = snapshot.val() || {};
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                 showXpLeaderboard();
+                updatePlayerSelects(); // Ensure player selects are updated with fresh data
             });
         }
 
@@ -2365,7 +2718,7 @@
                 };
             });
 
-            leaderboardData.sort((a, b) => b.totalXP - a.totalXP || b.totalCorrect - a.totalCorrect);
+            leaderboardData.sort((a, b) => b.totalXP - b.totalXP || b.totalCorrect - a.totalCorrect);
 
             const tbody = document.getElementById('xpLeaderboardTableBody');
             tbody.innerHTML = leaderboardData.map((player, i) => {
@@ -2405,24 +2758,20 @@
         }
 
 
-        // --- History ---
+        // --- History (UPDATED per 4.2) ---
         function loadHistory() {
-            document.getElementById('questionAnalysisView').classList.add('hidden');
             document.getElementById('historyList').classList.remove('hidden');
             
             const listDiv = document.getElementById('historyList');
             const promptEl = document.getElementById('historyPrompt');
-            const controlsEl = document.getElementById('historyControls');
 
             if (!currentPlayerName) { 
                 listDiv.innerHTML = '';
                 promptEl.textContent = 'Please select a player on the Practice tab to view your history.';
-                controlsEl.classList.add('hidden');
                 return; 
             }
 
             promptEl.textContent = 'Showing your latest attempt for each question set. Loading...';
-            controlsEl.classList.remove('hidden');
             
             const render = (historyData) => {
                  const playerAttempts = Object.values(historyData).filter(a => a.playerName === currentPlayerName);
@@ -2438,147 +2787,68 @@
                     return `<div class="history-item">
                         <h4>${a.setName} ${isRevText} - ${new Date(a.startTime).toLocaleString('en-US', timeFormat)}</h4>
                         <p>Score: ${a.score}/${a.totalQuestions} (${a.percentage}%) | Time: ${formatTime(a.timeSpent)}</p>
-                        <button onclick="viewAttemptDetails('${a.startTime}')">View Details</button>
+                        <button onclick="viewAttemptDetails('${a.startTime}')">View Wrong Answers</button>
                     </div>`}).join('') || '<p>No history found for you. Time to practice!</p>';
                 promptEl.textContent = 'Showing your latest attempt for each question set.';
             };
             
-            // Render with local data first, then fetch fresh data if connected
             render(practiceHistory);
             if (isFirebaseConnected && db) {
                  db.ref('practiceHistory').orderByChild('playerName').equalTo(currentPlayerName).once('value').then(snapshot => {
                     const data = snapshot.val();
                     if(data) {
-                        // Merge fresh data with local data
                         Object.assign(practiceHistory, data);
                         localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-                        render(practiceHistory); // Re-render with fresh data
+                        render(practiceHistory); 
                     }
                 });
             }
         }
 
+        // 4.2: Only show wrong answers
         function viewAttemptDetails(startTime) {
             const attempt = Object.values(practiceHistory).find(a => a.startTime === startTime);
             if (!attempt) return;
-            let detailsHtml = `<h2>Details for ${attempt.setName}</h2>
-                <div style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;">
-                    <button onclick="toggleWrongAnswersView(this)">Show Wrong Answers Only</button>
-                </div><div id="attemptDetailsList">`;
-            attempt.answers.forEach((ans, index) => {
-                const qText = ans.questionText || 'Question details missing';
-                const qOptions = ans.questionOptions || ['A', 'B', 'C', 'D'];
-                const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
-                const correctText = qOptions[correctIndex] || 'N/A';
-                let answerDisplay;
-                if (ans.isCorrect) { 
-                    answerDisplay = `<p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
-                } else if (ans.isSkipped) { 
-                    answerDisplay = `<p class="wrong-answer">Skipped</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
-                } else {
-                    const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
-                    const selectedText = qOptions[selectedIndex] || 'N/A';
-                    answerDisplay = `<p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${selectedText}</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`;
-                }
-                detailsHtml += `
-                    <div class="question-detail-item question-set" data-correct="${ans.isCorrect}" style="margin-top:15px; border-left: 4px solid ${ans.isCorrect ? 'var(--success-color)' : 'var(--danger-color)'};">
-                        <p><strong>${index + 1}. ${qText}</strong></p>
-                        ${answerDisplay}
-                    </div>`;
-            });
+            
+            const wrongAnswers = attempt.answers.filter(ans => !ans.isCorrect);
+
+            let detailsHtml = `<h2>Wrong Answers for ${attempt.setName}</h2>
+                <div id="attemptDetailsList">`;
+            
+            if (wrongAnswers.length === 0) {
+                 detailsHtml += '<p style="margin-top: 15px;" class="correct-answer">No wrong answers on this attempt. Great job!</p>';
+            } else {
+                wrongAnswers.forEach((ans, index) => {
+                    const qText = ans.questionText || 'Question details missing';
+                    const qOptions = ans.questionOptions || ['A', 'B', 'C', 'D'];
+                    const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
+                    const correctText = qOptions[correctIndex] || 'N/A';
+                    let answerDisplay;
+                    
+                    if (ans.isSkipped) { 
+                        answerDisplay = `<p class="wrong-answer">Skipped</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
+                    } else {
+                        const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
+                        const selectedText = qOptions[selectedIndex] || 'N/A';
+                        answerDisplay = `<p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${selectedText}</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`;
+                    }
+                    detailsHtml += `
+                        <div class="question-detail-item question-set" data-correct="${ans.isCorrect}" style="margin-top:15px; border-left: 4px solid var(--danger-color);">
+                            <p><strong>${index + 1}. ${qText}</strong></p>
+                            ${answerDisplay}
+                        </div>`;
+                });
+            }
             detailsHtml += `</div><p style="margin-top:20px;">Total Practice Time: ${formatTime(attempt.timeSpent)}</p>`;
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml + `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
             openModal('viewDetailsModal');
         }
 
-        function toggleWrongAnswersView(button) {
-            const listContainer = document.getElementById('attemptDetailsList');
-            const wrongOnly = button.textContent.includes('Wrong');
-            listContainer.querySelectorAll('.question-detail-item').forEach(item => {
-                if (wrongOnly && item.dataset.correct === 'true') { item.style.display = 'none'; } 
-                else { item.style.display = 'block'; }
-            });
-            button.textContent = wrongOnly ? 'Show All Answers' : 'Show Wrong Answers Only';
-        }
+        // Timing analysis functions REMOVED
 
-        function showQuestionAnalysis() {
-            if (!currentPlayerName) { showNotification('Please select a player to analyze.', 'warning'); return; }
-            document.getElementById('historyList').classList.add('hidden');
-            document.getElementById('questionAnalysisView').classList.remove('hidden');
-            analyzedQuestionsBySet = {};
-            Object.values(practiceHistory).forEach(attempt => {
-                if (attempt.playerName === currentPlayerName && attempt.answers && Array.isArray(attempt.answers)) {
-                    if (!analyzedQuestionsBySet[attempt.setName]) { analyzedQuestionsBySet[attempt.setName] = []; }
-                    attempt.answers.forEach((answer, index) => {
-                        const prevTime = index > 0 ? (attempt.answers[index - 1].timeAtAnswer || 0) : 0;
-                        const timeTaken = (answer.timeAtAnswer || 0) - prevTime;
-                        analyzedQuestionsBySet[attempt.setName].push({
-                            questionText: answer.questionText || "N/A", timeTaken, isCorrect: answer.isCorrect,
-                            isSkipped: answer.isSkipped, correctAnswer: answer.correctAnswer, options: answer.questionOptions || [],
-                        });
-                    });
-                }
-            });
-            if (Object.keys(analyzedQuestionsBySet).length === 0) {
-                document.getElementById('questionAnalysisView').innerHTML = '<p>No question data found for you.</p><button onclick="loadHistory()">Back to History</button>';
-                return;
-            }
-            renderAnalysisInterface(analyzedQuestionsBySet);
-        }
-
-        function renderAnalysisInterface(questionsBySet) {
-            const analysisView = document.getElementById('questionAnalysisView');
-            const setNames = Object.keys(questionsBySet).sort((a, b) => new Date(questionSets[b]?.uploadDate || 0) - new Date(questionSets[a]?.uploadDate || 0));
-            const setOptions = setNames.map(name => `<option value="${name}">${name}</option>`).join('');
-            let viewHTML = `<h3>Question Timing Analysis</h3>
-                <p>A breakdown of every question you've answered. Select a set to view its analysis.</p>
-                <div style="margin: 15px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-                    <label for="analysisSetSelect" style="font-weight: 600;">Select Set:</label>
-                    <select id="analysisSetSelect" onchange="displayAnalysisForSet(this.value)" style="flex-grow: 1;">${setOptions}</select>
-                    <button onclick="sortCurrentAnalysis('slowest')">Sort Slowest</button>
-                    <button onclick="sortCurrentAnalysis('fastest')">Sort Fastest</button>
-                    <button onclick="loadHistory()" class="btn-warning">Back</button>
-                </div>
-                <div id="analysisTableContainer"></div>`;
-            analysisView.innerHTML = viewHTML;
-            if (setNames.length > 0) { displayAnalysisForSet(setNames[0]); }
-        }
-
-        function sortCurrentAnalysis(sortBy) {
-            const selectElement = document.getElementById('analysisSetSelect');
-            if(!selectElement) return;
-            const setName = selectElement.value;
-            if (!setName || !analyzedQuestionsBySet[setName]) return;
-            if (sortBy === 'slowest') { analyzedQuestionsBySet[setName].sort((a, b) => b.timeTaken - a.timeTaken); } 
-            else if (sortBy === 'fastest') { analyzedQuestionsBySet[setName].sort((a, b) => a.timeTaken - b.timeTaken); }
-            displayAnalysisForSet(setName);
-        }
-
-        function displayAnalysisForSet(setName) {
-            const container = document.getElementById('analysisTableContainer');
-            if (!setName || !analyzedQuestionsBySet[setName]) { container.innerHTML = "<p>Please select a valid set.</p>"; return; }
-            const questions = analyzedQuestionsBySet[setName];
-            let tableHTML = `<div class="history-item" style="border-left-color: var(--primary-color);"><div style="overflow-x: auto;"><table class="leaderboard-table">
-                            <thead><tr><th>Question & Answer</th><th>Time Taken</th><th>Result</th></tr></thead><tbody>`;
-            questions.forEach(q => {
-                let resultText = q.isSkipped ? 'Skipped' : (q.isCorrect ? 'Correct' : 'Incorrect');
-                let resultClass = q.isCorrect ? 'leaderboard-win-loss' : (q.isSkipped ? '' : 'loss');
-                const correctIndex = q.correctAnswer ? q.correctAnswer.charCodeAt(0) - 65 : -1;
-                const correctAnswerText = (correctIndex !== -1 && q.options.length > correctIndex) ? q.options[correctIndex] : 'N/A';
-                tableHTML += `
-                    <tr>
-                        <td data-label="Question">${q.questionText}<div class="correct-answer" style="margin-top: 5px; font-size: 0.9em;">↳ Answer: ${q.correctAnswer}. ${correctAnswerText}</div></td>
-                        <td data-label="Time Taken">${q.timeTaken} sec</td>
-                        <td data-label="Result"><span class="${resultClass}">${resultText}</span></td>
-                    </tr>`;
-            });
-            tableHTML += `</tbody></table></div></div>`;
-            container.innerHTML = tableHTML;
-        }
-
-        // --- REVISION FUNCTIONS ---
+        // --- REVISION FUNCTIONS (UPDATED per 4.3) ---
         function getRevisionItems() {
-            if (!currentPlayerName) return { dueToday: [], backlog: [], all: [] };
+            if (!currentPlayerName) return { dueToday: [], backlog: [] };
 
             const allMissedItems = [];
             const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -2586,10 +2856,16 @@
             const playerRevisionProgress = revisionProgress[currentPlayerName] || {};
 
             for (const setName in questionSets) {
-                const set = questionSets[setName];
+                const set = questionSets[setName]; // This is metadata
                 if (!set || typeof set.uploadDate === 'undefined') continue;
-                if (set.type === 'pdf' && !set.pdfDataUrl) continue;
-                if (set.type !== 'pdf' && (!set.questions || set.questions.length === 0)) continue;
+                
+                // Skip sets with no questions or PDF
+                if (set.type === 'pdf' && !set.pdfDataUrl && !questionCache[setName]) {
+                    // We don't know if a PDF exists unless we've loaded it.
+                    // This logic is tricky. We'll assume metadata is correct.
+                } else if (set.type !== 'pdf' && (set.questionCount || 0) === 0) {
+                    continue; // Skip empty question sets
+                }
 
                 for (const day of revisionIntervals) {
                     const uploadDate = new Date(set.uploadDate);
@@ -2602,16 +2878,42 @@
                         const isCompleted = playerRevisionStatus && playerRevisionStatus.success;
 
                         if (!isCompleted) {
-                            allMissedItems.push({ setName, day, type: set.type || 'questions', revisionDate });
+                            allMissedItems.push({ 
+                                setName, 
+                                day, 
+                                type: set.type || 'questions', 
+                                revisionDate, 
+                                revisionKey,
+                                questionCount: set.questionCount || 0,
+                                status: playerRevisionStatus // For retry logic
+                            });
                         }
                     }
                 }
             }
 
             const dueTodayItems = allMissedItems.filter(item => item.revisionDate.getTime() === today.getTime());
-            const fullBacklog = allMissedItems.filter(item => item.revisionDate.getTime() < today.getTime()).sort((a,b) => a.setName.localeCompare(b.setName) || a.revisionDate - b.revisionDate);
+            const fullBacklog = allMissedItems.filter(item => item.revisionDate.getTime() < today.getTime());
 
-            return { dueToday: dueTodayItems, all: fullBacklog };
+            // 4.3: Group and sort backlog
+            const groups = {};
+            fullBacklog.forEach(item => {
+                if (!groups[item.setName]) {
+                    groups[item.setName] = { name: item.setName, items: [], latestDate: new Date(0) };
+                }
+                groups[item.setName].items.push(item);
+                if (item.revisionDate > groups[item.setName].latestDate) {
+                    groups[item.setName].latestDate = item.revisionDate;
+                }
+            });
+
+            const sortedGroups = Object.values(groups).sort((a, b) => b.latestDate - a.latestDate);
+            // Sort items within each group by day
+            sortedGroups.forEach(group => {
+                group.items.sort((a, b) => a.day - b.day);
+            });
+
+            return { dueToday: dueTodayItems, backlog: sortedGroups };
         }
 
         function renderRevisionPage() {
@@ -2629,9 +2931,12 @@
             }
             
             const { dueToday } = getRevisionItems();
-            dueTodayDiv.innerHTML = dueToday.length > 0 ? dueToday.map(item => renderRevisionItem(item, false)).join('') : '<p>No revision tasks due today. Good job!</p>';
+            dueTodayDiv.innerHTML = dueToday.length > 0 
+                ? dueToday.map(item => renderRevisionItem(item, false)).join('') 
+                : '<p>No revision tasks due today. Good job!</p>';
         }
 
+        // 4.3: Render grouped backlog
         function renderBacklogPage() {
             const backlogDiv = document.getElementById('fullBacklogList');
             updateAllBadges();
@@ -2639,37 +2944,63 @@
                 backlogDiv.innerHTML = '<p>Please select a player to view the backlog.</p>'; 
                 return; 
             }
-            const { all: fullBacklog } = getRevisionItems();
-            backlogDiv.innerHTML = fullBacklog.length > 0 ? fullBacklog.map(item => renderRevisionItem(item, true)).join('') : '<p>Your backlog is clear. Keep it up!</p>';
+            const { backlog: sortedGroups } = getRevisionItems();
+            
+            backlogDiv.innerHTML = sortedGroups.length > 0 
+                ? sortedGroups.map(group => `
+                    <div class="question-set" style="margin: 10px 0; padding: 10px; border-left: 5px solid var(--danger-color); background: #fdfdfd;">
+                        <h3 style="margin-bottom: 10px;">${group.name}</h3>
+                        ${group.items.map(item => renderRevisionItemContent(item, true)).join('')}
+                    </div>
+                `).join('') 
+                : '<p>Your backlog is clear. Keep it up!</p>';
         }
 
+        // Renders the full box for an item (used in Due Today)
         function renderRevisionItem(item, isBacklog) {
-            const key = `${item.setName}_RevDay${item.day}`;
-            let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? 'var(--danger-color)' : 'var(--primary-color)'};"><h4>${item.setName} - Revision Day ${item.day}</h4>`;
+            const borderColor = isBacklog ? 'var(--danger-color)' : 'var(--primary-color)';
+            return `
+                <div class="history-item" style="border-left-color: ${borderColor};">
+                    <h4>${item.setName} - Revision Day ${item.day}</h4>
+                    ${renderRevisionItemContent(item, isBacklog)}
+                </div>`;
+        }
+        
+        // Renders just the *inside* of a revision item (used in Backlog groups)
+        function renderRevisionItemContent(item, isBacklog) {
+            let itemHtml = `<div style="padding: 10px; ${isBacklog ? 'border-top: 1px solid #eee;' : ''}">`;
+            if (!isBacklog) itemHtml = `<div>`; // No border for 'Due Today'
+            
+            const key = item.revisionKey;
+            
             if (item.type === 'pdf') {
                 itemHtml += `<p>This is a PDF study set.</p>
                     <button onclick="viewRevisionPdf('${item.setName}')">View PDF to Revise</button>
                     <button onclick="markPdfRevisionAsComplete('${key}')" class="btn-success">Mark as Completed</button>`;
             } else {
-                const status = (revisionProgress[currentPlayerName] || {})[key];
+                const status = item.status;
                 const percentage = status ? status.percentage : 0;
                 const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
                 const buttonClass = status ? 'btn-warning' : 'btn-success';
-                itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
+                itemHtml += `<p>Total Questions: ${item.questionCount}</p>
                     <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
                     ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
             }
-            itemHtml += `</div>`; return itemHtml;
+            itemHtml += `</div>`; 
+            return itemHtml;
         }
 
+
         function updateAllBadges() {
-            const { dueToday, all: fullBacklog } = getRevisionItems();
+            const { dueToday, backlog: sortedGroups } = getRevisionItems();
+            
+            const backlogItemCount = sortedGroups.reduce((acc, group) => acc + group.items.length, 0);
 
             const revisionButton = document.querySelector('nav button[onclick="switchTab(\'revision\')"]');
             updateBadgeOnButton(revisionButton, dueToday.length);
 
             const backlogButton = document.querySelector('nav button[onclick="switchTab(\'backlog\')"]');
-            updateBadgeOnButton(backlogButton, fullBacklog.length);
+            updateBadgeOnButton(backlogButton, backlogItemCount);
         }
 
         function updateBadgeOnButton(button, count) {
@@ -2826,6 +3157,116 @@
                 calendarBody.appendChild(dayCell);
             }
         }
+        
+        // --- NEW ADMIN FUNCTIONS (3.2, 3.3) ---
+        function loadAdminHistory(playerName) {
+            const listDiv = document.getElementById('adminHistoryList');
+            if (!playerName) {
+                listDiv.innerHTML = '<p>Select a player to view their full history.</p>';
+                return;
+            }
+            
+            const allAttempts = Object.values(practiceHistory)
+                .filter(a => a.playerName === playerName)
+                .sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
+            
+            if (allAttempts.length === 0) {
+                listDiv.innerHTML = '<p>No history found for this player.</p>';
+                return;
+            }
+            
+            const timeFormat = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+            listDiv.innerHTML = allAttempts.map(a => {
+                const isRevText = a.isRevision ? `(Revision: ${a.revisionKey.replace('_RevDay', ' Day ')})` : '(Practice)';
+                return `<div class="history-item">
+                    <h4>${a.setName} ${isRevText} - ${new Date(a.startTime).toLocaleString('en-US', timeFormat)}</h4>
+                    <p>Score: ${a.score}/${a.totalQuestions} (${a.percentage}%) | Time: ${formatTime(a.timeSpent)}</p>
+                    <button onclick="viewAttemptDetails('${a.startTime}')">View Wrong Answers</button>
+                </div>`
+            }).join('');
+        }
+        
+        function loadAdminBacklogs(playerName) {
+            const listDiv = document.getElementById('adminBacklogList');
+            if (!playerName) {
+                listDiv.innerHTML = '<p>Select a player to manage their backlogs.</p>';
+                return;
+            }
+
+            const playerRevisionProgress = revisionProgress[playerName] || {};
+            const allMissedItems = [];
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+
+            for (const setName in questionSets) {
+                const set = questionSets[setName];
+                if (!set || !set.uploadDate) continue;
+
+                for (const day of revisionIntervals) {
+                    const uploadDate = new Date(set.uploadDate);
+                    const revisionDate = new Date(uploadDate.setDate(uploadDate.getDate() + day));
+                    revisionDate.setHours(0,0,0,0);
+
+                    if (revisionDate <= today) { // Include all items up to today
+                        const revisionKey = `${setName}_RevDay${day}`;
+                        const playerRevisionStatus = playerRevisionProgress[revisionKey];
+                        const isCompleted = playerRevisionStatus && playerRevisionStatus.success;
+
+                        if (!isCompleted) {
+                            allMissedItems.push({ 
+                                setName, day, revisionKey, revisionDate,
+                                status: playerRevisionStatus 
+                            });
+                        }
+                    }
+                }
+            }
+            
+            if (allMissedItems.length === 0) {
+                listDiv.innerHTML = '<p>This user has no active backlogs.</p>';
+                return;
+            }
+
+            allMissedItems.sort((a,b) => b.revisionDate - a.revisionDate); // Sort by most recent first
+            
+            listDiv.innerHTML = allMissedItems.map(item => {
+                const dateStr = item.revisionDate.toLocaleDateString();
+                let statusText = `(Due: ${dateStr})`;
+                if (item.status) {
+                    statusText = `(Last Try: ${item.status.percentage}% on ${new Date(item.status.date).toLocaleDateString()})`;
+                }
+                return `
+                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; border-left-color: var(--danger-color);">
+                    <div>
+                        <strong>${item.setName} - Day ${item.day}</strong>
+                        <p style="font-size: 12px; color: #555;">${statusText}</p>
+                    </div>
+                    <button onclick="forceCompleteBacklog('${playerName}', '${item.revisionKey}')" class="btn-success">Mark as Complete</button>
+                </div>`
+            }).join('');
+        }
+
+        function forceCompleteBacklog(playerName, revisionKey) {
+            if (!isAdmin) return;
+            
+            showPasswordModal(`Force-complete ${revisionKey} for ${playerName}?`, "ADMIN_ACTION", () => {
+                if (!revisionProgress[playerName]) revisionProgress[playerName] = {};
+                
+                revisionProgress[playerName][revisionKey] = { 
+                    success: true, 
+                    date: new Date().toISOString(), 
+                    percentage: 100, 
+                    markedByAdmin: true 
+                };
+                
+                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+                if (isFirebaseConnected) {
+                    db.ref(`revisionProgress/${playerName}`).set(revisionProgress[playerName]);
+                }
+                
+                showNotification('Backlog item marked as complete.', 'success');
+                loadAdminBacklogs(playerName); // Refresh the list
+            }, "Confirm Action", "admin-email");
+        }
 
 
         // --- NEW STATS MODAL FUNCTION ---
@@ -2878,24 +3319,63 @@
         }
         const style = document.createElement('style'); style.innerHTML = `@keyframes slideInNotification{to{transform:translateX(0)}}@keyframes slideOutNotification{from{transform:translateX(0)}to{transform:translateX(120%)}}`; document.head.appendChild(style);
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; if(id === 'viewDetailsModal') {document.getElementById('viewDetailsModalContent').innerHTML='';} }
+        function closeModal(id) { 
+            document.getElementById(id).style.display = 'none'; 
+            if(id === 'viewDetailsModal') {
+                document.getElementById('viewDetailsModalContent').innerHTML='';
+            }
+            // Reset admin login modal inputs
+            if (id === 'passwordModal') {
+                document.getElementById('passwordInput').type = "password";
+                document.getElementById('passwordInput').placeholder = "";
+                document.getElementById('passwordConfirmInput').placeholder = "Confirm Password";
+            }
+        }
         
-        function showPasswordModal(prompt, correctPassword, onSuccess, title = "Admin Access") {
+        // REFACTORED showPasswordModal
+        function showPasswordModal(prompt, correctPasswordOrAction, onSuccess, title = "Admin Access", inputType = "password") {
+            const input = document.getElementById('passwordInput');
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+
             document.getElementById('passwordConfirmGroup').classList.add('hidden');
             document.getElementById('passwordModalTitle').textContent = title;
             document.getElementById('passwordModalPrompt').textContent = prompt;
-            const input = document.getElementById('passwordInput');
-            const submitBtn = document.getElementById('passwordSubmitBtn');
-            submitBtn.textContent = 'Submit'; input.value = '';
-            openModal('passwordModal'); input.focus();
+            submitBtn.textContent = 'Submit'; 
+            input.value = '';
+            
+            if (inputType === "admin-email") {
+                input.type = "email";
+                input.placeholder = "Enter Admin Email";
+            } else {
+                input.type = "password";
+                input.placeholder = "";
+            }
+
+            openModal('passwordModal'); 
+            input.focus();
+            
             submitBtn.onclick = () => {
-                if (input.value === correctPassword) { onSuccess(); closeModal('passwordModal'); } 
-                else { showNotification('Incorrect Password', 'error'); }
+                let isValid = false;
+                if (correctPasswordOrAction === "ADMIN_ACTION") {
+                    const currentUser = auth.currentUser;
+                    isValid = (isAdmin && currentUser && input.value === currentUser.email);
+                } else {
+                    isValid = (input.value === correctPasswordOrAction);
+                }
+
+                if (isValid) { 
+                    onSuccess(); 
+                    closeModal('passwordModal'); 
+                } else { 
+                    showNotification('Incorrect Password or Admin Email', 'error'); 
+                }
             };
             input.onkeyup = (event) => { if(event.key === 'Enter') submitBtn.click(); }
         }
 
         function showPasswordPrompt(playerName, correctPassword, onSuccess) {
+            document.getElementById('passwordInput').type = "password";
+            document.getElementById('passwordInput').placeholder = "";
             document.getElementById('passwordConfirmGroup').classList.add('hidden');
             document.getElementById('passwordModalTitle').textContent = `Login as ${playerName}`;
             document.getElementById('passwordModalPrompt').textContent = 'Please enter your password:';
@@ -2911,9 +3391,12 @@
         }
 
         function showCreatePasswordPrompt(playerName, onSuccess) {
+            document.getElementById('passwordInput').type = "password";
+            document.getElementById('passwordInput').placeholder = "";
             document.getElementById('passwordModalTitle').textContent = `Create Password for ${playerName}`;
             document.getElementById('passwordModalPrompt').textContent = 'Please create a password for your account.';
             document.getElementById('passwordConfirmGroup').classList.remove('hidden');
+            document.getElementById('passwordConfirmInput').placeholder = "Confirm Password";
             const passInput = document.getElementById('passwordInput');
             const confirmInput = document.getElementById('passwordConfirmInput');
             const submitBtn = document.getElementById('passwordSubmitBtn');
@@ -2976,12 +3459,29 @@
             if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
             showNotification('Question reported for admin review.', 'success');
             document.getElementById('reportQuestionBtn').classList.add('hidden');
+            updateReportedBadge();
+        }
+
+        function updateReportedBadge() {
+            const count = reportedQuestions.length;
+            const btn = document.getElementById('adminReportedTabBtn');
+            if (btn) {
+                btn.textContent = `Reported ${count > 0 ? `(${count})` : ''}`;
+                btn.style.color = count > 0 ? 'var(--danger-color)' : '';
+            }
         }
 
         function renderReportedQuestions() {
             const listDiv = document.getElementById('reportedQuestionsList');
-            if (reportedQuestions.length === 0) { listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>'; return; }
-            listDiv.innerHTML = reportedQuestions.map(report => {
+            // Sort by latest first
+            const sortedReports = [...reportedQuestions].sort((a,b) => new Date(b.reportedAt) - new Date(a.reportedAt));
+            
+            if (sortedReports.length === 0) { 
+                listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>'; 
+                return; 
+            }
+            
+            listDiv.innerHTML = sortedReports.map(report => {
                 const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
                 return `<div class="question-set" style="border-left-color: var(--danger-color);"><h4>Set: ${report.setName}</h4><p><strong>Question:</strong> ${report.question.question}</p>
                     <p style="margin-top: 5px;"><strong>Options:</strong> ${report.question.options.join(', ')}</p><p><strong>Correct Answer:</strong> ${report.question.correctAnswer} (${correctOpt})</p>
@@ -2995,48 +3495,45 @@
             localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
             if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
             renderReportedQuestions();
+            updateReportedBadge();
             if (!silent) showNotification('Report dismissed.', 'success');
         }
 
-        function editReportedQuestion(reportId) {
+        async function editReportedQuestion(reportId) {
             const report = reportedQuestions.find(r => r.reportId === reportId);
             if (!report) return;
-            const qIndex = (questionSets[report.setName].questions || []).findIndex(q => q.question === report.question.question);
-            if (qIndex === -1) { showNotification('Original question not found. It may have been edited or deleted.', 'error'); dismissReport(reportId); return; }
+
+            // Load the set data to find the question
+            const setData = await getQuestionSetData(report.setName);
+            if (!setData || !setData.questions) {
+                 showNotification('Original question set not found. It may have been deleted.', 'error');
+                 dismissReport(reportId); 
+                 return;
+            }
+
+            const qIndex = (setData.questions || []).findIndex(q => q.question === report.question.question);
+            if (qIndex === -1) { 
+                showNotification('Original question not found. It may have been edited or deleted.', 'error'); 
+                dismissReport(reportId); 
+                return; 
+            }
+            
             editingFromReport = { active: true, reportId: report.reportId };
-            document.getElementById('mainSettings').classList.add('hidden');
-            editSpecificQuestion(report.setName, qIndex);
+            switchAdminTab('editQuestionsSection'); // Go to edit view
+            editSpecificQuestion(report.setName, qIndex); // Pre-fill the form
         }
         
         function returnToReportedQuestionsView() {
             editingFromReport = { active: false, reportId: null };
-            document.getElementById('editQuestionsSection').classList.add('hidden');
-            document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-            renderReportedQuestions();
+            switchAdminTab('adminReported'); // Go back to reported list
         }
 
         // --- PDF FUNCTIONS ---
-        function createPdfSet() {
-            const setName = document.getElementById('pdfSetName').value.trim();
-            const fileInput = document.getElementById('pdfFileInput');
-            const file = fileInput.files[0];
-            if (!setName || !file) { showNotification('Please provide both a set name and a PDF file.', 'error'); return; }
-            if (file.size > 4 * 1024 * 1024) { showNotification('File is too large (max 4MB). Please choose a smaller PDF.', 'error'); return; }
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const pdfDataUrl = event.target.result;
-                questionSets[setName] = { type: 'pdf', pdfDataUrl, uploadDate: new Date().toISOString().split('T')[0] };
-                saveQuestionSets();
-                showNotification(`PDF set "${setName}" created successfully!`, 'success');
-                loadQuestionSets(); updateSetSelects();
-                document.getElementById('pdfSetName').value = ''; fileInput.value = '';
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function viewRevisionPdf(setName) {
-            const set = questionSets[setName];
-            if (set && set.type === 'pdf' && set.pdfDataUrl) {
+        // createPdfSet REMOVED
+        
+        async function viewRevisionPdf(setName) {
+            const set = await getQuestionSetData(setName); // Fetches from `questionSetPdf` path
+            if (set && set.pdfDataUrl) {
                 document.getElementById('pdfViewer').src = set.pdfDataUrl;
                 openModal('pdfViewModal');
             } else {
@@ -3058,6 +3555,44 @@
             renderRevisionPage();
             renderBacklogPage();
         }
+
+        // --- Utility to get all player selects ---
+        function updatePlayerSelects() {
+            const selects = [
+                document.getElementById('playerSelect'), 
+                document.getElementById('playerToRemoveSelect'), 
+                document.getElementById('playerToClearHistorySelect'), 
+                document.getElementById('passwordUserSelect'), 
+                document.getElementById('attendancePlayerSelect'),
+                document.getElementById('historyPlayerSelect'), // New admin history
+                document.getElementById('backlogPlayerSelect')  // New admin backlog
+            ];
+            
+            const players = Object.keys(playerProfiles).sort();
+            const today = new Date();
+            
+            const optionsHtml = players.map(p => {
+                const profile = playerProfiles[p];
+                let flag = '';
+                if (profile && profile.lastActiveDate) {
+                    const last = new Date(profile.lastActiveDate);
+                    const diffTime = today - last;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays > 3) {
+                        flag = ` (Absent ${diffDays-1}d+)`; // 3.2: Absence flag
+                    }
+                }
+                return `<option value="${p}">${p}${flag}</option>`;
+            }).join('');
+            
+            selects.forEach(s => {
+                if (!s) return;
+                const currentVal = s.value;
+                s.innerHTML = `<option value="">Select a player</option>` + optionsHtml;
+                if (players.includes(currentVal)) s.value = currentVal;
+            });
+        }
+
     </script>
 </body>
 </html>
