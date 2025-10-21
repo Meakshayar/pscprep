@@ -408,6 +408,7 @@
 
         .history-item, .question-set { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: var(--border-radius); border-left: 4px solid var(--secondary-color);}
         
+        .history-correct { color: var(--secondary-color); font-weight: bold; }
         .wrong-answer { color: var(--danger-color); font-weight: bold; }
         .correct-answer { color: var(--success-color); font-weight: bold; }
 
@@ -674,6 +675,7 @@
             <button onclick="switchTab('revision')">Revision Plan</button>
             <button onclick="switchTab('backlog')">Backlog</button>
             <button onclick="switchTab('leaderboard')">Leaderboard</button>
+            <button onclick="switchTab('history')">My History</button>
             <button onclick="switchTab('attendance')">Attendance</button>
         </nav>
         
@@ -775,6 +777,15 @@
                 </div>
             </div>
 
+            <div id="history" class="tab-content">
+                <h2>My Practice History</h2>
+                <p id="historyPrompt">Showing your latest attempt for each question set.</p>
+                <div id="historyControls" class="hidden" style="margin: 15px 0;">
+                    <button onclick="toggleWrongAnswersView(this, 'historyList')" class="btn-warning">Show Wrong Answers Only</button>
+                </div>
+                <div id="historyList"></div>
+            </div>
+            
             <div id="attendance" class="tab-content">
                 <h2>My Attendance & Revisions</h2>
                 <p>Your attendance is marked when you complete a session. Dots indicate days with due revisions.</p>
@@ -820,6 +831,7 @@
 
         <nav id="admin-tab-nav">
             <button onclick="switchAdminTab('adminQuestionSets')" class="active">Question Sets</button>
+            <button onclick="switchAdminTab('adminPlayerHistory')">Player History</button>
             <button onclick="switchAdminTab('adminBacklogManager')">Manage Backlogs</button>
             <button onclick="switchAdminTab('adminAttendance')">Attendance Register</button>
             <button onclick="switchAdminTab('adminSystem')">System</button>
@@ -867,6 +879,15 @@
                     <h3>Your Question Sets</h3>
                     <div id="setsList"></div>
                 </div>
+            </div>
+            
+            <div id="adminPlayerHistory" class="tab-content">
+                <h2>View Player History</h2>
+                <div class="form-group">
+                    <label for="historyPlayerSelect">Select Player:</label>
+                    <select id="historyPlayerSelect" onchange="renderAdminPlayerHistory(this.value)"></select>
+                </div>
+                <div id="adminHistoryList"></div>
             </div>
 
             <div id="adminBacklogManager" class="tab-content">
@@ -931,6 +952,11 @@
                     <select id="playerToRemoveSelect"></select>
                     <button onclick="removePlayer()" class="btn-danger">Remove Selected Player</button>
                 </div>
+                <div class="form-group" style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px;">
+                    <label for="playerToClearHistorySelect">Clear Full History for a Player:</label>
+                    <select id="playerToClearHistorySelect"></select>
+                    <button onclick="clearPlayerHistory()" class="btn-danger">Clear Player History</button>
+                </div>
                 <hr style="margin: 20px 0;">
                 <h4>Leaderboard & Progress Management</h4>
                 <button onclick="resetAllXP()" class="btn-danger">Clear All Player XP & Streaks</button>
@@ -968,7 +994,7 @@
                             <option value="A">A</option> <option value="B">B</option> <option value="C">C</option> <option value="D">D</option>
                         </select>
                     </div>
-                    <button onclick="saveEditedQuestion()" class="btn-success">Save & Next</button>
+                    <button onclick="saveEditedQuestion()" class="btn-success">Save Changes</button>
                     <button onclick="cancelQuestionEdit()">Cancel</button>
                     <button onclick="deleteCurrentEditedQuestion()" class="btn-danger" style="margin-top: 10px;">Delete This Question</button>
                 </div>
@@ -983,13 +1009,13 @@
 
     <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore"></p><p id="modalTime"></p><p id="modalXPGained"></p><button onclick="closeModal('resultsModal')">Close</button></div></div>
     <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><div id="passwordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="passwordConfirmInput" placeholder="Confirm Password"></div><button id="passwordSubmitBtn"></button><button onclick="closeModal('passwordModal')" class="btn-danger">Cancel</button></div></div>
+    <div id="viewDetailsModal" class="modal"><div class="modal-content large" id="viewDetailsModalContent" style="text-align: left; max-height: 80vh; overflow-y: auto;"></div></div>
     <div id="wrongAnswersModal" class="modal"><div class="modal-content large"><h2>Questions You Missed</h2><div id="wrongAnswersBody" class="modal-body"></div><button onclick="closeModal('wrongAnswersModal')" style="margin-top: 20px;">Close</button></div></div>
     <div id="avatarModal" class="modal"><div class="modal-content"><h3>Choose Your Avatar</h3><div id="modalAvatarSelection" class="avatar-selection"></div><button onclick="confirmAvatar()" class="btn-success">Confirm and Start</button></div></div>
     <div id="statsModal" class="modal"><div id="statsModalContent" class="modal-content"><h2>Player Statistics</h2><div class="stat-grid"><div class="stat-card"><h4>Title</h4><p id="statsTitle">_</p></div><div class="stat-card"><h4>Total XP</h4><p id="statsXP">_</p></div><div class="stat-card"><h4>Current Streak</h4><p id="statsStreak">_</p></div><div class="stat-card"><h4>Total Correct</h4><p id="statsCorrect" class="correct">_</p></div></div><button onclick="closeModal('statsModal')">Close</button></div></div>
     <div id="adminAuthModal" class="modal"><div class="modal-content"><h3 id="adminModalTitle">Admin Login</h3><p id="adminModalPrompt"></p><div class="form-group"><input type="text" id="adminUsername" placeholder="Username"></div><div class="form-group"><input type="password" id="adminPassword" placeholder="Password"></div><div id="adminPasswordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div><button id="adminSubmitBtn"></button><button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button></div></div>
 
     <script>
-        // --- START OF SCRIPT ---
 
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
@@ -1030,7 +1056,6 @@
         
         let currentSet = [], currentQuestionIndex = 0, score = 0, timer, timeElapsed = 0, currentPlayerName = '', currentAttempt = null, totalTimeLimit = 0, isRevisionMode = false, currentRevisionKey = null;
         let practiceInProgress = false;
-        let redirectToLeaderboard = false;
 
         let currentEditingSet = null;
         let currentEditingIndex = -1; 
@@ -1046,7 +1071,6 @@
 
         function init() {
             initializeFirebase();
-            cleanupOldHistory();
             loadQuestionSets();
             updatePlayerSelects();
             populateAvatars();
@@ -1113,36 +1137,6 @@
             }
         }
         
-        function cleanupOldHistory() {
-            const today = new Date();
-            const oneDayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString();
-            
-            const keysToDelete = [];
-            const cleanHistory = {};
-
-            Object.entries(practiceHistory).forEach(([key, attempt]) => {
-                if (attempt.startTime >= oneDayAgo) {
-                    cleanHistory[key] = attempt;
-                } else {
-                    keysToDelete.push(key);
-                }
-            });
-
-            practiceHistory = cleanHistory;
-            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-
-            if (isFirebaseConnected && keysToDelete.length > 0) {
-                console.log(`Cleaning up ${keysToDelete.length} old history entries from Firebase...`);
-                const updates = {};
-                keysToDelete.forEach(key => {
-                    updates[`practiceHistory/${key}`] = null;
-                });
-                db.ref().update(updates)
-                    .then(() => console.log('Firebase history cleanup successful.'))
-                    .catch(err => console.error('Firebase history cleanup failed:', err));
-            }
-        }
-        
         function setDailyQuote() {
             const quoteEl = document.getElementById('motivationalQuote');
             const quoteElLoggedIn = document.getElementById('motivationalQuoteLoggedIn');
@@ -1176,13 +1170,13 @@
         function initializeFirebase() {
             if (!firebaseConfig) {
                  firebaseConfig = {
-                    apiKey: "YOUR_API_KEY",
-                    authDomain: "YOUR_AUTH_DOMAIN",
-                    databaseURL: "YOUR_DATABASE_URL",
-                    projectId: "YOUR_PROJECT_ID",
-                    storageBucket: "YOUR_STORAGE_BUCKET",
-                    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-                    appId: "YOUR_APP_ID"
+                    apiKey: "AIzaSyCF7gt8mnbQ1wWCb1wl_mHlmNh02Ssff8g",
+                    authDomain: "new-psc.firebaseapp.com",
+                    databaseURL: "https://new-psc-default-rtdb.firebaseio.com",
+                    projectId: "new-psc",
+                    storageBucket: "new-psc.appspot.com",
+                    messagingSenderId: "189806791539",
+                    appId: "1:189806791539:web:2c5ec45561e6822d93d306"
                 };
                 localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
             }
@@ -1237,12 +1231,7 @@
             };
             
             db.ref('questionSets').on('value', s => { updateLocalData(s, 'pscQuestionSets', 'questionSets'); loadQuestionSets(); updateSubjectSelect(); });
-            db.ref('practiceHistory').on('value', s => { 
-                updateLocalData(s, 'pscPracticeHistory', 'practiceHistory'); 
-                cleanupOldHistory();
-                updatePlayerSelects(); 
-                if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
-            });
+            db.ref('practiceHistory').on('value', s => { updateLocalData(s, 'pscPracticeHistory', 'practiceHistory'); updatePlayerSelects(); if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards(); });
             db.ref('revisionProgress').on('value', s => { updateLocalData(s, 'pscRevisionProgress', 'revisionProgress'); renderRevisionPage(); renderBacklogPage(); });
             db.ref('playerProfiles').on('value', s => { updateLocalData(s, 'pscPlayerProfiles', 'playerProfiles'); if (currentPlayerName) { loadPlayerProgress(); } });
             db.ref('reportedQuestions').on('value', s => { updateLocalData(s, 'pscReportedQuestions', 'reportedQuestions'); updateReportedQuestionsNotification(); });
@@ -1297,9 +1286,6 @@
                 if(data.reportedQuestions) { reportedQuestions = data.reportedQuestions; localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); }
                 if(data.dailyRevisionScores) { dailyRevisionScores = data.dailyRevisionScores; localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores)); }
                 if(data.adminCredentials) { adminCredentials = data.adminCredentials; localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials)); }
-                
-                cleanupOldHistory();
-                
                 loadQuestionSets(); updatePlayerSelects(); renderRevisionPage(); renderBacklogPage(); 
             });
         }
@@ -1394,6 +1380,34 @@
             });
         }
 
+        function clearPlayerHistory() {
+            const playerToClear = document.getElementById('playerToClearHistorySelect').value;
+            if (!playerToClear) { return; }
+            
+            promptForAdminPassword(() => {
+                const keysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToClear);
+                
+                keysToDelete.forEach(key => {
+                    delete practiceHistory[key];
+                    if (isFirebaseConnected) db.ref(`practiceHistory/${key}`).remove();
+                });
+                
+                localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+                showNotification(`All history for ${playerToClear} has been cleared.`, 'error');
+            });
+        }
+
+        function resetRevisionProgress() {
+            promptForAdminPassword(() => {
+                revisionProgress = {};
+                localStorage.removeItem('pscRevisionProgress');
+                if (isFirebaseConnected) { db.ref('revisionProgress').remove(); }
+                renderRevisionPage();
+                renderBacklogPage();
+                showNotification('All Revision Progress has been reset.', 'error');
+            });
+        }
+
         function populateAvatars() {
             const avatarContainer = document.getElementById('modalAvatarSelection');
             avatarContainer.innerHTML = '';
@@ -1482,6 +1496,7 @@
             
             document.getElementById(tabName).classList.add('active');
             if(tabName === 'leaderboard') showLeaderboards();
+            if(tabName === 'history') loadHistory();
             if(tabName === 'revision') renderRevisionPage();
             if(tabName === 'backlog') renderBacklogPage();
             if(tabName === 'attendance') {
@@ -1502,6 +1517,7 @@
                 loadQuestionSets();
                 updateReportedQuestionsNotification();
             }
+            if (tabName === 'adminPlayerHistory') renderAdminPlayerHistory();
             if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
             if (tabName === 'adminAttendance') {
                  currentAdminAttendanceDate = new Date();
@@ -1713,11 +1729,12 @@
                 if (i === correctIndex) o.classList.add('correct');
                 else if (i === selectedIndex) o.classList.add('wrong');
             });
-
+            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
+            const timeForThisQuestion = timeElapsed - lastAnswerTime;
             currentAttempt.answers.push({ 
                 isCorrect, questionText: question.question, questionOptions: question.options,
                 selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: question.correctAnswer,
-                isSkipped: false
+                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: false
             });
             
             if (isCorrect) {
@@ -1742,11 +1759,12 @@
             if (currentQuestionIndex >= currentSet.length) { return; }
             const question = currentSet[currentQuestionIndex];
             document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
-
+            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
+            const timeForThisQuestion = timeElapsed - lastAnswerTime;
             currentAttempt.answers.push({
                 isCorrect: false, questionText: question.question, questionOptions: question.options,
                 selectedAnswer: 'SKIPPED', correctAnswer: question.correctAnswer,
-                isSkipped: true
+                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: true
             });
             showNotification('Question skipped.', 'warning');
             proceedToNextQuestion();
@@ -1763,7 +1781,6 @@
             
             practiceInProgress = false;
             clearInterval(timer);
-            redirectToLeaderboard = false;
 
             const totalQuestions = currentAttempt.totalQuestions;
             const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
@@ -1796,21 +1813,13 @@
                 dailyRevisionScores[todayStr][currentPlayerName] += score;
                 localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
                 if (isFirebaseConnected) db.ref('dailyRevisionScores').set(dailyRevisionScores);
-                
-                redirectToLeaderboard = true;
 
             } else {
                 xpEarned = calculateAndApplyXP(0);
                 xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP for your daily activity! Score-based XP is for revisions.` : 'XP for correct answers is awarded during revision sessions.';
             }
-            
-            const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
-            
+
             currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
-            
-            // Remove detailed answers before saving to reduce data size
-            delete currentAttempt.answers;
-            
             const attemptId = `attempt-${Date.now()}`;
             practiceHistory[attemptId] = currentAttempt;
             localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
@@ -1834,13 +1843,143 @@
             
             if (percentage > 70) startConfetti();
 
+            const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
             if (wrongAnswers.length > 0) {
                 showWrongAnswersPopup(wrongAnswers);
             }
             
             document.body.classList.remove('practice-active');
             
+            if (isRevisionMode) {
+                setTimeout(() => {
+                    switchTab('leaderboard');
+                }, 1500);
+            } else {
+                switchPracticeView('practiceSetupView');
+            }
+            
             isRevisionMode = false; currentRevisionKey = null; currentSet = [];
+        }
+
+        function loadHistory() {
+            document.getElementById('questionAnalysisView').classList.add('hidden');
+            document.getElementById('historyList').classList.remove('hidden');
+            
+            const listDiv = document.getElementById('historyList');
+            const promptEl = document.getElementById('historyPrompt');
+            const controlsEl = document.getElementById('historyControls');
+
+            if (!currentPlayerName) { 
+                listDiv.innerHTML = '';
+                promptEl.textContent = 'Please select a player on the Practice tab to view your history.';
+                controlsEl.classList.add('hidden');
+                return; 
+            }
+
+            promptEl.textContent = 'Showing your wrong answers from the last 24 hours, organized by question set.';
+            controlsEl.classList.add('hidden');
+
+            const today = new Date();
+            const oneDayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+            
+            const playerAttempts = Object.values(practiceHistory).filter(a => {
+                if (a.playerName !== currentPlayerName) return false;
+                const attemptDate = new Date(a.startTime);
+                return attemptDate >= oneDayAgo;
+            });
+
+            const wrongAnswersBySet = {};
+            playerAttempts.forEach(attempt => {
+                attempt.answers.forEach((answer, index) => {
+                    if (!answer.isCorrect) {
+                        if (!wrongAnswersBySet[attempt.setName]) {
+                            wrongAnswersBySet[attempt.setName] = [];
+                        }
+                        const key = `${attempt.setName}_${answer.questionText}`;
+                        const exists = wrongAnswersBySet[attempt.setName].some(wa => wa.question === answer.questionText);
+                        if (!exists) {
+                            wrongAnswersBySet[attempt.setName].push({
+                                setName: attempt.setName,
+                                question: answer.questionText,
+                                options: answer.questionOptions,
+                                correctAnswer: answer.correctAnswer,
+                                yourAnswer: answer.selectedAnswer,
+                                isSkipped: answer.isSkipped,
+                                attemptTime: attempt.startTime
+                            });
+                        }
+                    }
+                });
+            });
+
+            const timeFormat = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+            
+            if (Object.keys(wrongAnswersBySet).length === 0) {
+                listDiv.innerHTML = '<p>No wrong answers in the last 24 hours. Great job!</p>';
+                return;
+            }
+
+            listDiv.innerHTML = Object.entries(wrongAnswersBySet).map(([setName, wrongAnswers]) => {
+                const setHtml = wrongAnswers.map((wa, idx) => {
+                    const correctIndex = wa.correctAnswer.charCodeAt(0) - 65;
+                    const correctText = wa.options[correctIndex] || 'N/A';
+                    let yourAnswerText = wa.isSkipped ? 'Skipped' : `${wa.yourAnswer}. ${wa.options[wa.yourAnswer.charCodeAt(0) - 65] || 'N/A'}`;
+                    return `<div class="history-item" style="border-left-color: var(--danger-color); margin-left: 15px; margin-top: 10px;">
+                        <p><strong>Q${idx + 1}:</strong> ${wa.question}</p>
+                        <p class="wrong-answer">Your Answer: ${yourAnswerText}</p>
+                        <p class="correct-answer">Correct Answer: ${wa.correctAnswer}. ${correctText}</p>
+                    </div>`;
+                }).join('');
+                
+                return `<div style="margin-bottom: 20px; border: 2px solid var(--secondary-color); border-radius: var(--border-radius); padding: 15px;">
+                    <h3 style="color: var(--secondary-color); margin-bottom: 10px;">📚 ${setName}</h3>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 10px;">${wrongAnswers.length} wrong answer(s)</p>
+                    ${setHtml}
+                </div>`;
+            }).join('');
+        }
+
+        function viewAttemptDetails(startTime) {
+            const attempt = Object.values(practiceHistory).find(a => a.startTime === startTime);
+            if (!attempt) return;
+            let detailsHtml = `<h2>Details for ${attempt.setName}</h2>
+                <div style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;">
+                    <button onclick="toggleWrongAnswersView(this)" class="btn-warning">Show Wrong Answers Only</button>
+                </div><div id="attemptDetailsList">`;
+            attempt.answers.forEach((ans, index) => {
+                const qText = ans.questionText || 'Question details missing';
+                const qOptions = ans.questionOptions || ['A', 'B', 'C', 'D'];
+                const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
+                const correctText = qOptions[correctIndex] || 'N/A';
+                let answerDisplay;
+                if (ans.isCorrect) { 
+                    answerDisplay = `<p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
+                } else if (ans.isSkipped) { 
+                    answerDisplay = `<p class="wrong-answer">Skipped</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
+                } else {
+                    const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
+                    const selectedText = qOptions[selectedIndex] || 'N/A';
+                    answerDisplay = `<p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${selectedText}</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`;
+                }
+                detailsHtml += `
+                    <div class="question-detail-item question-set" data-correct="${ans.isCorrect}" style="margin-top:15px; border-left: 4px solid ${ans.isCorrect ? 'var(--success-color)' : 'var(--danger-color)'};">
+                        <p><strong>${index + 1}. ${qText}</strong></p>
+                        ${answerDisplay}
+                    </div>`;
+            });
+            detailsHtml += `</div><p style="margin-top:20px;">Total Practice Time: ${formatTime(attempt.timeSpent)}</p>`;
+            document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml + `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
+            openModal('viewDetailsModal');
+        }
+
+        function toggleWrongAnswersView(button) {
+            const listContainer = document.getElementById('attemptDetailsList');
+            const wrongOnly = button.textContent.includes('Wrong');
+            listContainer.querySelectorAll('.question-detail-item').forEach(item => {
+                if (wrongOnly && item.dataset.correct === 'true') { item.style.display = 'none'; } 
+                else { item.style.display = 'block'; }
+            });
+            button.textContent = wrongOnly ? 'Show All Answers' : 'Show Wrong Answers Only';
         }
 
         function getRevisionItems(playerName = null) {
@@ -1924,7 +2063,7 @@
             const percentage = status ? status.percentage : 0;
             const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
             const buttonClass = status ? 'btn-warning' : 'btn-success';
-            itemHtml += `<p>Total Questions: ${questionSets[item.setName]?.questions?.length || 0}</p>
+            itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
                 <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
                 ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
             
@@ -2116,7 +2255,7 @@
                 }
                 return `
                     <div class="question-set" style="margin-top:15px; border-left: 4px solid var(--danger-color);">
-                        <p><strong>${ans.questionText}</strong></p>
+                        <p><strong>${index + 1}. ${ans.questionText}</strong></p>
                         <p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${yourAnswerText}</p>
                         <p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>
                     </div>`;
@@ -2186,6 +2325,32 @@
             document.getElementById('adminPanel').classList.add('hidden');
         }
 
+        function renderAdminPlayerHistory(playerName) {
+            const listDiv = document.getElementById('adminHistoryList');
+            if (!playerName) {
+                listDiv.innerHTML = '<p>Select a player to view their history.</p>';
+                return;
+            }
+
+            const today = new Date();
+            const oneDayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+            const playerAttempts = Object.values(practiceHistory).filter(a => {
+                if (a.playerName !== playerName) return false;
+                const attemptDate = new Date(a.startTime);
+                return attemptDate >= oneDayAgo;
+            }).sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
+            
+            const timeFormat = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+            listDiv.innerHTML = playerAttempts.map(a => {
+                const isRevText = a.isRevision ? `(Revision: ${a.revisionKey.replace('_RevDay', ' Day ')})` : '(Practice)';
+                return `<div class="history-item">
+                    <h4>${a.setName} ${isRevText} - ${new Date(a.startTime).toLocaleString('en-US', timeFormat)}</h4>
+                    <p>Score: ${a.score}/${a.totalQuestions} (${a.percentage}%) | Time: ${formatTime(a.timeSpent)}</p>
+                    <button onclick="viewAttemptDetails('${a.startTime}')">View Details</button>
+                </div>`}).join('') || `<p>No history found for ${playerName} in the last 24 hours.</p>`;
+        }
+
         function renderAdminBacklogManager(playerName) {
             const listDiv = document.getElementById('adminBacklogList');
             if (!playerName) {
@@ -2215,77 +2380,6 @@
                 showNotification('Backlog item removed.', 'success');
                 renderAdminBacklogManager(playerName);
             }
-        }
-
-        function promptDivideSet(setName) {
-            const originalSet = questionSets[setName];
-            if (!originalSet || !originalSet.questions || originalSet.questions.length === 0) {
-                showNotification('This set is empty and cannot be divided.', 'warning');
-                return;
-            }
-
-            const questionsPerPart = parseInt(prompt(`Dividing set: "${setName}" (${originalSet.questions.length} questions).\n\nEnter number of questions per part (e.g., 20, 50):`), 10);
-            
-            if (isNaN(questionsPerPart) || questionsPerPart <= 0) {
-                showNotification('Invalid number of questions.', 'error');
-                return;
-            }
-
-            if (questionsPerPart >= originalSet.questions.length) {
-                showNotification('Number per part must be smaller than the total number of questions.', 'warning');
-                return;
-            }
-
-            divideSet(setName, questionsPerPart);
-        }
-
-        function divideSet(setName, questionsPerPart) {
-            const originalSet = questionSets[setName];
-            const questions = [...originalSet.questions];
-            const numParts = Math.ceil(questions.length / questionsPerPart);
-
-            const newSetNames = [];
-            for (let i = 0; i < numParts; i++) {
-                const newSetName = `${setName} (Part ${i + 1})`;
-                newSetNames.push(newSetName);
-                const questionsForThisPart = questions.slice(i * questionsPerPart, (i + 1) * questionsPerPart);
-                
-                const newSet = {
-                    ...originalSet,
-                    questions: questionsForThisPart
-                };
-                
-                questionSets[newSetName] = newSet;
-            }
-
-            Object.keys(revisionProgress).forEach(playerName => {
-                const playerProgress = revisionProgress[playerName];
-                Object.keys(playerProgress).forEach(revisionKey => {
-                    if (revisionKey.startsWith(setName + '_RevDay')) {
-                        const originalStatus = playerProgress[revisionKey];
-                        const revisionDay = revisionKey.split('_RevDay')[1];
-                        
-                        newSetNames.forEach(newSetName => {
-                            const newRevisionKey = `${newSetName}_RevDay${revisionDay}`;
-                            revisionProgress[playerName][newRevisionKey] = { ...originalStatus };
-                        });
-                        
-                        delete revisionProgress[playerName][revisionKey];
-                    }
-                });
-            });
-
-            delete questionSets[setName];
-            
-            saveQuestionSets();
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-            if (isFirebaseConnected) {
-                db.ref('revisionProgress').set(revisionProgress);
-            }
-
-            showNotification(`Set "${setName}" was successfully divided into ${numParts} parts.`, 'success');
-            loadQuestionSets();
-            updateSubjectSelect();
         }
 
         function updateReportedQuestionsNotification() {
@@ -2381,19 +2475,7 @@
         }
         const style = document.createElement('style'); style.innerHTML = `@keyframes slideInNotification{to{transform:translateX(0)}}@keyframes slideOutNotification{from{transform:translateX(0)}to{transform:translateX(120%)}}`; document.head.appendChild(style);
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        
-        function closeModal(id) { 
-            document.getElementById(id).style.display = 'none'; 
-            
-            if (id === 'resultsModal') {
-                if (redirectToLeaderboard) {
-                    redirectToLeaderboard = false;
-                    switchTab('leaderboard');
-                } else {
-                    switchPracticeView('practiceSetupView');
-                }
-            }
-        }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; if(id === 'viewDetailsModal') {document.getElementById('viewDetailsModalContent').innerHTML='';} }
         
         function showPasswordPrompt(playerName, correctPassword, onSuccess) {
             document.getElementById('passwordConfirmGroup').classList.add('hidden');
@@ -2465,482 +2547,6 @@
             });
             if (confettiParticles.length > 0) animationFrameId = requestAnimationFrame(animateConfetti);
         }
-        
-        // --- Admin Question Set Functions ---
-        
-        function loadQuestionSets() {
-            const setsListDiv = document.getElementById('setsList');
-            const setsList = Object.keys(questionSets).sort();
-            
-            if (setsList.length > 0) {
-                setsListDiv.innerHTML = setsList.map(name => {
-                    const set = questionSets[name];
-                    const qCount = set.questions ? set.questions.length : 0;
-                    return `<div class="question-set">
-                        <h4>${name}</h4>
-                        <p><strong>Subject:</strong> ${set.subject || 'N/A'} | <strong>Category:</strong> ${set.category || 'N/A'} | <strong>Questions:</strong> ${qCount}</p>
-                        <p><strong>Upload Date:</strong> ${set.uploadDate || 'N/A'}</p>
-                        <button onclick="editQuestionSet('${name}')" class="btn-warning">Edit/View Questions</button>
-                        <button onclick="deleteSet('${name}')" class="btn-danger">Delete Set</button>
-                        <button onclick="promptDivideSet('${name}')" style="background: #16a085; margin-top: 5px;">Divide Set</button>
-                    </div>`;
-                }).join('');
-            } else {
-                setsListDiv.innerHTML = '<p>No question sets found. Add some above!</p>';
-            }
-            showAddQuestionsSection();
-        }
-
-        function saveQuestionSets() {
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            if (isFirebaseConnected) {
-                db.ref('questionSets').set(questionSets);
-            }
-        }
-        
-        function importBulkQuestions() {
-            const bulkSelect = document.getElementById('bulkSetSelect');
-            let setName = bulkSelect.value;
-            const newSetName = document.getElementById('bulkSetName').value.trim();
-            const setCategory = document.getElementById('setCategory').value;
-            const setUploadDate = document.getElementById('setUploadDate').value;
-            const setSubject = document.getElementById('setSubject').value.trim();
-            
-            if (setName === '_new_') {
-                if (!newSetName) { showNotification('Please enter a name for the new set.', 'error'); return; }
-                if (questionSets[newSetName]) { showNotification('A set with this name already exists.', 'error'); return; }
-                setName = newSetName;
-                questionSets[setName] = { questions: [], type: 'questions', category: setCategory, uploadDate: setUploadDate, subject: setSubject };
-            }
-            
-            if (!questionSets[setName]) { showNotification('Selected set not found.', 'error'); return; }
-            if (!setUploadDate) { showNotification('Please select an upload date.', 'error'); return; }
-            if (!setSubject) { showNotification('Please enter a subject.', 'error'); return; }
-
-            questionSets[setName].category = setCategory;
-            questionSets[setName].uploadDate = setUploadDate;
-            questionSets[setName].subject = setSubject;
-
-            const text = document.getElementById('bulkQuestions').value;
-            const lines = text.split('\n').filter(line => line.trim().length > 0);
-            let importedCount = 0;
-            try {
-                lines.forEach(line => {
-                    const parts = line.split('|').map(p => p.trim());
-                    if (parts.length === 6) {
-                        const [question, o1, o2, o3, o4, correct] = parts;
-                        questionSets[setName].questions.push({
-                            question, options: [o1, o2, o3, o4], correctAnswer: correct.toUpperCase()
-                        });
-                        importedCount++;
-                    }
-                });
-                if (importedCount > 0) {
-                    saveQuestionSets();
-                    loadQuestionSets();
-                    updateSubjectSelect();
-                    document.getElementById('bulkQuestions').value = '';
-                    document.getElementById('bulkSetName').value = '';
-                    showNotification(`Successfully imported ${importedCount} questions into "${setName}".`);
-                } else {
-                    showNotification('No valid questions found. Format: Question | Opt1 | Opt2 | Opt3 | Opt4 | CorrectLetter', 'error');
-                }
-            } catch (e) {
-                showNotification('An error occurred during import: ' + e.message, 'error');
-            }
-        }
-        
-        function toggleNewBulkSetName() {
-            const bulkSelect = document.getElementById('bulkSetSelect');
-            const newNameGroup = document.getElementById('newBulkSetNameGroup');
-            const newNameInput = document.getElementById('bulkSetName');
-            if (bulkSelect.value === '_new_') {
-                newNameGroup.style.display = 'block';
-                newNameInput.required = true;
-            } else {
-                newNameGroup.style.display = 'none';
-                newNameInput.required = false;
-                
-                const existingSet = questionSets[bulkSelect.value];
-                if (existingSet) {
-                    document.getElementById('setCategory').value = existingSet.category || 'gk';
-                    document.getElementById('setUploadDate').value = existingSet.uploadDate || new Date().toISOString().split('T')[0];
-                    document.getElementById('setSubject').value = existingSet.subject || '';
-                }
-            }
-        }
-
-        function deleteSet(setName) {
-            promptForAdminPassword(() => {
-                delete questionSets[setName];
-                saveQuestionSets();
-                loadQuestionSets();
-                updateSubjectSelect();
-                showNotification(`Set "${setName}" deleted.`, 'error');
-            });
-        }
-        
-        function editQuestionSet(setName) {
-            document.getElementById('adminQuestionSets').classList.add('hidden');
-            document.getElementById('editQuestionsSection').classList.remove('hidden');
-            document.getElementById('questionEditForm').classList.add('hidden');
-            
-            currentEditingSet = setName;
-            const set = questionSets[setName];
-            document.getElementById('editQuestionsTitle').textContent = `Edit Questions in Set: ${setName}`;
-            document.getElementById('editSetSubject').value = set.subject || '';
-            document.getElementById('editSetCategory').value = set.category || 'gk';
-
-            const listDiv = document.getElementById('questionsToEditList');
-            if (set.questions && set.questions.length > 0) {
-                listDiv.innerHTML = set.questions.map((q, index) => {
-                    const correctIndex = q.correctAnswer ? q.correctAnswer.charCodeAt(0) - 65 : -1;
-                    const correctOptionText = (correctIndex >= 0 && q.options[correctIndex]) ? q.options[correctIndex] : "N/A";
-                    const correctAnswerDisplay = `${q.correctAnswer}. ${correctOptionText}`;
-
-                    return `
-                    <div class="question-set" style="margin: 10px 0; border: 1px solid #eee; background: #fff; border-radius: var(--border-radius); display: flex; justify-content: space-between; align-items: center; padding: 12px 15px;">
-                        <p style="flex-grow: 1; margin-right: 15px; font-size: 0.95em; line-height: 1.4;">
-                            <strong style="color: var(--dark-color);">Q${index + 1}: ${q.question}</strong>
-                            <br>
-                            <span style="color: #3498db; font-weight: 600;">${correctAnswerDisplay}</span>
-                        </p>
-                        <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 5px;">
-                            <button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning" style="background: var(--warning-color); padding: 8px 15px; font-size: 14px; margin: 0;">Edit</button>
-                            <button onclick="deleteQuestion('${setName}', ${index})" class="btn-danger" style="background: var(--danger-color); padding: 8px 15px; font-size: 14px; margin: 0;">Delete</button>
-                        </div>
-                    </div>`;
-                }).join('');
-            } else {
-                listDiv.innerHTML = '<p>This set is empty. Add questions using the bulk import form.</p>';
-            }
-        }
-        
-        function updateSetSubject() {
-            if (currentEditingSet) {
-                questionSets[currentEditingSet].subject = document.getElementById('editSetSubject').value;
-                saveQuestionSets();
-                updateSubjectSelect();
-            }
-        }
-        function updateSetCategory() {
-            if (currentEditingSet) {
-                questionSets[currentEditingSet].category = document.getElementById('editSetCategory').value;
-                saveQuestionSets();
-            }
-        }
-
-        function deleteQuestion(setName, index) {
-            promptForAdminPassword(() => {
-                questionSets[setName].questions.splice(index, 1);
-                saveQuestionSets();
-                editQuestionSet(setName);
-                showNotification('Question deleted.', 'error');
-            });
-        }
-        
-        function editSpecificQuestion(setName, index) {
-            currentEditingSet = setName;
-            currentEditingIndex = index;
-            const question = questionSets[setName].questions[index];
-            
-            document.getElementById('currentQuestionIndexDisplay').textContent = index + 1;
-            document.getElementById('editQuestionText').value = question.question;
-            document.getElementById('editQuestionOptions').value = question.options.join('\n');
-            document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-            
-            document.getElementById('questionEditForm').classList.remove('hidden');
-            document.getElementById('questionEditForm').scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        function cancelQuestionEdit() {
-            currentEditingIndex = -1;
-            document.getElementById('questionEditForm').classList.add('hidden');
-            if (editingFromReport.active) {
-                returnToReportedQuestionsView();
-            }
-        }
-
-        function saveEditedQuestion() {
-            if (currentEditingIndex === -1 || !currentEditingSet) return;
-            const question = questionSets[currentEditingSet].questions[currentEditingIndex];
-            question.question = document.getElementById('editQuestionText').value;
-            question.options = document.getElementById('editQuestionOptions').value.split('\n').map(o => o.trim());
-            question.correctAnswer = document.getElementById('editCorrectAnswer').value;
-            
-            saveQuestionSets();
-            showNotification('Question updated successfully.');
-            
-            if (editingFromReport.active) {
-                dismissReport(editingFromReport.reportId, true);
-                returnToReportedQuestionsView();
-            } else {
-                const nextIndex = currentEditingIndex + 1;
-                const totalQuestions = questionSets[currentEditingSet].questions.length;
-                
-                editQuestionSet(currentEditingSet);
-
-                if (nextIndex < totalQuestions) {
-                    editSpecificQuestion(currentEditingSet, nextIndex);
-                } else {
-                    showNotification('Reached the end of the question set.', 'success');
-                    document.getElementById('questionEditForm').classList.add('hidden');
-                    currentEditingIndex = -1;
-                }
-            }
-        }
-        
-        function deleteCurrentEditedQuestion() {
-            if (currentEditingIndex === -1 || !currentEditingSet) return;
-            promptForAdminPassword(() => {
-                questionSets[currentEditingSet].questions.splice(currentEditingIndex, 1);
-                saveQuestionSets();
-                showNotification('Question deleted.', 'error');
-                
-                if (editingFromReport.active) {
-                    dismissReport(editingFromReport.reportId, true);
-                    returnToReportedQuestionsView();
-                } else {
-                    editQuestionSet(currentEditingSet);
-                }
-            });
-        }
-
-        // --- Other Functions ---
-        
-        function updateSubjectSelect() {
-            const subjectSelect = document.getElementById('subjectSelect');
-            if (!subjectSelect) return;
-            
-            const subjects = [...new Set(Object.values(questionSets).map(set => set.subject || 'Uncategorized'))];
-            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-            subjects.sort().forEach(subject => {
-                subjectSelect.innerHTML += `<option value="${subject}">${subject}</option>`;
-            });
-            
-            document.getElementById('practiceSetSelect').innerHTML = '<option value="">-- Select Set --</option>';
-            document.getElementById('startPracticeBtn').disabled = true;
-        }
-
-        function updatePracticeSetSelect(subject) {
-            const setSelect = document.getElementById('practiceSetSelect');
-            if (!setSelect) return;
-            
-            if (!subject) {
-                setSelect.innerHTML = '<option value="">-- Select Set --</option>';
-                document.getElementById('startPracticeBtn').disabled = true;
-                return;
-            }
-            
-            const setsInSubject = Object.keys(questionSets).filter(setName => {
-                const set = questionSets[setName];
-                return (set.subject === subject || (subject === 'Uncategorized' && !set.subject)) && set.questions && set.questions.length > 0;
-            }).sort();
-            
-            setSelect.innerHTML = '<option value="">-- Select Set --</option>';
-            setsInSubject.forEach(setName => {
-                setSelect.innerHTML += `<option value="${setName}">${setName}</option>`;
-            });
-            
-            setSelect.disabled = false;
-            document.getElementById('startPracticeBtn').disabled = setsInSubject.length === 0;
-            if (setsInSubject.length === 0) {
-                 setSelect.innerHTML = '<option value="">-- No sets available --</option>';
-            }
-        }
-
-        function updatePlayerSelects() {
-            const selects = [
-                document.getElementById('playerSelect'),
-                document.getElementById('backlogPlayerSelect'),
-                document.getElementById('attendancePlayerSelect'),
-                document.getElementById('passwordUserSelect'),
-                document.getElementById('playerToRemoveSelect'),
-            ];
-            const playerNames = Object.keys(playerProfiles).sort();
-            
-            selects.forEach(select => {
-                if (!select) return;
-                const currentValue = select.value;
-                select.innerHTML = '';
-                if (select.id === 'playerSelect') {
-                    select.innerHTML = '<option value="">-- Select Player --</option>';
-                }
-                playerNames.forEach(name => {
-                    select.innerHTML += `<option value="${name}">${name}</option>`;
-                });
-                if (playerNames.includes(currentValue)) {
-                    select.value = currentValue;
-                }
-            });
-        }
-        
-        // --- Leaderboard & XP Functions ---
-        
-        function showLeaderboards() {
-            const todayStr = getTodayDateString();
-            const todayScores = dailyRevisionScores[todayStr] || {};
-            const todayLeaderboard = Object.entries(todayScores)
-                .map(([name, score]) => ({ name, score }))
-                .filter(p => playerProfiles[p.name])
-                .sort((a, b) => b.score - a.score);
-
-            const todayTbody = document.getElementById('todayLeaderboardTableBody');
-            todayTbody.innerHTML = '';
-            todayLeaderboard.forEach((player, index) => {
-                const tr = document.createElement('tr');
-                if (index === 0 && player.score > 0) tr.classList.add('winner');
-                if (player.name === currentPlayerName) tr.classList.add('current-player-highlight');
-                tr.innerHTML = `<td>${index + 1}</td><td>${player.name}</td><td>${player.score}</td>`;
-                tr.style.animationDelay = `${index * 0.05}s`;
-                todayTbody.appendChild(tr);
-            });
-            if (todayLeaderboard.length === 0) {
-                todayTbody.innerHTML = '<tr><td colspan="3">No revision scores recorded yet today.</td></tr>';
-            }
-
-            const xpLeaderboard = Object.keys(playerProfiles).map(name => {
-                const profile = playerProfiles[name];
-                return {
-                    name,
-                    xp: profile.totalXP || 0,
-                    correct: profile.totalCorrect || 0,
-                    streak: profile.currentStreak || 0,
-                    title: getLevelForXP(profile.totalXP || 0).title
-                };
-            }).sort((a, b) => b.xp - a.xp || b.correct - a.correct);
-
-            const xpTbody = document.getElementById('xpLeaderboardTableBody');
-            xpTbody.innerHTML = '';
-            xpLeaderboard.forEach((player, index) => {
-                const tr = document.createElement('tr');
-                if (index === 0 && player.xp > 0) tr.classList.add('winner');
-                if (player.name === currentPlayerName) tr.classList.add('current-player-highlight');
-                tr.innerHTML = `<td>${index + 1}</td><td>${player.name}</td><td>${player.xp}</td><td>${player.streak}</td><td>${player.title}</td>`;
-                tr.style.animationDelay = `${index * 0.05}s`;
-                xpTbody.appendChild(tr);
-            });
-            if (xpLeaderboard.length === 0) {
-                xpTbody.innerHTML = '<tr><td colspan="5">No players found.</td></tr>';
-            }
-        }
-        
-        function getLevelForXP(xp) {
-            let level = LEVEL_CONFIG[0];
-            for (let i = LEVEL_CONFIG.length - 1; i >= 0; i--) {
-                if (xp >= LEVEL_CONFIG[i].minXp) {
-                    level = LEVEL_CONFIG[i];
-                    break;
-                }
-            }
-            return level;
-        }
-        
-        function getTodayDateString() {
-            return new Date().toISOString().split('T')[0];
-        }
-
-        function handleDailyLogin() {
-            if (!currentPlayerName) return;
-            const profile = playerProfiles[currentPlayerName];
-            const today = getTodayDateString();
-            
-            if (profile.lastActiveDate === today) return;
-            
-            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
-            
-            if (profile.lastActiveDate === yesterday) {
-                profile.currentStreak = (profile.currentStreak || 0) + 1;
-                profile.consecutiveMissedDays = 0;
-            } else if (profile.lastActiveDate) { 
-                const lastDate = new Date(profile.lastActiveDate);
-                const todayDate = new Date(today);
-                const diffTime = Math.abs(todayDate - lastDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                profile.consecutiveMissedDays = diffDays - 1;
-                
-                let xpPenalty = 0;
-                if (profile.consecutiveMissedDays === 1) xpPenalty = 200;
-                else if (profile.consecutiveMissedDays > 1) xpPenalty = 500 * (profile.consecutiveMissedDays - 1) + 200;
-
-                const oldXP = profile.totalXP || 0;
-                profile.totalXP = Math.max(0, oldXP - xpPenalty);
-                if (xpPenalty > 0) {
-                     showNotification(`Your streak was broken! You missed ${profile.consecutiveMissedDays} day(s) and lost ${xpPenalty} XP.`, 'error');
-                }
-                
-                profile.currentStreak = 1;
-            } else {
-                profile.currentStreak = 1;
-                profile.consecutiveMissedDays = 0;
-            }
-
-            profile.lastActiveDate = today;
-            
-            if (!profile.attendance) profile.attendance = [];
-            if (!profile.attendance.includes(today)) {
-                profile.attendance.push(today);
-            }
-            
-            savePlayerProfiles();
-            updateProgressUI();
-        }
-
-        function calculateAndApplyXP(revisionScore) {
-            const profile = playerProfiles[currentPlayerName];
-            if (!profile) return 0;
-            
-            let xpGained = 0;
-            
-            const todayStr = getTodayDateString();
-            const hasRevisedToday = Object.values(practiceHistory).some(attempt => 
-                attempt.playerName === currentPlayerName &&
-                attempt.isRevision &&
-                attempt.startTime.startsWith(todayStr)
-            );
-            
-            if (!hasRevisedToday) {
-                xpGained += 50;
-            }
-
-            if (!hasRevisedToday && profile.currentStreak > 1) {
-                xpGained += Math.min(profile.currentStreak * 10, 200);
-            }
-            
-            xpGained += (revisionScore * 10);
-            
-            profile.totalXP = (profile.totalXP || 0) + xpGained;
-            profile.totalCorrect = (profile.totalCorrect || 0) + revisionScore;
-            
-            savePlayerProfiles();
-            updateProgressUI();
-            
-            return xpGained;
-        }
-        
-        function resetAllXP() {
-            promptForAdminPassword(() => {
-                Object.keys(playerProfiles).forEach(name => {
-                    playerProfiles[name].totalXP = 0;
-                    playerProfiles[name].totalCorrect = 0;
-                    playerProfiles[name].currentStreak = 0;
-                    playerProfiles[name].lastActiveDate = null;
-                    playerProfiles[name].consecutiveMissedDays = 0;
-                    playerProfiles[name].attendance = [];
-                });
-                savePlayerProfiles();
-                
-                dailyRevisionScores = {};
-                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-                if (isFirebaseConnected) db.ref('dailyRevisionScores').set(dailyRevisionScores);
-
-                showNotification('All player XP, streaks, and attendance have been reset.', 'error');
-                if (currentPlayerName) loadPlayerProgress();
-                showLeaderboards();
-            });
-        }
-        // --- END OF SCRIPT ---
     </script>
 </body>
 </html>
