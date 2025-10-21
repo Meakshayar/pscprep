@@ -105,13 +105,8 @@
             transition: all 0.3s;
         }
 
-        #adminLoginBtn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 100;
-        }
-
+        /* Admin login button style removed from here */
+        
         header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
@@ -664,8 +659,6 @@
 <body>
     <canvas id="confetti-canvas"></canvas>
 
-    <button id="adminLoginBtn" onclick="handleAdminLogin()">Admin Login</button>
-
     <div class="container">
         <header>
             <div class="header-menu">
@@ -716,6 +709,10 @@
                         <h4>Or Create a New Player:</h4>
                         <input type="text" id="newPlayerName" placeholder="Enter new player name" class="styled-input">
                         <button onclick="createPlayer()">Create Player</button>
+                    </div>
+
+                    <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
+                        <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
                     </div>
                 </div>
                 
@@ -1037,6 +1034,7 @@
         // --- CONSTANTS ---
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
+        const DESTRUCTIVE_ACTION_PASSWORD = "2525"; // Added as requested
         
         // --- GAMIFICATION & LEVELING SYSTEM ---
         const LEVEL_CONFIG = [
@@ -1367,21 +1365,19 @@
         }
 
         function clearAllData() {
-            const confirmed = confirm("Are you sure you want to clear ALL data (Questions, History, Players, Admin)? This action cannot be undone.");
-            if (confirmed) {
+            promptForAdminPassword(() => {
                 questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {}; adminCredentials = null;
                 localStorage.clear();
                 if (isFirebaseConnected) { db.ref().set(null); }
                 window.location.reload();
-            }
+            });
         }
         
         function removePlayer() {
             const playerToRemove = document.getElementById('playerToRemoveSelect').value;
             if (!playerToRemove) { return; }
 
-            const confirmed = confirm(`Are you sure you want to remove '${playerToRemove}' and all their data?`);
-            if(confirmed) {
+            promptForAdminPassword(() => {
                 // 1. Remove history
                 const historyKeysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToRemove);
                 historyKeysToDelete.forEach(key => delete practiceHistory[key]);
@@ -1418,15 +1414,14 @@
                 else { updatePlayerSelects(); }
 
                 showNotification(`Player '${playerToRemove}' has been removed.`, 'error');
-            }
+            });
         }
 
         function clearPlayerHistory() {
             const playerToClear = document.getElementById('playerToClearHistorySelect').value;
             if (!playerToClear) { return; }
             
-            const confirmed = confirm(`Are you sure you want to clear ALL practice and revision history for '${playerToClear}'? This action cannot be undone.`);
-            if(confirmed) {
+            promptForAdminPassword(() => {
                 const keysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToClear);
                 
                 keysToDelete.forEach(key => {
@@ -1436,19 +1431,18 @@
                 
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
                 showNotification(`All history for ${playerToClear} has been cleared.`, 'error');
-            }
+            });
         }
 
         function resetRevisionProgress() {
-            const confirmed = confirm("Reset ALL Revision Progress for ALL players?");
-            if (confirmed) {
+            promptForAdminPassword(() => {
                 revisionProgress = {};
                 localStorage.removeItem('pscRevisionProgress');
                 if (isFirebaseConnected) { db.ref('revisionProgress').remove(); }
                 renderRevisionPage();
                 renderBacklogPage();
                 showNotification('All Revision Progress has been reset.', 'error');
-            }
+            });
         }
 
         // --- GAMIFICATION & PFP FUNCTIONS ---
@@ -1995,8 +1989,7 @@
         }
         
         function resetAllXP() {
-            const confirmed = confirm("Reset ALL XP and Streaks for ALL players?");
-            if (confirmed) {
+            promptForAdminPassword(() => {
                 for (const playerName in playerProfiles) {
                     const profile = playerProfiles[playerName];
                     profile.totalXP = 0;
@@ -2011,7 +2004,7 @@
                 if (isFirebaseConnected) db.ref('dailyRevisionScores').set({});
                 if (currentPlayerName) { loadPlayerProgress(); }
                 showNotification('All player XP and streaks have been reset.', 'error');
-            }
+            });
         }
 
         // --- Question Set Management ---
@@ -2847,7 +2840,7 @@
         function loginAdmin() {
             const username = document.getElementById('adminUsername').value;
             const password = document.getElementById('adminPassword').value;
-            if (username === adminCredentials.username && password === adminCredentials.password) {
+            if (adminCredentials && username === adminCredentials.username && password === adminCredentials.password) {
                 closeModal('adminAuthModal');
                 enterAdminMode(username);
             } else {
@@ -2858,7 +2851,7 @@
         function enterAdminMode(username) {
             isAdminLoggedIn = true;
             document.querySelector('.container').classList.add('hidden');
-            document.getElementById('adminLoginBtn').classList.add('hidden');
+            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.remove('hidden');
             document.getElementById('adminWelcome').textContent = `Welcome, ${username}!`;
             updatePlayerSelects();
@@ -2868,7 +2861,7 @@
         function adminLogout() {
             isAdminLoggedIn = false;
             document.querySelector('.container').classList.remove('hidden');
-            document.getElementById('adminLoginBtn').classList.remove('hidden');
+            // document.getElementById('adminLoginBtn').classList.remove('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.add('hidden');
         }
 
@@ -2924,6 +2917,20 @@
         }
 
         // --- UI & UTILITY FUNCTIONS ---
+        
+        /**
+         * Prompts for the destructive action password before executing a callback.
+         * @param {function} onSuccess - The function to call if the password is correct.
+         */
+        function promptForAdminPassword(onSuccess) {
+            const pass = prompt("This is a destructive action. Please enter the admin password (2525) to confirm:");
+            if (pass === DESTRUCTIVE_ACTION_PASSWORD) {
+                onSuccess();
+            } else if (pass !== null) { // Don't show error if they hit "Cancel"
+                showNotification('Incorrect admin password. Action cancelled.', 'error');
+            }
+        }
+
         function formatTime(totalSeconds) {
             const minutes = Math.floor(totalSeconds / 60); const seconds = totalSeconds % 60;
             return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -3066,4 +3073,3 @@
     </script>
 </body>
 </html>
-
