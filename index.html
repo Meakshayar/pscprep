@@ -72,7 +72,7 @@
         #practiceSessionView {
             display: flex;
             flex-direction: column;
-            justify-content: flex-start; /* MODIFIED: Aligned content to top */
+            justify-content: flex-start;
             height: 100vh;
             padding: 20px;
             position: relative;
@@ -81,10 +81,9 @@
         #practiceOptions {
             margin: 20px 0;
             overflow-y: auto;
-            flex: 1; /* ADDED: Makes this div take available space */
-            min-height: 0; /* ADDED: Critical for scrolling in flexbox */
+            flex: 1;
+            min-height: 0;
         }
-
 
         @keyframes gradientAnimation {
             0% { background-position: 0% 50%; }
@@ -104,8 +103,6 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             transition: all 0.3s;
         }
-
-        /* Admin login button style removed from here */
         
         header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
@@ -115,7 +112,6 @@
             position: relative;
         }
 
-        /* --- NEW DROPDOWN STYLES --- */
         .header-menu {
             position: absolute;
             top: 20px;
@@ -169,7 +165,6 @@
         .show {
             display: block;
         }
-        /* --- END DROPDOWN STYLES --- */
 
         #playerPFP {
             width: 80px;
@@ -411,7 +406,6 @@
             color: var(--danger-color);
         }
 
-
         .history-item, .question-set { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: var(--border-radius); border-left: 4px solid var(--secondary-color);}
         
         .history-correct { color: var(--secondary-color); font-weight: bold; }
@@ -420,7 +414,6 @@
 
         .hidden { display: none !important; }
 
-        /* Custom Modal */
         .modal {
             display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
             overflow: auto; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
@@ -450,7 +443,6 @@
             z-index: 1001; pointer-events: none;
         }
         
-        /* --- NEW STATS MODAL STYLES --- */
         #statsModalContent {
             text-align: left;
         }
@@ -484,8 +476,6 @@
         }
         .stat-card .correct { color: var(--success-color); }
         .stat-card .wrong { color: var(--danger-color); }
-        /* --- END STATS MODAL STYLES --- */
-
 
         .dashboard-card {
             background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
@@ -496,7 +486,6 @@
             text-align: center;
         }
         
-        /* Quote styling */
         .quote-container {
             background: rgba(0,0,0,0.1);
             padding: 15px;
@@ -536,7 +525,6 @@
             transform: scale(1.1);
         }
 
-        /* --- CALENDAR STYLES (SHARED) --- */
         .calendar-container {
             overflow-x: auto;
             padding-bottom: 10px;
@@ -620,9 +608,7 @@
             color: white;
             font-weight: bold;
         }
-        /* --- END CALENDAR STYLES --- */
 
-        /* --- RESPONSIVE ADJUSTMENTS --- */
         @media screen and (max-width: 600px) {
             body { padding: 5px; }
             .container, #adminPanel { padding: 0; border-radius: 0; }
@@ -793,12 +779,10 @@
 
             <div id="history" class="tab-content">
                 <h2>My Practice History</h2>
-                <p id="historyPrompt">Showing your latest attempt for each question set.</p>
-                <div id="historyControls" class="hidden" style="margin-bottom: 15px;">
-                    <button onclick="showQuestionAnalysis()">Analyze Question Timings</button>
-                </div>
+                <p id="historyPrompt">Showing your practice attempts from the last 24 hours.</p>
+                <div id="historyControls" class="hidden" style="margin: 15px 0;">
+                    </div>
                 <div id="historyList"></div>
-                <div id="questionAnalysisView" class="hidden" style="margin-top: 20px;"></div>
             </div>
             
             <div id="attendance" class="tab-content">
@@ -855,6 +839,10 @@
         <main>
             <div id="adminQuestionSets" class="tab-content active">
                 <h2>Manage Question Sets</h2>
+                <div id="reportedQuestionsNotification" class="hidden" style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: var(--border-radius); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <span><strong>⚠️ <span id="reportedQuestionsCount">0</span> Question(s) Reported</strong> - Review and edit reported questions</span>
+                    <button onclick="viewReportedQuestionsFromMain()" class="btn-warning">Review Reported</button>
+                </div>
                 <div id="addQuestionsContent" style="background: #f0f4f8; padding: 20px; border-radius: var(--border-radius); margin-bottom: 30px; border: 1px solid #ddd;">
                     <h3>Bulk Import Questions</h3>
                     <div class="form-group">
@@ -972,9 +960,6 @@
                 <h4>Leaderboard & Progress Management</h4>
                 <button onclick="resetAllXP()" class="btn-danger">Clear All Player XP & Streaks</button>
                 <button onclick="resetRevisionProgress()" class="btn-danger">Clear All Revision Progress</button>
-                 <hr style="margin: 20px 0;">
-                <h3>Reported Questions</h3>
-                <button id="showReportedQuestionsBtn">View Reported Questions</button>
             </div>
             
             <div id="editQuestionsSection" class="hidden" style="margin-top: 20px;">
@@ -1014,7 +999,7 @@
                 </div>
             </div>
             <div id="reportedQuestionsSection" class="hidden" style="margin-top: 20px;">
-                <button id="backToAdminSystemBtn">&larr; Back to System</button>
+                <button id="backToAdminQuestionSetsBtn" class="btn-warning">&larr; Back to Question Sets</button>
                 <h2 style="margin-top: 15px;">Reported Questions for Review</h2>
                 <div id="reportedQuestionsList"></div>
             </div>
@@ -1029,14 +1014,12 @@
     <div id="statsModal" class="modal"><div id="statsModalContent" class="modal-content"><h2>Player Statistics</h2><div class="stat-grid"><div class="stat-card"><h4>Title</h4><p id="statsTitle">_</p></div><div class="stat-card"><h4>Total XP</h4><p id="statsXP">_</p></div><div class="stat-card"><h4>Current Streak</h4><p id="statsStreak">_</p></div><div class="stat-card"><h4>Total Correct</h4><p id="statsCorrect" class="correct">_</p></div></div><button onclick="closeModal('statsModal')">Close</button></div></div>
     <div id="adminAuthModal" class="modal"><div class="modal-content"><h3 id="adminModalTitle">Admin Login</h3><p id="adminModalPrompt"></p><div class="form-group"><input type="text" id="adminUsername" placeholder="Username"></div><div class="form-group"><input type="password" id="adminPassword" placeholder="Password"></div><div id="adminPasswordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div><button id="adminSubmitBtn"></button><button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button></div></div>
 
-
     <script>
-        // --- CONSTANTS ---
+
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
-        const DESTRUCTIVE_ACTION_PASSWORD = "2525"; // Added as requested
+        const DESTRUCTIVE_ACTION_PASSWORD = "2525";
         
-        // --- GAMIFICATION & LEVELING SYSTEM ---
         const LEVEL_CONFIG = [
             { minXp: 0, title: "Stone ⚫", nextLevelXp: 500 },
             { minXp: 500, title: "Iron ⚙️", nextLevelXp: 1500 },
@@ -1056,7 +1039,6 @@
         ];
         let audioCtx;
 
-        // --- APP STATE ---
         let firebaseConfig = JSON.parse(localStorage.getItem('firebaseConfig')) || null;
         let db = null;
         let isFirebaseConnected = false;
@@ -1073,6 +1055,7 @@
         
         let currentSet = [], currentQuestionIndex = 0, score = 0, timer, timeElapsed = 0, currentPlayerName = '', currentAttempt = null, totalTimeLimit = 0, isRevisionMode = false, currentRevisionKey = null;
         let practiceInProgress = false;
+        let redirectToLeaderboard = false; // <-- For feature (c)
 
         let currentEditingSet = null;
         let currentEditingIndex = -1; 
@@ -1081,16 +1064,14 @@
         let selectedAvatarUrl = null;
         let pendingPlayerName = null;
         
-        let analyzedQuestionsBySet = {}; 
-        
         let currentAttendanceCalendarDate = new Date();
         let currentAdminAttendanceDate = new Date();
 
-        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 
         function init() {
             initializeFirebase();
+            cleanupOldHistory(); // <-- Run 24-hour cleanup on local data
             loadQuestionSets();
             updatePlayerSelects();
             populateAvatars();
@@ -1119,20 +1100,12 @@
             });
             renderRevisionPage();
             
-            document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
-                document.getElementById('adminSystem').classList.add('hidden');
-                document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-                document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
-                renderReportedQuestions();
-            });
-
-            document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
+            document.getElementById('backToAdminQuestionSetsBtn').addEventListener('click', () => {
                  document.getElementById('reportedQuestionsSection').classList.add('hidden');
-                 document.getElementById('adminSystem').classList.remove('hidden');
+                 document.getElementById('adminQuestionSets').classList.remove('hidden');
             });
             
-             // Attendance calendar navigation
-            document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
+             document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
                 currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
                 renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
             });
@@ -1141,8 +1114,7 @@
                 renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
             });
             
-             // Admin Attendance calendar navigation
-            document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
+             document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
                 currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
                 const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
                 renderAdminAttendanceCalendar(selectedPlayer);
@@ -1163,6 +1135,39 @@
                         }
                     }
                 }
+            }
+        }
+        
+        /**
+         * (a) Automatic Data Cleanup: Deletes history older than 24 hours.
+         */
+        function cleanupOldHistory() {
+            const today = new Date();
+            const oneDayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString();
+            
+            const keysToDelete = [];
+            const cleanHistory = {};
+
+            Object.entries(practiceHistory).forEach(([key, attempt]) => {
+                if (attempt.startTime >= oneDayAgo) {
+                    cleanHistory[key] = attempt;
+                } else {
+                    keysToDelete.push(key);
+                }
+            });
+
+            practiceHistory = cleanHistory;
+            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+
+            if (isFirebaseConnected && keysToDelete.length > 0) {
+                console.log(`Cleaning up ${keysToDelete.length} old history entries from Firebase...`);
+                const updates = {};
+                keysToDelete.forEach(key => {
+                    updates[`practiceHistory/${key}`] = null;
+                });
+                db.ref().update(updates)
+                    .then(() => console.log('Firebase history cleanup successful.'))
+                    .catch(err => console.error('Firebase history cleanup failed:', err));
             }
         }
         
@@ -1196,7 +1201,6 @@
 
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-        // --- FIREBASE FUNCTIONS ---
         function initializeFirebase() {
             if (!firebaseConfig) {
                  firebaseConfig = {
@@ -1261,10 +1265,16 @@
             };
             
             db.ref('questionSets').on('value', s => { updateLocalData(s, 'pscQuestionSets', 'questionSets'); loadQuestionSets(); updateSubjectSelect(); });
-            db.ref('practiceHistory').on('value', s => { updateLocalData(s, 'pscPracticeHistory', 'practiceHistory'); updatePlayerSelects(); if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards(); });
+            db.ref('practiceHistory').on('value', s => { 
+                updateLocalData(s, 'pscPracticeHistory', 'practiceHistory'); 
+                cleanupOldHistory(); // <-- Clean history after it's updated from Firebase
+                updatePlayerSelects(); 
+                if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
+                if (document.getElementById('history')?.classList.contains('active')) loadHistory();
+            });
             db.ref('revisionProgress').on('value', s => { updateLocalData(s, 'pscRevisionProgress', 'revisionProgress'); renderRevisionPage(); renderBacklogPage(); });
             db.ref('playerProfiles').on('value', s => { updateLocalData(s, 'pscPlayerProfiles', 'playerProfiles'); if (currentPlayerName) { loadPlayerProgress(); } });
-            db.ref('reportedQuestions').on('value', s => { updateLocalData(s, 'pscReportedQuestions', 'reportedQuestions'); });
+            db.ref('reportedQuestions').on('value', s => { updateLocalData(s, 'pscReportedQuestions', 'reportedQuestions'); updateReportedQuestionsNotification(); });
             db.ref('dailyRevisionScores').on('value', s => { updateLocalData(s, 'pscDailyRevisionScores', 'dailyRevisionScores'); });
             db.ref('adminCredentials').on('value', s => { updateLocalData(s, 'pscAdminCredentials', 'adminCredentials'); });
         }
@@ -1296,7 +1306,7 @@
         function syncToFirebase() {
             if (!isFirebaseConnected) { showNotification('Firebase not connected', 'error'); return; }
             db.ref('questionSets').set(questionSets);
-            db.ref('practiceHistory').set(practiceHistory);
+            db.ref('practiceHistory').set(practiceHistory); // Syncs the already cleaned history
             db.ref('revisionProgress').set(revisionProgress); 
             db.ref('playerProfiles').set(playerProfiles);
             db.ref('reportedQuestions').set(reportedQuestions);
@@ -1316,11 +1326,13 @@
                 if(data.reportedQuestions) { reportedQuestions = data.reportedQuestions; localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); }
                 if(data.dailyRevisionScores) { dailyRevisionScores = data.dailyRevisionScores; localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores)); }
                 if(data.adminCredentials) { adminCredentials = data.adminCredentials; localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials)); }
+                
+                cleanupOldHistory(); // <-- Run cleanup after loading from Firebase
+                
                 loadQuestionSets(); updatePlayerSelects(); renderRevisionPage(); renderBacklogPage(); 
             });
         }
         
-        // --- DATA MANAGEMENT ---
         function exportData() {
             const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -1355,7 +1367,7 @@
                         localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
                         localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
                         
-                        init();
+                        init(); // Re-initialize to apply cleanup etc.
                         showNotification('Data imported successfully!');
                     } catch (err) { showNotification('Invalid import file', 'error'); }
                 };
@@ -1378,23 +1390,19 @@
             if (!playerToRemove) { return; }
 
             promptForAdminPassword(() => {
-                // 1. Remove history
+                // History is cleaned automatically, but we remove this player's remaining history
                 const historyKeysToDelete = Object.keys(practiceHistory).filter(key => practiceHistory[key].playerName === playerToRemove);
                 historyKeysToDelete.forEach(key => delete practiceHistory[key]);
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
 
-                // 2. Remove revision progress
                 delete revisionProgress[playerToRemove];
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
 
-                // 3. Remove profile
                 delete playerProfiles[playerToRemove];
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
 
-                // 4. Remove PFP
                 localStorage.removeItem(`pscPlayerPFP_${playerToRemove}`);
                 
-                // 5. Remove daily scores
                 Object.keys(dailyRevisionScores).forEach(date => {
                     if (dailyRevisionScores[date][playerToRemove]) {
                         delete dailyRevisionScores[date][playerToRemove];
@@ -1402,7 +1410,6 @@
                 });
                 localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
 
-                // 6. Sync with Firebase
                 if (isFirebaseConnected) {
                     historyKeysToDelete.forEach(key => db.ref(`practiceHistory/${key}`).remove());
                     db.ref(`revisionProgress/${playerToRemove}`).remove();
@@ -1445,7 +1452,6 @@
             });
         }
 
-        // --- GAMIFICATION & PFP FUNCTIONS ---
         function populateAvatars() {
             const avatarContainer = document.getElementById('modalAvatarSelection');
             avatarContainer.innerHTML = '';
@@ -1525,7 +1531,6 @@
             event.target.value = null; 
         }
 
-        // --- CORE APP FUNCTIONS ---
         function switchTab(tabName) {
             document.body.classList.remove('practice-active');
             document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
@@ -1554,12 +1559,13 @@
                 document.getElementById('editQuestionsSection').classList.add('hidden');
                 document.getElementById('reportedQuestionsSection').classList.add('hidden');
                 loadQuestionSets();
+                updateReportedQuestionsNotification();
             }
             if (tabName === 'adminPlayerHistory') renderAdminPlayerHistory();
             if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
             if (tabName === 'adminAttendance') {
                  currentAdminAttendanceDate = new Date();
-                updatePlayerSelects(); // Ensure dropdown is populated
+                updatePlayerSelects();
                 const firstPlayer = document.getElementById('attendancePlayerSelect').value;
                 renderAdminAttendanceCalendar(firstPlayer);
             }
@@ -1586,7 +1592,6 @@
             toggleNewBulkSetName(); 
         }
         
-        // --- Player and Password Functions ---
         function handlePlayerSelection() {
             const select = document.getElementById('playerSelect');
             const name = select.value;
@@ -1674,7 +1679,6 @@
             showNotification(`Password for ${userToUpdate} has been updated.`, 'success');
         }
 
-        // --- Practice Session Functions ---
         function startPracticeWrapper(setName = null, isRev = false, revisionKey = null) {
             if (!currentPlayerName) { return; } 
             const selectedSetName = setName || document.getElementById('practiceSetSelect').value;
@@ -1760,6 +1764,9 @@
             });
         }
         
+        /**
+         * (e) Remove Question Timing: Removed timeTaken and timeAtAnswer.
+         */
         function selectAnswer(selectedIndex) {
             document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
             const question = currentSet[currentQuestionIndex];
@@ -1769,12 +1776,12 @@
                 if (i === correctIndex) o.classList.add('correct');
                 else if (i === selectedIndex) o.classList.add('wrong');
             });
-            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
-            const timeForThisQuestion = timeElapsed - lastAnswerTime;
+
+            // Per-question timing fields removed
             currentAttempt.answers.push({ 
                 isCorrect, questionText: question.question, questionOptions: question.options,
                 selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: question.correctAnswer,
-                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: false
+                isSkipped: false
             });
             
             if (isCorrect) {
@@ -1795,21 +1802,27 @@
             showNextQuestion();
         }
 
+        /**
+         * (e) Remove Question Timing: Removed timeTaken and timeAtAnswer.
+         */
         function skipQuestion() {
             if (currentQuestionIndex >= currentSet.length) { return; }
             const question = currentSet[currentQuestionIndex];
             document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
-            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
-            const timeForThisQuestion = timeElapsed - lastAnswerTime;
+
+            // Per-question timing fields removed
             currentAttempt.answers.push({
                 isCorrect: false, questionText: question.question, questionOptions: question.options,
                 selectedAnswer: 'SKIPPED', correctAnswer: question.correctAnswer,
-                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: true
+                isSkipped: true
             });
             showNotification('Question skipped.', 'warning');
             proceedToNextQuestion();
         }
 
+        /**
+         * (c) Automatic Leaderboard Navigation: Added redirectToLeaderboard flag.
+         */
         function endPractice() {
             if (!practiceInProgress || !currentAttempt) {
                 practiceInProgress = false;
@@ -1821,6 +1834,7 @@
             
             practiceInProgress = false;
             clearInterval(timer);
+            redirectToLeaderboard = false; // <-- Reset flag
 
             const totalQuestions = currentAttempt.totalQuestions;
             const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
@@ -1853,6 +1867,8 @@
                 dailyRevisionScores[todayStr][currentPlayerName] += score;
                 localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
                 if (isFirebaseConnected) db.ref('dailyRevisionScores').set(dailyRevisionScores);
+                
+                redirectToLeaderboard = true; // <-- Set flag for modal
 
             } else {
                 xpEarned = calculateAndApplyXP(0);
@@ -1889,480 +1905,16 @@
             }
             
             document.body.classList.remove('practice-active');
-            switchPracticeView('practiceSetupView'); 
+            
+            // Old redirection logic removed, now handled by closeModal()
+            
             isRevisionMode = false; currentRevisionKey = null; currentSet = [];
         }
-        
-        // --- XP, STREAK, and LEVELING LOGIC ---
-        function getTodayDateString() {
-            return new Date().toISOString().split('T')[0];
-        }
 
-        function handleDailyLogin() {
-            if (!currentPlayerName) return;
-            const profile = playerProfiles[currentPlayerName];
-            const today = getTodayDateString();
-            const lastDate = profile.lastActiveDate;
-
-            if (lastDate && /\d{4}-\d{2}-\d{2}/.test(lastDate) && lastDate < today) {
-                const last = new Date(lastDate);
-                const now = new Date(today);
-                const diffTime = now - last;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                if (diffDays > 1) { 
-                    if (profile.currentStreak > 0) {
-                        showNotification(`Streak broken! You missed ${diffDays - 1} day(s).`, 'warning');
-                        profile.currentStreak = 0;
-                        profile.consecutiveMissedDays = diffDays -1;
-                    } else {
-                        profile.consecutiveMissedDays += diffDays -1;
-                    }
-
-                    let totalDeduction = 0;
-                     for(let i=0; i < diffDays - 1; i++){
-                        const dayPenalty = Math.min(50, 2**((profile.consecutiveMissedDays - (diffDays-1) + i)));
-                        totalDeduction += dayPenalty;
-                    }
-                    
-                    if(totalDeduction > 0){
-                        profile.totalXP = Math.max(0, profile.totalXP - totalDeduction);
-                        showNotification(`-${totalDeduction} XP for extended absence.`, 'error');
-                    }
-                }
-            }
-            savePlayerProfiles();
-            updateProgressUI();
-        }
-
-        function calculateAndApplyXP(correctAnswers) {
-            if (!currentPlayerName) return 0;
-            const profile = playerProfiles[currentPlayerName];
-            const today = getTodayDateString();
-            const oldLevelInfo = getLevelForXP(profile.totalXP || 0);
-            
-            const scoreXp = correctAnswers;
-            let streakXp = 0;
-
-            const lastDate = profile.lastActiveDate;
-            if (lastDate !== today) {
-                if (!profile.attendance) profile.attendance = [];
-                if (!profile.attendance.includes(today)) {
-                    profile.attendance.push(today);
-                    showNotification('Attendance automatically marked for today!', 'success');
-                }
-
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayString = yesterday.toISOString().split('T')[0];
-
-                if (lastDate === yesterdayString) {
-                    profile.currentStreak = (profile.currentStreak || 0) + 1;
-                } else {
-                    profile.currentStreak = 1; 
-                }
-
-                if (profile.currentStreak > 0) {
-                    streakXp = profile.currentStreak >= 7 ? 50 : (10 * (profile.currentStreak - 1));
-                }
-                
-                profile.lastActiveDate = today;
-                profile.consecutiveMissedDays = 0;
-            }
-        
-            const totalXpGained = scoreXp + streakXp;
-            profile.totalXP = (profile.totalXP || 0) + totalXpGained;
-            profile.totalCorrect = (profile.totalCorrect || 0) + correctAnswers;
-            
-            const newLevelInfo = getLevelForXP(profile.totalXP);
-            if (newLevelInfo.title !== oldLevelInfo.title) {
-                playSound('levelup');
-                showNotification(`🎉 Title Up! You are now a ${newLevelInfo.title}!`);
-            }
-            
-            savePlayerProfiles();
-            return totalXpGained;
-        }
-
-        function getLevelForXP(xp) {
-            return LEVEL_CONFIG.slice().reverse().find(level => xp >= level.minXp) || LEVEL_CONFIG[0];
-        }
-        
-        function resetAllXP() {
-            promptForAdminPassword(() => {
-                for (const playerName in playerProfiles) {
-                    const profile = playerProfiles[playerName];
-                    profile.totalXP = 0;
-                    profile.totalCorrect = 0;
-                    profile.currentStreak = 0;
-                    profile.lastActiveDate = null;
-                    profile.consecutiveMissedDays = 0;
-                }
-                savePlayerProfiles();
-                dailyRevisionScores = {};
-                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-                if (isFirebaseConnected) db.ref('dailyRevisionScores').set({});
-                if (currentPlayerName) { loadPlayerProgress(); }
-                showNotification('All player XP and streaks have been reset.', 'error');
-            });
-        }
-
-        // --- Question Set Management ---
-        function loadQuestionSets() {
-            const setsList = document.getElementById('setsList');
-            if(!setsList) return;
-
-            const sortedSetNames = Object.keys(questionSets).sort((a, b) => {
-                const dateA = new Date(questionSets[a].uploadDate || 0);
-                const dateB = new Date(questionSets[b].uploadDate || 0);
-                return dateB - dateA;
-            });
-
-            setsList.innerHTML = sortedSetNames.map(setName => {
-                const set = questionSets[setName];
-                const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
-                const countText = `${(set.questions || []).length} questions`;
-                const categoryText = set.category ? `(${set.category.toUpperCase()})` : '';
-                const subjectText = set.subject ? `[${set.subject}]` : '[No Subject]';
-                return `
-                <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
-                    <div>
-                        <h4 style="margin-bottom: 3px;">${subjectText} ${setName} ${categoryText} (${countText})</h4>
-                        <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap;">
-                        <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
-                        <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
-                        <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
-                    </div>
-                </div>`;
-            }).join('') || '<p>No question sets found.</p>';
-            
-            showAddQuestionsSection(); // To populate bulk upload dropdown
-        }
-        
-        function updateSubjectSelect() {
-            const subjectSelect = document.getElementById('subjectSelect');
-            if (!subjectSelect) return;
-            const subjects = [...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))].sort();
-            subjectSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
-            updatePracticeSetSelect("");
-        }
-        
-        function updatePracticeSetSelect(subject) {
-            const practiceSetSelect = document.getElementById('practiceSetSelect');
-            const startBtn = document.getElementById('startPracticeBtn');
-            if (!practiceSetSelect) return;
-
-            practiceSetSelect.innerHTML = '<option value="">-- Select a Question Set --</option>';
-
-            if (!subject) {
-                if(startBtn) startBtn.disabled = true;
-                return;
-            }
-
-            const setsForSubject = Object.keys(questionSets).filter(setName => {
-                const set = questionSets[setName];
-                const setSubject = set.subject || 'Uncategorized';
-                return setSubject === subject && set.type !== 'pdf';
-            }).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
-
-            practiceSetSelect.innerHTML += setsForSubject.map(name => `<option value="${name}">${name}</option>`).join('');
-            if(startBtn) startBtn.disabled = setsForSubject.length === 0;
-        }
-
-        function updatePlayerSelects() {
-            const selects = [
-                document.getElementById('playerSelect'), 
-                document.getElementById('playerToRemoveSelect'), 
-                document.getElementById('playerToClearHistorySelect'), 
-                document.getElementById('passwordUserSelect'), 
-                document.getElementById('attendancePlayerSelect'),
-                document.getElementById('historyPlayerSelect'),
-                document.getElementById('backlogPlayerSelect')
-            ];
-            const players = getAllPlayerNames();
-            selects.forEach(s => {
-                if (!s) return;
-                const currentVal = s.value;
-                s.innerHTML = `<option value="">Select a player</option>` + [...players].sort().map(p => `<option value="${p}">${p}</option>`).join('');
-                if (players.includes(currentVal)) {
-                    s.value = currentVal;
-                }
-            });
-        }
-        
-        function getAllPlayerNames() {
-            return [...new Set(Object.values(practiceHistory).map(a => a.playerName).filter(Boolean).concat(Object.keys(revisionProgress).filter(Boolean)).concat(Object.keys(playerProfiles).filter(Boolean)))];
-        }
-
-        function saveQuestionSets(){
-             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
-        }
-
-        function toggleNewBulkSetName() {
-            const select = document.getElementById('bulkSetSelect');
-            const newNameGroup = document.getElementById('newBulkSetNameGroup');
-            if (select.value === '_new_') {
-                newNameGroup.style.display = 'block';
-                document.getElementById('bulkSetName').value = '';
-            } else {
-                newNameGroup.style.display = 'none';
-            }
-        }
-
-        function importBulkQuestions() {
-            const select = document.getElementById('bulkSetSelect');
-            const subject = document.getElementById('setSubject').value.trim();
-            let setName;
-
-            if (select.value === '_new_') {
-                setName = document.getElementById('bulkSetName').value.trim();
-            } else {
-                setName = select.value;
-            }
-
-            const bulkText = document.getElementById('bulkQuestions').value.trim();
-            if (!setName || !bulkText || !subject) { showNotification('A set name, subject, and questions are required for bulk import.', 'error'); return; }
-            
-            let imported = 0;
-            if(!questionSets[setName]) {
-                const uploadDate = document.getElementById('setUploadDate').value;
-                const category = document.getElementById('setCategory').value;
-                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category, subject: subject };
-            } else {
-                // Update subject if importing into existing set
-                questionSets[setName].subject = subject;
-            }
-
-            bulkText.split('\n').forEach(line => {
-                const parts = line.split('|').map(p => p.trim());
-                if(parts.length === 6) {
-                    questionSets[setName].questions.push({ question: parts[0], options: parts.slice(1, 5), correctAnswer: parts[5].toUpperCase() });
-                    imported++;
-                }
-            });
-            saveQuestionSets();
-            showNotification(`${imported} questions imported to "${setName}" under subject "${subject}"`);
-            loadQuestionSets(); 
-            document.getElementById('bulkQuestions').value = '';
-            document.getElementById('bulkSetName').value = '';
-            document.getElementById('setSubject').value = '';
-        }
-
-        function deleteQuestionSet(setName) {
-            const confirmed = confirm(`Delete "${setName}"? This cannot be undone.`);
-            if (confirmed) {
-                delete questionSets[setName];
-                saveQuestionSets();
-                showNotification(`Set "${setName}" deleted.`, 'error');
-                loadQuestionSets(); 
-            }
-        }
-        
-        function renameSet(oldName) {
-            const newName = prompt("Enter the new name for the question set:", oldName);
-            if (!newName || newName.trim() === '') { showNotification('Set name cannot be empty.', 'warning'); return; }
-            if (newName === oldName) return;
-            if (questionSets[newName]) { showNotification(`A set named "${newName}" already exists.`, 'error'); return; }
-            questionSets[newName] = { ...questionSets[oldName] };
-            delete questionSets[oldName];
-            Object.keys(practiceHistory).forEach(key => { if (practiceHistory[key].setName === oldName) { practiceHistory[key].setName = newName; } });
-            Object.keys(revisionProgress).forEach(player => {
-                Object.keys(revisionProgress[player]).forEach(revKey => {
-                    if (revKey.startsWith(`${oldName}_RevDay`)) {
-                        const newRevKey = revKey.replace(oldName, newName);
-                        revisionProgress[player][newRevKey] = revisionProgress[player][revKey];
-                        delete revisionProgress[player][revKey];
-                    }
-                });
-            });
-            saveQuestionSets();
-            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-            if (isFirebaseConnected) { 
-                db.ref('questionSets').set(questionSets); 
-                db.ref('practiceHistory').set(practiceHistory); 
-                db.ref('revisionProgress').set(revisionProgress); 
-            }
-            showNotification(`Set renamed from "${oldName}" to "${newName}".`, 'success');
-            loadQuestionSets();
-        }
-
-        function editQuestionSet(setName) {
-            currentEditingSet = setName;
-            document.getElementById('adminQuestionSets').classList.add('hidden');
-            document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('editQuestionsSection'));
-            document.getElementById('editQuestionsSection').classList.remove('hidden');
-
-            document.getElementById('editQuestionsTitle').textContent = `Edit Details & Questions in Set: ${setName}`;
-            document.getElementById('questionEditForm').classList.add('hidden');
-            document.getElementById('questionsToEditList').classList.remove('hidden');
-
-            const set = questionSets[setName];
-            document.getElementById('editSetCategory').value = set.category || 'gk';
-            document.getElementById('editSetSubject').value = set.subject || '';
-
-            const questionsListDiv = document.getElementById('questionsToEditList');
-            const questions = set.questions || [];
-            questionsListDiv.innerHTML = questions.map((q, index) => `
-                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <p style="flex-grow: 1;"><strong>${index + 1}.</strong> ${q.question.substring(0, 80)}...</p>
-                    <div>
-                        <button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning" style="margin: 0; padding: 8px 15px;">Edit</button>
-                        <button onclick="deleteSpecificQuestion('${setName}', ${index})" class="btn-danger" style="margin: 0; padding: 8px 15px;">Delete</button>
-                    </div>
-                </div>`).join('') || '<p>No questions in this set.</p>';
-        }
-
-        function updateSetCategory() {
-            if (currentEditingSet && questionSets[currentEditingSet]) {
-                questionSets[currentEditingSet].category = document.getElementById('editSetCategory').value;
-                saveQuestionSets();
-                showNotification(`Category for ${currentEditingSet} updated.`, 'success');
-            }
-        }
-        function updateSetSubject() {
-            if (currentEditingSet && questionSets[currentEditingSet]) {
-                questionSets[currentEditingSet].subject = document.getElementById('editSetSubject').value;
-                saveQuestionSets();
-                showNotification(`Subject for ${currentEditingSet} updated.`, 'success');
-            }
-        }
-
-        function deleteSpecificQuestion(setName, qIndex) {
-            const questionText = questionSets[setName].questions[qIndex].question.substring(0, 30);
-            const confirmed = confirm(`Are you sure you want to delete this question: "${questionText}..."?`);
-            if(confirmed) {
-                questionSets[setName].questions.splice(qIndex, 1);
-                saveQuestionSets();
-                showNotification('Question deleted successfully.', 'error');
-                editQuestionSet(setName);
-            }
-        }
-
-        function deleteCurrentEditedQuestion() {
-            if (currentEditingSet === null || currentEditingIndex === -1) return;
-            const confirmed = confirm(`Are you sure you want to delete this question?`);
-            if(confirmed) {
-                questionSets[currentEditingSet].questions.splice(currentEditingIndex, 1);
-                saveQuestionSets();
-                showNotification('Question deleted successfully.', 'error');
-                document.getElementById('questionEditForm').classList.add('hidden');
-                editQuestionSet(currentEditingSet); 
-                currentEditingIndex = -1;
-            }
-        }
-
-        function editSpecificQuestion(setName, qIndex) {
-            currentEditingIndex = qIndex; currentEditingSet = setName;
-            const question = questionSets[setName].questions[qIndex];
-            document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
-            document.getElementById('editQuestionText').value = question.question;
-            document.getElementById('editQuestionOptions').value = question.options.join('\n');
-            document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-            
-            document.getElementById('questionsToEditList').classList.add('hidden');
-            document.getElementById('questionEditForm').classList.remove('hidden');
-        }
-
-        function saveEditedQuestion() {
-            const setName = currentEditingSet; const qIndex = currentEditingIndex;
-            const newQText = document.getElementById('editQuestionText').value.trim();
-            const newOptsText = document.getElementById('editQuestionOptions').value.trim();
-            const newCorrectAnswer = document.getElementById('editCorrectAnswer').value;
-            if (!newQText || !newOptsText) { showNotification('Question text and options are required.', 'error'); return; }
-            const newOptions = newOptsText.split('\n').map(o => o.trim()).filter(Boolean);
-            if(newOptions.length !== 4) { showNotification('Please provide exactly 4 options.', 'error'); return; }
-            questionSets[setName].questions[qIndex] = { question: newQText, options: newOptions, correctAnswer: newCorrectAnswer };
-            saveQuestionSets();
-            showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
-            if (editingFromReport.active) {
-                dismissReport(editingFromReport.reportId, true);
-                returnToReportedQuestionsView();
-            } else {
-                const nextQuestionIndex = qIndex + 1;
-                const totalQuestionsInSet = questionSets[setName].questions.length;
-                if (nextQuestionIndex < totalQuestionsInSet) { editSpecificQuestion(setName, nextQuestionIndex); } 
-                else { showNotification(`Finished editing all questions in ${setName}.`, 'success'); cancelQuestionEdit(); }
-            }
-        }
-
-        function cancelQuestionEdit() {
-            if (editingFromReport.active) { returnToReportedQuestionsView(); } 
-            else {
-                document.getElementById('questionEditForm').classList.add('hidden');
-                document.getElementById('questionsToEditList').classList.remove('hidden');
-                editQuestionSet(currentEditingSet);
-                currentEditingIndex = -1;
-            }
-        }
-        
-        // --- Leaderboard ---
-        function showLeaderboards() {
-            showXpLeaderboard();
-            showTodayLeaderboard();
-        }
-
-        function showXpLeaderboard() {
-            const players = getAllPlayerNames();
-            const leaderboardData = players.map(name => {
-                const profile = playerProfiles[name] || createNewProfile();
-                return {
-                    name,
-                    title: getLevelForXP(profile.totalXP || 0).title,
-                    totalXP: profile.totalXP || 0,
-                    totalCorrect: profile.totalCorrect || 0,
-                    streak: profile.currentStreak || 0
-                };
-            });
-
-            leaderboardData.sort((a, b) => b.totalXP - a.totalXP || b.totalCorrect - a.totalCorrect);
-
-            const tbody = document.getElementById('xpLeaderboardTableBody');
-            tbody.innerHTML = leaderboardData.map((player, i) => {
-                const highlightClass = player.name === currentPlayerName ? 'current-player-highlight' : '';
-                const winnerClass = i === 0 ? 'winner' : '';
-                let rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
-                return `
-                <tr class="${winnerClass} ${highlightClass}" style="animation-delay: ${i * 50}ms">
-                    <td data-label="Rank">${rankDisplay}</td>
-                    <td data-label="Player">${player.name}</td>
-                    <td data-label="Total XP">${player.totalXP}</td>
-                    <td data-label="Streak">${player.streak} day(s)</td>
-                    <td data-label="Title">${player.title}</td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="5">No data found. Complete revisions to appear here!</td></tr>';
-        }
-
-        function showTodayLeaderboard() {
-            const todayStr = getTodayDateString();
-            const todayScores = dailyRevisionScores[todayStr] || {};
-            const leaderboardData = Object.entries(todayScores)
-                .map(([name, score]) => ({ name, score }))
-                .sort((a, b) => b.score - a.score);
-
-            const tbody = document.getElementById('todayLeaderboardTableBody');
-            tbody.innerHTML = leaderboardData.map((player, i) => {
-                 const highlightClass = player.name === currentPlayerName ? 'current-player-highlight' : '';
-                const winnerClass = i === 0 ? 'winner' : '';
-                let rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
-                return `
-                <tr class="${winnerClass} ${highlightClass}" style="animation-delay: ${i * 50}ms">
-                    <td data-label="Rank">${rankDisplay}</td>
-                    <td data-label="Player">${player.name}</td>
-                    <td data-label="Score">${player.score}</td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="3">No revision scores for today yet.</td></tr>';
-        }
-
-
-        // --- History ---
+        /**
+         * (a) Categorized History: Rewritten to group attempts by set.
+         */
         function loadHistory() {
-            document.getElementById('questionAnalysisView').classList.add('hidden');
-            document.getElementById('historyList').classList.remove('hidden');
-            
             const listDiv = document.getElementById('historyList');
             const promptEl = document.getElementById('historyPrompt');
             const controlsEl = document.getElementById('historyControls');
@@ -2374,38 +1926,70 @@
                 return; 
             }
 
-            promptEl.textContent = 'Showing your latest attempt for each question set.';
-            controlsEl.classList.remove('hidden');
+            promptEl.textContent = 'Showing your practice attempts from the last 24 hours.';
+            controlsEl.classList.add('hidden'); // "Show Wrong" button is in the details modal
 
-            const playerAttempts = Object.values(practiceHistory).filter(a => a.playerName === currentPlayerName);
-            const latestHistoryMap = {};
-            playerAttempts.forEach(a => {
-                const key = a.setName; 
-                if (!latestHistoryMap[key] || new Date(a.startTime) > new Date(latestHistoryMap[key].startTime)) { latestHistoryMap[key] = a; }
+            // cleanupOldHistory() has already run, so practiceHistory is clean
+            const playerAttempts = Object.entries(practiceHistory)
+                .filter(([key, a]) => a.playerName === currentPlayerName)
+                .sort(([, a], [, b]) => new Date(b.startTime) - new Date(a.startTime));
+
+            if (playerAttempts.length === 0) {
+                listDiv.innerHTML = '<p>No practice history from the last 24 hours.</p>';
+                return;
+            }
+
+            const attemptsBySet = {};
+            playerAttempts.forEach(([key, attempt]) => {
+                if (!attemptsBySet[attempt.setName]) {
+                    attemptsBySet[attempt.setName] = [];
+                }
+                attemptsBySet[attempt.setName].push({ key, attempt });
             });
-            const attempts = Object.values(latestHistoryMap).sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
-            const timeFormat = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-            listDiv.innerHTML = attempts.map(a => {
-                const isRevText = a.isRevision ? `(Revision: ${a.revisionKey.replace('_RevDay', ' Day ')})` : '(Practice)';
-                return `<div class="history-item">
-                    <h4>${a.setName} ${isRevText} - ${new Date(a.startTime).toLocaleString('en-US', timeFormat)}</h4>
-                    <p>Score: ${a.score}/${a.totalQuestions} (${a.percentage}%) | Time: ${formatTime(a.timeSpent)}</p>
-                    <button onclick="viewAttemptDetails('${a.startTime}')">View Details</button>
-                </div>`}).join('') || '<p>No history found for you. Time to practice!</p>';
+
+            const timeFormat = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+            
+            listDiv.innerHTML = Object.entries(attemptsBySet).map(([setName, attempts]) => {
+                const attemptsHtml = attempts.map(({ key, attempt }) => {
+                    const isRevText = attempt.isRevision ? `(Revision)` : '(Practice)';
+                    return `<div class="history-item" style="display:flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; background: #fff;">
+                        <div>
+                            <p><strong>${new Date(attempt.startTime).toLocaleString('en-US', timeFormat)}</strong> ${isRevText}</p>
+                            <p style="font-size: 0.9em;">Score: ${attempt.score}/${attempt.totalQuestions} (${attempt.percentage}%) | Time: ${formatTime(attempt.timeSpent)}</p>
+                        </div>
+                        <button onclick="viewAttemptDetails('${key}')">View Details</button>
+                    </div>`;
+                }).join('');
+                
+                return `<details class="history-set-group" open style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: var(--border-radius); background: #fdfdfd; overflow: hidden;">
+                    <summary style="padding: 15px; cursor: pointer; font-weight: 600; background: #f8f9fa; border-bottom: 1px solid #eee;">
+                        📚 ${setName} (${attempts.length} attempt${attempts.length > 1 ? 's' : ''})
+                    </summary>
+                    <div style="padding: 0; margin: 0;">
+                        ${attemptsHtml}
+                    </div>
+                </details>`;
+            }).join('');
         }
 
-        function viewAttemptDetails(startTime) {
-            const attempt = Object.values(practiceHistory).find(a => a.startTime === startTime);
+        /**
+         * (a) Categorized History: Modified to accept attemptId.
+         * (e) Remove Question Timing: Verified no per-question time is shown.
+         */
+        function viewAttemptDetails(attemptId) {
+            const attempt = practiceHistory[attemptId]; // Find by key
             if (!attempt) return;
             let detailsHtml = `<h2>Details for ${attempt.setName}</h2>
+                <p style="font-size: 1.1em; margin-bottom: 15px;">Score: ${attempt.score}/${attempt.totalQuestions} (${attempt.percentage}%) | Time: ${formatTime(attempt.timeSpent)}</p>
                 <div style="margin: 15px 0; display: flex; flex-wrap: wrap; gap: 10px;">
-                    <button onclick="toggleWrongAnswersView(this)">Show Wrong Answers Only</button>
-                </div><div id="attemptDetailsList">`;
+                    <button onclick="toggleWrongAnswersView(this, 'attemptDetailsList')" class="btn-warning">Show Wrong Answers Only</button>
+                </div><div id="attemptDetailsList">`; // Added ID to list
+            
             attempt.answers.forEach((ans, index) => {
                 const qText = ans.questionText || 'Question details missing';
                 const qOptions = ans.questionOptions || ['A', 'B', 'C', 'D'];
                 const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
-                const correctText = qOptions[correctIndex] || 'N/A';
+                const correctText = (qOptions[correctIndex] || 'N/A').trim();
                 let answerDisplay;
                 if (ans.isCorrect) { 
                     answerDisplay = `<p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
@@ -2413,7 +1997,7 @@
                     answerDisplay = `<p class="wrong-answer">Skipped</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`; 
                 } else {
                     const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
-                    const selectedText = qOptions[selectedIndex] || 'N/A';
+                    const selectedText = (qOptions[selectedIndex] || 'N/A').trim();
                     answerDisplay = `<p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${selectedText}</p><p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>`;
                 }
                 detailsHtml += `
@@ -2427,8 +2011,12 @@
             openModal('viewDetailsModal');
         }
 
-        function toggleWrongAnswersView(button) {
-            const listContainer = document.getElementById('attemptDetailsList');
+        /**
+         * (a) Categorized History: Modified to accept listId.
+         */
+        function toggleWrongAnswersView(button, listId = 'attemptDetailsList') {
+            const listContainer = document.getElementById(listId);
+            if (!listContainer) return;
             const wrongOnly = button.textContent.includes('Wrong');
             listContainer.querySelectorAll('.question-detail-item').forEach(item => {
                 if (wrongOnly && item.dataset.correct === 'true') { item.style.display = 'none'; } 
@@ -2437,82 +2025,6 @@
             button.textContent = wrongOnly ? 'Show All Answers' : 'Show Wrong Answers Only';
         }
 
-        function showQuestionAnalysis() {
-            if (!currentPlayerName) { showNotification('Please select a player to analyze.', 'warning'); return; }
-            document.getElementById('historyList').classList.add('hidden');
-            document.getElementById('questionAnalysisView').classList.remove('hidden');
-            analyzedQuestionsBySet = {};
-            Object.values(practiceHistory).forEach(attempt => {
-                if (attempt.playerName === currentPlayerName && attempt.answers && Array.isArray(attempt.answers)) {
-                    if (!analyzedQuestionsBySet[attempt.setName]) { analyzedQuestionsBySet[attempt.setName] = []; }
-                    attempt.answers.forEach((answer, index) => {
-                        const prevTime = index > 0 ? (attempt.answers[index - 1].timeAtAnswer || 0) : 0;
-                        const timeTaken = (answer.timeAtAnswer || 0) - prevTime;
-                        analyzedQuestionsBySet[attempt.setName].push({
-                            questionText: answer.questionText || "N/A", timeTaken, isCorrect: answer.isCorrect,
-                            isSkipped: answer.isSkipped, correctAnswer: answer.correctAnswer, options: answer.questionOptions || [],
-                        });
-                    });
-                }
-            });
-            if (Object.keys(analyzedQuestionsBySet).length === 0) {
-                document.getElementById('questionAnalysisView').innerHTML = '<p>No question data found for you.</p><button onclick="loadHistory()">Back to History</button>';
-                return;
-            }
-            renderAnalysisInterface(analyzedQuestionsBySet);
-        }
-
-        function renderAnalysisInterface(questionsBySet) {
-            const analysisView = document.getElementById('questionAnalysisView');
-            const setNames = Object.keys(questionsBySet).sort((a, b) => new Date(questionSets[b]?.uploadDate || 0) - new Date(questionSets[a]?.uploadDate || 0));
-            const setOptions = setNames.map(name => `<option value="${name}">${name}</option>`).join('');
-            let viewHTML = `<h3>Question Timing Analysis</h3>
-                <p>A breakdown of every question you've answered. Select a set to view its analysis.</p>
-                <div style="margin: 15px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-                    <label for="analysisSetSelect" style="font-weight: 600;">Select Set:</label>
-                    <select id="analysisSetSelect" onchange="displayAnalysisForSet(this.value)" style="flex-grow: 1;">${setOptions}</select>
-                    <button onclick="sortCurrentAnalysis('slowest')">Sort Slowest</button>
-                    <button onclick="sortCurrentAnalysis('fastest')">Sort Fastest</button>
-                    <button onclick="loadHistory()" class="btn-warning">Back</button>
-                </div>
-                <div id="analysisTableContainer"></div>`;
-            analysisView.innerHTML = viewHTML;
-            if (setNames.length > 0) { displayAnalysisForSet(setNames[0]); }
-        }
-
-        function sortCurrentAnalysis(sortBy) {
-            const selectElement = document.getElementById('analysisSetSelect');
-            if(!selectElement) return;
-            const setName = selectElement.value;
-            if (!setName || !analyzedQuestionsBySet[setName]) return;
-            if (sortBy === 'slowest') { analyzedQuestionsBySet[setName].sort((a, b) => b.timeTaken - a.timeTaken); } 
-            else if (sortBy === 'fastest') { analyzedQuestionsBySet[setName].sort((a, b) => a.timeTaken - b.timeTaken); }
-            displayAnalysisForSet(setName);
-        }
-
-        function displayAnalysisForSet(setName) {
-            const container = document.getElementById('analysisTableContainer');
-            if (!setName || !analyzedQuestionsBySet[setName]) { container.innerHTML = "<p>Please select a valid set.</p>"; return; }
-            const questions = analyzedQuestionsBySet[setName];
-            let tableHTML = `<div class="history-item" style="border-left-color: var(--primary-color);"><div style="overflow-x: auto;"><table class="leaderboard-table">
-                            <thead><tr><th>Question & Answer</th><th>Time Taken</th><th>Result</th></tr></thead><tbody>`;
-            questions.forEach(q => {
-                let resultText = q.isSkipped ? 'Skipped' : (q.isCorrect ? 'Correct' : 'Incorrect');
-                let resultClass = q.isCorrect ? 'leaderboard-win-loss' : (q.isSkipped ? '' : 'loss');
-                const correctIndex = q.correctAnswer ? q.correctAnswer.charCodeAt(0) - 65 : -1;
-                const correctAnswerText = (correctIndex !== -1 && q.options.length > correctIndex) ? q.options[correctIndex] : 'N/A';
-                tableHTML += `
-                    <tr>
-                        <td data-label="Question">${q.questionText}<div class="correct-answer" style="margin-top: 5px; font-size: 0.9em;">↳ Answer: ${q.correctAnswer}. ${correctAnswerText}</div></td>
-                        <td data-label="Time Taken">${q.timeTaken} sec</td>
-                        <td data-label="Result"><span class="${resultClass}">${resultText}</span></td>
-                    </tr>`;
-            });
-            tableHTML += `</tbody></table></div></div>`;
-            container.innerHTML = tableHTML;
-        }
-
-        // --- REVISION FUNCTIONS ---
         function getRevisionItems(playerName = null) {
             const targetPlayer = playerName || currentPlayerName;
             if (!targetPlayer) return { dueToday: [], backlog: [], all: [] };
@@ -2594,7 +2106,7 @@
             const percentage = status ? status.percentage : 0;
             const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
             const buttonClass = status ? 'btn-warning' : 'btn-success';
-            itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
+            itemHtml += `<p>Total Questions: ${questionSets[item.setName]?.questions?.length || 0}</p>
                 <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
                 ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
             
@@ -2631,7 +2143,6 @@
             setTimeout(() => startPracticeWrapper(setName, true, revisionKey), 100); 
         }
 
-        // --- CALENDAR FUNCTIONS ---
         function getRevisionScheduleForPlayer(playerName) {
             const schedule = {};
             if (!playerName) return schedule;
@@ -2679,7 +2190,6 @@
             openModal('viewDetailsModal');
         }
 
-
         function renderAttendanceCalendar(year, month) {
              if (!currentPlayerName) {
                 document.getElementById('attendanceCalendarBody').innerHTML = '<p>Please select a player to view attendance.</p>';
@@ -2693,7 +2203,7 @@
             document.getElementById('attendanceCalendarMonthYear').textContent = `${monthName} ${year}`;
             const calendarBody = document.getElementById('attendanceCalendarBody');
             calendarBody.innerHTML = '';
-            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; // Monday as first day
+            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7;
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`; });
@@ -2736,7 +2246,7 @@
             const revisionSchedule = getRevisionScheduleForPlayer(playerName);
             
             calendarBody.innerHTML = '';
-            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; // Monday as first day
+            const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7;
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div class="calendar-day-header">${day}</div>`; });
@@ -2765,8 +2275,6 @@
             }
         }
 
-
-        // --- STATS MODAL & POPUPS ---
         function showPlayerStatsModal() {
             if (!currentPlayerName) { showNotification("Select a player to see their stats.", "warning"); return; }
             const profile = playerProfiles[currentPlayerName] || createNewProfile();
@@ -2798,17 +2306,14 @@
             openModal('wrongAnswersModal');
         }
         
-        // --- ADMIN FUNCTIONS ---
         function handleAdminLogin() {
             if (!adminCredentials) {
-                // First-time setup
                 document.getElementById('adminModalTitle').textContent = "Create Admin Account";
                 document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
                 document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
                 document.getElementById('adminSubmitBtn').textContent = "Create Admin";
                 document.getElementById('adminSubmitBtn').onclick = createAdmin;
             } else {
-                // Regular login
                 document.getElementById('adminModalTitle').textContent = "Admin Login";
                 document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
                 document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
@@ -2851,7 +2356,6 @@
         function enterAdminMode(username) {
             isAdminLoggedIn = true;
             document.querySelector('.container').classList.add('hidden');
-            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.remove('hidden');
             document.getElementById('adminWelcome').textContent = `Welcome, ${username}!`;
             updatePlayerSelects();
@@ -2861,10 +2365,12 @@
         function adminLogout() {
             isAdminLoggedIn = false;
             document.querySelector('.container').classList.remove('hidden');
-            // document.getElementById('adminLoginBtn').classList.remove('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.add('hidden');
         }
 
+        /**
+         * (a) Data Retention: Now only shows data from last 24h (by relying on global practiceHistory).
+         */
         function renderAdminPlayerHistory(playerName) {
             const listDiv = document.getElementById('adminHistoryList');
             if (!playerName) {
@@ -2872,17 +2378,18 @@
                 return;
             }
 
-            const playerAttempts = Object.values(practiceHistory).filter(a => a.playerName === playerName)
-                .sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
+            // The 24-hour filter is now global, handled by cleanupOldHistory()
+            const playerAttempts = Object.entries(practiceHistory).filter(([,a]) => a.playerName === playerName)
+                .sort(([,a],[,b]) => new Date(b.startTime) - new Date(a.startTime));
             
             const timeFormat = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-            listDiv.innerHTML = playerAttempts.map(a => {
+            listDiv.innerHTML = playerAttempts.map(([key, a]) => { // <-- Use key
                 const isRevText = a.isRevision ? `(Revision: ${a.revisionKey.replace('_RevDay', ' Day ')})` : '(Practice)';
                 return `<div class="history-item">
                     <h4>${a.setName} ${isRevText} - ${new Date(a.startTime).toLocaleString('en-US', timeFormat)}</h4>
                     <p>Score: ${a.score}/${a.totalQuestions} (${a.percentage}%) | Time: ${formatTime(a.timeSpent)}</p>
-                    <button onclick="viewAttemptDetails('${a.startTime}')">View Details</button>
-                </div>`}).join('') || `<p>No history found for ${playerName}.</p>`;
+                    <button onclick="viewAttemptDetails('${key}')">View Details</button>
+                </div>`}).join('') || `<p>No history found for ${playerName} in the last 24 hours.</p>`;
         }
 
         function renderAdminBacklogManager(playerName) {
@@ -2897,7 +2404,7 @@
                 <div class="history-item" style="border-left-color: var(--danger-color); display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h4>${item.setName} - Revision Day ${item.day}</h4>
-                        <p style="font-size: 12px; color: #555;">Due Date: ${item.revisionDate.toLocaleDateString()}</p>
+                        <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Due Date: ${item.revisionDate.toLocaleDateString()}</p>
                     </div>
                     <button onclick="removeBacklogItem('${playerName}', '${item.revisionKey}')" class="btn-danger">Remove</button>
                 </div>
@@ -2912,21 +2419,165 @@
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
                 showNotification('Backlog item removed.', 'success');
-                renderAdminBacklogManager(playerName); // Re-render the list
+                renderAdminBacklogManager(playerName);
             }
         }
 
-        // --- UI & UTILITY FUNCTIONS ---
-        
         /**
-         * Prompts for the destructive action password before executing a callback.
-         * @param {function} onSuccess - The function to call if the password is correct.
+         * (d) Question Set Division: New function.
          */
+        function promptDivideSet(setName) {
+            const originalSet = questionSets[setName];
+            if (!originalSet || !originalSet.questions || originalSet.questions.length === 0) {
+                showNotification('This set is empty and cannot be divided.', 'warning');
+                return;
+            }
+
+            const questionsPerPart = parseInt(prompt(`Dividing set: "${setName}" (${originalSet.questions.length} questions).\n\nEnter number of questions per part (e.g., 20, 50):`), 10);
+            
+            if (isNaN(questionsPerPart) || questionsPerPart <= 0) {
+                showNotification('Invalid number of questions.', 'error');
+                return;
+            }
+
+            if (questionsPerPart >= originalSet.questions.length) {
+                showNotification('Number per part must be smaller than the total number of questions.', 'warning');
+                return;
+            }
+
+            divideSet(setName, questionsPerPart);
+        }
+
+        /**
+         * (d) Question Set Division: New function.
+         */
+        function divideSet(setName, questionsPerPart) {
+            const originalSet = questionSets[setName];
+            const questions = [...originalSet.questions];
+            const numParts = Math.ceil(questions.length / questionsPerPart);
+
+            // 1. Create new sets
+            const newSetNames = [];
+            for (let i = 0; i < numParts; i++) {
+                const newSetName = `${setName} (Part ${i + 1})`;
+                newSetNames.push(newSetName);
+                const questionsForThisPart = questions.slice(i * questionsPerPart, (i + 1) * questionsPerPart);
+                
+                const newSet = {
+                    ...originalSet, // Copy metadata (subject, category, uploadDate)
+                    questions: questionsForThisPart
+                };
+                
+                questionSets[newSetName] = newSet;
+            }
+
+            // 2. Update revision progress
+            Object.keys(revisionProgress).forEach(playerName => {
+                const playerProgress = revisionProgress[playerName];
+                Object.keys(playerProgress).forEach(revisionKey => {
+                    if (revisionKey.startsWith(setName + '_RevDay')) {
+                        const originalStatus = playerProgress[revisionKey];
+                        const revisionDay = revisionKey.split('_RevDay')[1];
+                        
+                        // Add status for all new parts
+                        newSetNames.forEach(newSetName => {
+                            const newRevisionKey = `${newSetName}_RevDay${revisionDay}`;
+                            revisionProgress[playerName][newRevisionKey] = { ...originalStatus };
+                        });
+                        
+                        // Remove old key
+                        delete revisionProgress[playerName][revisionKey];
+                    }
+                });
+            });
+
+            // 3. Delete original set
+            delete questionSets[setName];
+            
+            // 4. Save everything
+            saveQuestionSets(); // This handles saving questionSets to local and Firebase
+            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+            if (isFirebaseConnected) {
+                db.ref('revisionProgress').set(revisionProgress);
+            }
+
+            showNotification(`Set "${setName}" was successfully divided into ${numParts} parts.`, 'success');
+            loadQuestionSets(); // Refresh admin UI
+            updateSubjectSelect(); // Refresh user UI
+        }
+
+        function updateReportedQuestionsNotification() {
+            const notificationDiv = document.getElementById('reportedQuestionsNotification');
+            const countSpan = document.getElementById('reportedQuestionsCount');
+            if (reportedQuestions.length > 0) {
+                countSpan.textContent = reportedQuestions.length;
+                notificationDiv.classList.remove('hidden');
+            } else {
+                notificationDiv.classList.add('hidden');
+            }
+        }
+
+        function viewReportedQuestionsFromMain() {
+            document.getElementById('adminQuestionSets').classList.add('hidden');
+            document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+            renderReportedQuestions();
+        }
+
+        function renderReportedQuestions() {
+            const listDiv = document.getElementById('reportedQuestionsList');
+            if (reportedQuestions.length === 0) { listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>'; return; }
+            listDiv.innerHTML = reportedQuestions.map(report => {
+                const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
+                return `<div class="question-set" style="border-left-color: var(--danger-color);"><h4>Set: ${report.setName}</h4><p><strong>Question:</strong> ${report.question.question}</p>
+                    <p style="margin-top: 5px;"><strong>Options:</strong> ${report.question.options.join(', ')}</p><p><strong>Correct Answer:</strong> ${report.question.correctAnswer} (${correctOpt})</p>
+                    <p style="font-size: 12px; color: #555;">Reported by ${report.reportedBy} on ${new Date(report.reportedAt).toLocaleDateString()}</p>
+                    <div style="margin-top: 10px;"><button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review & Edit</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss Report</button></div></div>`;
+            }).join('');
+        }
+
+        function dismissReport(reportId, silent = false) {
+            reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
+            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+            if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
+            updateReportedQuestionsNotification();
+            renderReportedQuestions();
+            if (!silent) showNotification('Report dismissed.', 'success');
+        }
+
+        function editReportedQuestion(reportId) {
+            const report = reportedQuestions.find(r => r.reportId === reportId);
+            if (!report) return;
+            const qIndex = (questionSets[report.setName]?.questions || []).findIndex(q => q.question === report.question.question);
+            if (qIndex === -1) { showNotification('Original question not found. It may have been edited or deleted.', 'error'); dismissReport(reportId); return; }
+            editingFromReport = { active: true, reportId: report.reportId };
+            document.getElementById('reportedQuestionsSection').classList.add('hidden');
+            editQuestionSet(report.setName);
+            setTimeout(() => editSpecificQuestion(report.setName, qIndex), 100);
+        }
+        
+        function returnToReportedQuestionsView() {
+            editingFromReport = { active: false, reportId: null };
+            document.getElementById('editQuestionsSection').classList.add('hidden');
+            document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+            renderReportedQuestions();
+        }
+
+        function reportCurrentQuestion() {
+            const question = currentSet[currentQuestionIndex];
+            const isAlreadyReported = reportedQuestions.some(r => r.setName === currentAttempt.setName && r.question.question === question.question);
+            if (isAlreadyReported) { showNotification('This question has already been reported.', 'warning'); return; }
+            reportedQuestions.push({ reportId: `report-${Date.now()}`, setName: currentAttempt.setName, question: JSON.parse(JSON.stringify(question)), reportedAt: new Date().toISOString(), reportedBy: currentPlayerName });
+            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+            if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
+            showNotification('Question reported for admin review.', 'success');
+            document.getElementById('reportQuestionBtn').classList.add('hidden');
+        }
+
         function promptForAdminPassword(onSuccess) {
             const pass = prompt("This is a destructive action. Please enter the admin password (2525) to confirm:");
             if (pass === DESTRUCTIVE_ACTION_PASSWORD) {
                 onSuccess();
-            } else if (pass !== null) { // Don't show error if they hit "Cancel"
+            } else if (pass !== null) {
                 showNotification('Incorrect admin password. Action cancelled.', 'error');
             }
         }
@@ -2948,7 +2599,26 @@
         }
         const style = document.createElement('style'); style.innerHTML = `@keyframes slideInNotification{to{transform:translateX(0)}}@keyframes slideOutNotification{from{transform:translateX(0)}to{transform:translateX(120%)}}`; document.head.appendChild(style);
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; if(id === 'viewDetailsModal') {document.getElementById('viewDetailsModalContent').innerHTML='';} }
+        
+        /**
+         * (c) Automatic Leaderboard Navigation: Modified to handle redirect.
+         */
+        function closeModal(id) { 
+            document.getElementById(id).style.display = 'none'; 
+            if(id === 'viewDetailsModal') {
+                document.getElementById('viewDetailsModalContent').innerHTML='';
+            }
+            
+            // Check for leaderboard redirect flag when closing results modal
+            if (id === 'resultsModal') {
+                if (redirectToLeaderboard) {
+                    redirectToLeaderboard = false; // Reset
+                    switchTab('leaderboard');
+                } else {
+                    switchPracticeView('practiceSetupView'); // Default for practice
+                }
+            }
+        }
         
         function showPasswordPrompt(playerName, correctPassword, onSuccess) {
             document.getElementById('passwordConfirmGroup').classList.add('hidden');
@@ -3020,56 +2690,498 @@
             });
             if (confettiParticles.length > 0) animationFrameId = requestAnimationFrame(animateConfetti);
         }
-
-        // --- REPORTING FUNCTIONS ---
-        function reportCurrentQuestion() {
-            const question = currentSet[currentQuestionIndex];
-            const isAlreadyReported = reportedQuestions.some(r => r.setName === currentAttempt.setName && r.question.question === question.question);
-            if (isAlreadyReported) { showNotification('This question has already been reported.', 'warning'); return; }
-            reportedQuestions.push({ reportId: `report-${Date.now()}`, setName: currentAttempt.setName, question: JSON.parse(JSON.stringify(question)), reportedAt: new Date().toISOString(), reportedBy: currentPlayerName });
-            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-            if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
-            showNotification('Question reported for admin review.', 'success');
-            document.getElementById('reportQuestionBtn').classList.add('hidden');
+        
+        // --- Admin Question Set Functions ---
+        // (Copied from original file, but `loadQuestionSets` and `editQuestionSet` are modified)
+        
+        function loadQuestionSets() {
+            const setsListDiv = document.getElementById('setsList');
+            const setsList = Object.keys(questionSets).sort();
+            
+            if (setsList.length > 0) {
+                setsListDiv.innerHTML = setsList.map(name => {
+                    const set = questionSets[name];
+                    const qCount = set.questions ? set.questions.length : 0;
+                    return `<div class="question-set">
+                        <h4>${name}</h4>
+                        <p><strong>Subject:</strong> ${set.subject || 'N/A'} | <strong>Category:</strong> ${set.category || 'N/A'} | <strong>Questions:</strong> ${qCount}</p>
+                        <p><strong>Upload Date:</strong> ${set.uploadDate || 'N/A'}</p>
+                        <button onclick="editQuestionSet('${name}')" class="btn-warning">Edit/View Questions</button>
+                        <button onclick="deleteSet('${name}')" class="btn-danger">Delete Set</button>
+                        <button onclick="promptDivideSet('${name}')" style="background: #16a085; margin-top: 5px;">Divide Set</button>
+                    </div>`;
+                }).join('');
+            } else {
+                setsListDiv.innerHTML = '<p>No question sets found. Add some above!</p>';
+            }
+            showAddQuestionsSection();
         }
 
-        function renderReportedQuestions() {
-            const listDiv = document.getElementById('reportedQuestionsList');
-            if (reportedQuestions.length === 0) { listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>'; return; }
-            listDiv.innerHTML = reportedQuestions.map(report => {
-                const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
-                return `<div class="question-set" style="border-left-color: var(--danger-color);"><h4>Set: ${report.setName}</h4><p><strong>Question:</strong> ${report.question.question}</p>
-                    <p style="margin-top: 5px;"><strong>Options:</strong> ${report.question.options.join(', ')}</p><p><strong>Correct Answer:</strong> ${report.question.correctAnswer} (${correctOpt})</p>
-                    <p style="font-size: 12px; color: #555;">Reported by ${report.reportedBy} on ${new Date(report.reportedAt).toLocaleDateString()}</p>
-                    <div style="margin-top: 10px;"><button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review & Edit</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss Report</button></div></div>`;
-            }).join('');
-        }
-
-        function dismissReport(reportId, silent = false) {
-            reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
-            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-            if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
-            renderReportedQuestions();
-            if (!silent) showNotification('Report dismissed.', 'success');
-        }
-
-        function editReportedQuestion(reportId) {
-            const report = reportedQuestions.find(r => r.reportId === reportId);
-            if (!report) return;
-            const qIndex = (questionSets[report.setName]?.questions || []).findIndex(q => q.question === report.question.question);
-            if (qIndex === -1) { showNotification('Original question not found. It may have been edited or deleted.', 'error'); dismissReport(reportId); return; }
-            editingFromReport = { active: true, reportId: report.reportId };
-            document.getElementById('reportedQuestionsSection').classList.add('hidden');
-            editQuestionSet(report.setName);
-            setTimeout(() => editSpecificQuestion(report.setName, qIndex), 100);
+        function saveQuestionSets() {
+            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            if (isFirebaseConnected) {
+                db.ref('questionSets').set(questionSets);
+            }
         }
         
-        function returnToReportedQuestionsView() {
-            editingFromReport = { active: false, reportId: null };
-            document.getElementById('editQuestionsSection').classList.add('hidden');
-            document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-            renderReportedQuestions();
+        function importBulkQuestions() {
+            const bulkSelect = document.getElementById('bulkSetSelect');
+            let setName = bulkSelect.value;
+            const newSetName = document.getElementById('bulkSetName').value.trim();
+            const setCategory = document.getElementById('setCategory').value;
+            const setUploadDate = document.getElementById('setUploadDate').value;
+            const setSubject = document.getElementById('setSubject').value.trim();
+            
+            if (setName === '_new_') {
+                if (!newSetName) { showNotification('Please enter a name for the new set.', 'error'); return; }
+                if (questionSets[newSetName]) { showNotification('A set with this name already exists.', 'error'); return; }
+                setName = newSetName;
+                questionSets[setName] = { questions: [], type: 'questions', category: setCategory, uploadDate: setUploadDate, subject: setSubject };
+            }
+            
+            if (!questionSets[setName]) { showNotification('Selected set not found.', 'error'); return; }
+            if (!setUploadDate) { showNotification('Please select an upload date.', 'error'); return; }
+            if (!setSubject) { showNotification('Please enter a subject.', 'error'); return; }
+
+            // Update metadata for existing sets too
+            questionSets[setName].category = setCategory;
+            questionSets[setName].uploadDate = setUploadDate;
+            questionSets[setName].subject = setSubject;
+
+            const text = document.getElementById('bulkQuestions').value;
+            const lines = text.split('\n').filter(line => line.trim().length > 0);
+            let importedCount = 0;
+            try {
+                lines.forEach(line => {
+                    const parts = line.split('|').map(p => p.trim());
+                    if (parts.length === 6) {
+                        const [question, o1, o2, o3, o4, correct] = parts;
+                        questionSets[setName].questions.push({
+                            question, options: [o1, o2, o3, o4], correctAnswer: correct.toUpperCase()
+                        });
+                        importedCount++;
+                    }
+                });
+                if (importedCount > 0) {
+                    saveQuestionSets();
+                    loadQuestionSets();
+                    updateSubjectSelect();
+                    document.getElementById('bulkQuestions').value = '';
+                    document.getElementById('bulkSetName').value = '';
+                    showNotification(`Successfully imported ${importedCount} questions into "${setName}".`);
+                } else {
+                    showNotification('No valid questions found. Format: Question | Opt1 | Opt2 | Opt3 | Opt4 | CorrectLetter', 'error');
+                }
+            } catch (e) {
+                showNotification('An error occurred during import: ' + e.message, 'error');
+            }
         }
+        
+        function toggleNewBulkSetName() {
+            const bulkSelect = document.getElementById('bulkSetSelect');
+            const newNameGroup = document.getElementById('newBulkSetNameGroup');
+            const newNameInput = document.getElementById('bulkSetName');
+            if (bulkSelect.value === '_new_') {
+                newNameGroup.style.display = 'block';
+                newNameInput.required = true;
+            } else {
+                newNameGroup.style.display = 'none';
+                newNameInput.required = false;
+                
+                // Pre-fill metadata from selected set
+                const existingSet = questionSets[bulkSelect.value];
+                if (existingSet) {
+                    document.getElementById('setCategory').value = existingSet.category || 'gk';
+                    document.getElementById('setUploadDate').value = existingSet.uploadDate || new Date().toISOString().split('T')[0];
+                    document.getElementById('setSubject').value = existingSet.subject || '';
+                }
+            }
+        }
+
+        function deleteSet(setName) {
+            promptForAdminPassword(() => {
+                delete questionSets[setName];
+                saveQuestionSets();
+                loadQuestionSets();
+                updateSubjectSelect();
+                showNotification(`Set "${setName}" deleted.`, 'error');
+            });
+        }
+        
+        /**
+         * (b) Enhanced Question Display: Rewritten to show full question and options.
+         */
+        function editQuestionSet(setName) {
+            document.getElementById('adminQuestionSets').classList.add('hidden');
+            document.getElementById('editQuestionsSection').classList.remove('hidden');
+            document.getElementById('questionEditForm').classList.add('hidden');
+            
+            currentEditingSet = setName;
+            const set = questionSets[setName];
+            document.getElementById('editQuestionsTitle').textContent = `Edit Questions in Set: ${setName}`;
+            document.getElementById('editSetSubject').value = set.subject || '';
+            document.getElementById('editSetCategory').value = set.category || 'gk';
+
+            const listDiv = document.getElementById('questionsToEditList');
+            if (set.questions && set.questions.length > 0) {
+                listDiv.innerHTML = set.questions.map((q, index) => {
+                    const optionsHtml = q.options.map((opt, i) => {
+                        const letter = String.fromCharCode(65 + i);
+                        const isCorrect = (q.correctAnswer === letter);
+                        return `<li style="list-style-type: none; margin-left: 5px; ${isCorrect ? 'font-weight: bold; color: var(--success-color);' : ''}">
+                            ${letter}. ${opt}
+                        </li>`;
+                    }).join('');
+
+                    return `
+                    <div class="question-set" style="margin: 15px 0; border: 1px solid #ddd; background: #fff; border-radius: var(--border-radius); overflow: hidden;">
+                        <div style="padding: 15px;">
+                            <p style="font-weight: bold; margin-bottom: 10px; color: var(--dark-color);">Q${index + 1}: ${q.question}</p>
+                            <ul style="padding-left: 15px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; font-size: 0.95em;">
+                                ${optionsHtml}
+                            </ul>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 10px 15px; border-top: 1px solid #eee; text-align: right;">
+                            <button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning" style="background: var(--warning-color);">Edit</button>
+                            <button onclick="deleteQuestion('${setName}', ${index})" class="btn-danger" style="background: var(--danger-color);">Delete</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                listDiv.innerHTML = '<p>This set is empty. Add questions using the bulk import form.</p>';
+            }
+        }
+        
+        function updateSetSubject() {
+            if (currentEditingSet) {
+                questionSets[currentEditingSet].subject = document.getElementById('editSetSubject').value;
+                saveQuestionSets();
+                updateSubjectSelect();
+            }
+        }
+        function updateSetCategory() {
+            if (currentEditingSet) {
+                questionSets[currentEditingSet].category = document.getElementById('editSetCategory').value;
+                saveQuestionSets();
+            }
+        }
+
+        function deleteQuestion(setName, index) {
+            promptForAdminPassword(() => {
+                questionSets[setName].questions.splice(index, 1);
+                saveQuestionSets();
+                editQuestionSet(setName); // Refresh list
+                showNotification('Question deleted.', 'error');
+            });
+        }
+        
+        function editSpecificQuestion(setName, index) {
+            currentEditingSet = setName;
+            currentEditingIndex = index;
+            const question = questionSets[setName].questions[index];
+            
+            document.getElementById('currentQuestionIndexDisplay').textContent = index + 1;
+            document.getElementById('editQuestionText').value = question.question;
+            document.getElementById('editQuestionOptions').value = question.options.join('\n');
+            document.getElementById('editCorrectAnswer').value = question.correctAnswer;
+            
+            document.getElementById('questionEditForm').classList.remove('hidden');
+            document.getElementById('questionEditForm').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function cancelQuestionEdit() {
+            currentEditingIndex = -1;
+            document.getElementById('questionEditForm').classList.add('hidden');
+            if (editingFromReport.active) {
+                returnToReportedQuestionsView();
+            }
+        }
+
+        function saveEditedQuestion() {
+            if (currentEditingIndex === -1 || !currentEditingSet) return;
+            const question = questionSets[currentEditingSet].questions[currentEditingIndex];
+            question.question = document.getElementById('editQuestionText').value;
+            question.options = document.getElementById('editQuestionOptions').value.split('\n').map(o => o.trim());
+            question.correctAnswer = document.getElementById('editCorrectAnswer').value;
+            
+            saveQuestionSets();
+            showNotification('Question updated successfully.');
+            
+            if (editingFromReport.active) {
+                dismissReport(editingFromReport.reportId, true); // Dismiss silently
+                returnToReportedQuestionsView();
+            } else {
+                editQuestionSet(currentEditingSet); // Refresh list
+            }
+        }
+        
+        function deleteCurrentEditedQuestion() {
+            if (currentEditingIndex === -1 || !currentEditingSet) return;
+            promptForAdminPassword(() => {
+                questionSets[currentEditingSet].questions.splice(currentEditingIndex, 1);
+                saveQuestionSets();
+                showNotification('Question deleted.', 'error');
+                
+                if (editingFromReport.active) {
+                    dismissReport(editingFromReport.reportId, true); // Dismiss silently
+                    returnToReportedQuestionsView();
+                } else {
+                    editQuestionSet(currentEditingSet); // Refresh list
+                }
+            });
+        }
+
+        // --- Other Functions ---
+        
+        function updateSubjectSelect() {
+            const subjectSelect = document.getElementById('subjectSelect');
+            if (!subjectSelect) return;
+            
+            const subjects = [...new Set(Object.values(questionSets).map(set => set.subject || 'Uncategorized'))];
+            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+            subjects.sort().forEach(subject => {
+                subjectSelect.innerHTML += `<option value="${subject}">${subject}</option>`;
+            });
+            
+            // Clear the set select
+            document.getElementById('practiceSetSelect').innerHTML = '<option value="">-- Select Set --</option>';
+            document.getElementById('startPracticeBtn').disabled = true;
+        }
+
+        function updatePracticeSetSelect(subject) {
+            const setSelect = document.getElementById('practiceSetSelect');
+            if (!setSelect) return;
+            
+            if (!subject) {
+                setSelect.innerHTML = '<option value="">-- Select Set --</option>';
+                document.getElementById('startPracticeBtn').disabled = true;
+                return;
+            }
+            
+            const setsInSubject = Object.keys(questionSets).filter(setName => {
+                const set = questionSets[setName];
+                return (set.subject === subject || (subject === 'Uncategorized' && !set.subject)) && set.questions && set.questions.length > 0;
+            }).sort();
+            
+            setSelect.innerHTML = '<option value="">-- Select Set --</option>';
+            setsInSubject.forEach(setName => {
+                setSelect.innerHTML += `<option value="${setName}">${setName}</option>`;
+            });
+            
+            setSelect.disabled = false;
+            document.getElementById('startPracticeBtn').disabled = setsInSubject.length === 0;
+            if (setsInSubject.length === 0) {
+                 setSelect.innerHTML = '<option value="">-- No sets available --</option>';
+            }
+        }
+
+        function updatePlayerSelects() {
+            const selects = [
+                document.getElementById('playerSelect'),
+                document.getElementById('historyPlayerSelect'),
+                document.getElementById('backlogPlayerSelect'),
+                document.getElementById('attendancePlayerSelect'),
+                document.getElementById('passwordUserSelect'),
+                document.getElementById('playerToRemoveSelect'),
+                document.getElementById('playerToClearHistorySelect')
+            ];
+            const playerNames = Object.keys(playerProfiles).sort();
+            
+            selects.forEach(select => {
+                if (!select) return;
+                const currentValue = select.value;
+                select.innerHTML = '';
+                if (select.id === 'playerSelect') {
+                    select.innerHTML = '<option value="">-- Select Player --</option>';
+                }
+                playerNames.forEach(name => {
+                    select.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+                if (playerNames.includes(currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+        
+        // --- Leaderboard & XP Functions ---
+        
+        function showLeaderboards() {
+            // ... (No changes requested to this function)
+            
+            // Today's Leaderboard
+            const todayStr = getTodayDateString();
+            const todayScores = dailyRevisionScores[todayStr] || {};
+            const todayLeaderboard = Object.entries(todayScores)
+                .map(([name, score]) => ({ name, score }))
+                .filter(p => playerProfiles[p.name]) // Ensure player exists
+                .sort((a, b) => b.score - a.score);
+
+            const todayTbody = document.getElementById('todayLeaderboardTableBody');
+            todayTbody.innerHTML = '';
+            todayLeaderboard.forEach((player, index) => {
+                const tr = document.createElement('tr');
+                if (index === 0 && player.score > 0) tr.classList.add('winner');
+                if (player.name === currentPlayerName) tr.classList.add('current-player-highlight');
+                tr.innerHTML = `<td>${index + 1}</td><td>${player.name}</td><td>${player.score}</td>`;
+                tr.style.animationDelay = `${index * 0.05}s`;
+                todayTbody.appendChild(tr);
+            });
+            if (todayLeaderboard.length === 0) {
+                todayTbody.innerHTML = '<tr><td colspan="3">No revision scores recorded yet today.</td></tr>';
+            }
+
+            // Total XP Leaderboard
+            const xpLeaderboard = Object.keys(playerProfiles).map(name => {
+                const profile = playerProfiles[name];
+                return {
+                    name,
+                    xp: profile.totalXP || 0,
+                    correct: profile.totalCorrect || 0,
+                    streak: profile.currentStreak || 0,
+                    title: getLevelForXP(profile.totalXP || 0).title
+                };
+            }).sort((a, b) => b.xp - a.xp || b.correct - a.correct); // Sort by XP, then by correct answers
+
+            const xpTbody = document.getElementById('xpLeaderboardTableBody');
+            xpTbody.innerHTML = '';
+            xpLeaderboard.forEach((player, index) => {
+                const tr = document.createElement('tr');
+                if (index === 0 && player.xp > 0) tr.classList.add('winner');
+                if (player.name === currentPlayerName) tr.classList.add('current-player-highlight');
+                tr.innerHTML = `<td>${index + 1}</td><td>${player.name}</td><td>${player.xp}</td><td>${player.streak}</td><td>${player.title}</td>`;
+                tr.style.animationDelay = `${index * 0.05}s`;
+                xpTbody.appendChild(tr);
+            });
+            if (xpLeaderboard.length === 0) {
+                xpTbody.innerHTML = '<tr><td colspan="5">No players found.</td></tr>';
+            }
+        }
+        
+        function getLevelForXP(xp) {
+            let level = LEVEL_CONFIG[0];
+            for (let i = LEVEL_CONFIG.length - 1; i >= 0; i--) {
+                if (xp >= LEVEL_CONFIG[i].minXp) {
+                    level = LEVEL_CONFIG[i];
+                    break;
+                }
+            }
+            return level;
+        }
+        
+        function getTodayDateString() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function handleDailyLogin() {
+            if (!currentPlayerName) return;
+            const profile = playerProfiles[currentPlayerName];
+            const today = getTodayDateString();
+            
+            if (profile.lastActiveDate === today) return; // Already logged in today
+            
+            const yesterday = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0];
+            
+            if (profile.lastActiveDate === yesterday) {
+                // Streak continues
+                profile.currentStreak = (profile.currentStreak || 0) + 1;
+                profile.consecutiveMissedDays = 0;
+            } else if (profile.lastActiveDate) { 
+                // Streak broken
+                const lastDate = new Date(profile.lastActiveDate);
+                const todayDate = new Date(today);
+                const diffTime = Math.abs(todayDate - lastDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                profile.consecutiveMissedDays = diffDays - 1;
+                
+                // XP Penalty
+                let xpPenalty = 0;
+                if (profile.consecutiveMissedDays === 1) xpPenalty = 200;
+                else if (profile.consecutiveMissedDays > 1) xpPenalty = 500 * (profile.consecutiveMissedDays - 1) + 200;
+
+                const oldXP = profile.totalXP || 0;
+                profile.totalXP = Math.max(0, oldXP - xpPenalty);
+                if (xpPenalty > 0) {
+                     showNotification(`Your streak was broken! You missed ${profile.consecutiveMissedDays} day(s) and lost ${xpPenalty} XP.`, 'error');
+                }
+                
+                profile.currentStreak = 1; // Start new streak
+            } else {
+                // First login
+                profile.currentStreak = 1;
+                profile.consecutiveMissedDays = 0;
+            }
+
+            profile.lastActiveDate = today;
+            
+            // Mark attendance
+            if (!profile.attendance) profile.attendance = [];
+            if (!profile.attendance.includes(today)) {
+                profile.attendance.push(today);
+            }
+            
+            savePlayerProfiles();
+            updateProgressUI();
+        }
+
+        function calculateAndApplyXP(revisionScore) {
+            const profile = playerProfiles[currentPlayerName];
+            if (!profile) return 0;
+            
+            let xpGained = 0;
+            
+            // 1. Daily Activity Bonus (only once per day)
+            const todayStr = getTodayDateString();
+            const hasRevisedToday = Object.values(practiceHistory).some(attempt => 
+                attempt.playerName === currentPlayerName &&
+                attempt.isRevision &&
+                attempt.startTime.startsWith(todayStr)
+            );
+            
+            // If this is the *first* revision of the day
+            if (!hasRevisedToday) {
+                xpGained += 50; // Base daily XP
+            }
+
+            // 2. Streak Bonus (only on first revision of the day)
+            if (!hasRevisedToday && profile.currentStreak > 1) {
+                xpGained += Math.min(profile.currentStreak * 10, 200); // Capped at 200
+            }
+            
+            // 3. Score-based XP
+            xpGained += (revisionScore * 10); // 10 XP per correct answer in revision
+            
+            profile.totalXP = (profile.totalXP || 0) + xpGained;
+            profile.totalCorrect = (profile.totalCorrect || 0) + revisionScore;
+            
+            savePlayerProfiles();
+            updateProgressUI();
+            
+            return xpGained;
+        }
+        
+        function resetAllXP() {
+            promptForAdminPassword(() => {
+                Object.keys(playerProfiles).forEach(name => {
+                    playerProfiles[name].totalXP = 0;
+                    playerProfiles[name].totalCorrect = 0;
+                    playerProfiles[name].currentStreak = 0;
+                    playerProfiles[name].lastActiveDate = null;
+                    playerProfiles[name].consecutiveMissedDays = 0;
+                    playerProfiles[name].attendance = [];
+                });
+                savePlayerProfiles();
+                
+                dailyRevisionScores = {};
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                if (isFirebaseConnected) db.ref('dailyRevisionScores').set(dailyRevisionScores);
+
+                showNotification('All player XP, streaks, and attendance have been reset.', 'error');
+                if (currentPlayerName) loadPlayerProgress();
+                showLeaderboards();
+            });
+        }
+        
     </script>
 </body>
 </html>
