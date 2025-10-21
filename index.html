@@ -846,7 +846,6 @@
 
         <nav id="admin-tab-nav">
             <button onclick="switchAdminTab('adminQuestionSets')" class="active">Question Sets</button>
-            <button onclick="switchAdminTab('adminReportedQuestions')">Reported Questions<span id="reported-questions-badge" class="revision-badge" style="display: none;"></span></button>
             <button onclick="switchAdminTab('adminPlayerHistory')">Player History</button>
             <button onclick="switchAdminTab('adminBacklogManager')">Manage Backlogs</button>
             <button onclick="switchAdminTab('adminAttendance')">Attendance Register</button>
@@ -891,11 +890,6 @@
                     <h3>Your Question Sets</h3>
                     <div id="setsList"></div>
                 </div>
-            </div>
-
-            <div id="adminReportedQuestions" class="tab-content">
-                <h2 style="margin-top: 15px;">Reported Questions for Review</h2>
-                <div id="reportedQuestionsList"></div>
             </div>
             
             <div id="adminPlayerHistory" class="tab-content">
@@ -978,6 +972,9 @@
                 <h4>Leaderboard & Progress Management</h4>
                 <button onclick="resetAllXP()" class="btn-danger">Clear All Player XP & Streaks</button>
                 <button onclick="resetRevisionProgress()" class="btn-danger">Clear All Revision Progress</button>
+                 <hr style="margin: 20px 0;">
+                <h3>Reported Questions</h3>
+                <button id="showReportedQuestionsBtn">View Reported Questions</button>
             </div>
             
             <div id="editQuestionsSection" class="hidden" style="margin-top: 20px;">
@@ -1015,6 +1012,11 @@
                     <button onclick="cancelQuestionEdit()">Cancel</button>
                     <button onclick="deleteCurrentEditedQuestion()" class="btn-danger" style="margin-top: 10px;">Delete This Question</button>
                 </div>
+            </div>
+            <div id="reportedQuestionsSection" class="hidden" style="margin-top: 20px;">
+                <button id="backToAdminSystemBtn">&larr; Back to System</button>
+                <h2 style="margin-top: 15px;">Reported Questions for Review</h2>
+                <div id="reportedQuestionsList"></div>
             </div>
         </main>
     </div>
@@ -1110,10 +1112,24 @@
                 if (editingFromReport.active) {
                     returnToReportedQuestionsView();
                 } else {
-                    switchAdminTab('adminQuestionSets');
+                    document.getElementById('editQuestionsSection').classList.add('hidden');
+                    document.getElementById('adminQuestionSets').classList.remove('hidden');
+                    currentEditingSet = null;
                 }
             });
             renderRevisionPage();
+            
+            document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
+                document.getElementById('adminSystem').classList.add('hidden');
+                document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+                document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
+                renderReportedQuestions();
+            });
+
+            document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
+                 document.getElementById('reportedQuestionsSection').classList.add('hidden');
+                 document.getElementById('adminSystem').classList.remove('hidden');
+            });
             
              // Attendance calendar navigation
             document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
@@ -1153,7 +1169,7 @@
         function setDailyQuote() {
             const quoteEl = document.getElementById('motivationalQuote');
             const quoteElLoggedIn = document.getElementById('motivationalQuoteLoggedIn');
-            const today = getTodayDateString();
+            const today = new Date().toISOString().split('T')[0];
             const storedQuote = JSON.parse(localStorage.getItem('dailyQuote'));
             let quoteToDisplay;
 
@@ -1248,7 +1264,7 @@
             db.ref('practiceHistory').on('value', s => { updateLocalData(s, 'pscPracticeHistory', 'practiceHistory'); updatePlayerSelects(); if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards(); });
             db.ref('revisionProgress').on('value', s => { updateLocalData(s, 'pscRevisionProgress', 'revisionProgress'); renderRevisionPage(); renderBacklogPage(); });
             db.ref('playerProfiles').on('value', s => { updateLocalData(s, 'pscPlayerProfiles', 'playerProfiles'); if (currentPlayerName) { loadPlayerProgress(); } });
-            db.ref('reportedQuestions').on('value', s => { updateLocalData(s, 'pscReportedQuestions', 'reportedQuestions'); updateAdminBadges(); });
+            db.ref('reportedQuestions').on('value', s => { updateLocalData(s, 'pscReportedQuestions', 'reportedQuestions'); });
             db.ref('dailyRevisionScores').on('value', s => { updateLocalData(s, 'pscDailyRevisionScores', 'dailyRevisionScores'); });
             db.ref('adminCredentials').on('value', s => { updateLocalData(s, 'pscAdminCredentials', 'adminCredentials'); });
         }
@@ -1300,7 +1316,7 @@
                 if(data.reportedQuestions) { reportedQuestions = data.reportedQuestions; localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); }
                 if(data.dailyRevisionScores) { dailyRevisionScores = data.dailyRevisionScores; localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores)); }
                 if(data.adminCredentials) { adminCredentials = data.adminCredentials; localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials)); }
-                loadQuestionSets(); updatePlayerSelects(); renderRevisionPage(); renderBacklogPage(); updateAdminBadges();
+                loadQuestionSets(); updatePlayerSelects(); renderRevisionPage(); renderBacklogPage(); 
             });
         }
         
@@ -1531,19 +1547,14 @@
         function switchAdminTab(tabName) {
             document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
-            document.querySelectorAll('#adminPanel > main > .tab-content, #adminPanel > main > #editQuestionsSection').forEach(tab => tab.classList.add('hidden'));
-
-            const activeTab = document.getElementById(tabName);
-            if (activeTab) activeTab.classList.remove('hidden');
-            if (activeTab && activeTab.classList.contains('tab-content')) activeTab.classList.add('active');
-
+            document.querySelectorAll('#adminPanel > main > .tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
 
             if (tabName === 'adminQuestionSets') {
-                document.getElementById('adminQuestionSets').classList.remove('hidden');
                 document.getElementById('editQuestionsSection').classList.add('hidden');
+                document.getElementById('reportedQuestionsSection').classList.add('hidden');
                 loadQuestionSets();
             }
-            if (tabName === 'adminReportedQuestions') renderReportedQuestions();
             if (tabName === 'adminPlayerHistory') renderAdminPlayerHistory();
             if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
             if (tabName === 'adminAttendance') {
@@ -1553,6 +1564,8 @@
                 renderAdminAttendanceCalendar(firstPlayer);
             }
              if (tabName === 'adminSystem') {
+                document.getElementById('editQuestionsSection').classList.add('hidden');
+                document.getElementById('reportedQuestionsSection').classList.add('hidden');
                 updatePlayerSelects();
             }
         }
@@ -1881,51 +1894,33 @@
         }
         
         // --- XP, STREAK, and LEVELING LOGIC ---
-        /**
-         * Returns the current date as a string in 'YYYY-MM-DD' format, using the browser's local timezone.
-         * This prevents timezone-related bugs where toISOString() might return the previous day's date.
-         */
         function getTodayDateString() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            return new Date().toISOString().split('T')[0];
         }
 
-        /**
-         * [FIXED] Handles daily login logic, including streak breaks and XP penalties for inactivity.
-         * This function now correctly calculates day differences and saves changes immediately
-         * to prevent penalties from being miscalculated on page refreshes.
-         */
         function handleDailyLogin() {
             if (!currentPlayerName) return;
             const profile = playerProfiles[currentPlayerName];
             const today = getTodayDateString();
             const lastDate = profile.lastActiveDate;
 
-            // This logic only runs when the user's last activity was on a previous day.
-            // It correctly does NOT run on same-day refreshes or logins.
-            if (lastDate && /^\d{4}-\d{2}-\d{2}/.test(lastDate) && lastDate < today) {
+            if (lastDate && /\d{4}-\d{2}-\d{2}/.test(lastDate) && lastDate < today) {
                 const last = new Date(lastDate);
                 const now = new Date(today);
+                const diffTime = now - last;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
-                // Use a more reliable method to calculate the difference in days, ignoring time.
-                const timeDiff = now.getTime() - last.getTime();
-                const diffDays = Math.round(timeDiff / (1000 * 3600 * 24));
-                
-                if (diffDays > 1) { // This means at least one full day was missed.
+                if (diffDays > 1) { 
                     if (profile.currentStreak > 0) {
                         showNotification(`Streak broken! You missed ${diffDays - 1} day(s).`, 'warning');
                         profile.currentStreak = 0;
-                        profile.consecutiveMissedDays = diffDays - 1;
+                        profile.consecutiveMissedDays = diffDays -1;
                     } else {
-                        profile.consecutiveMissedDays = (profile.consecutiveMissedDays || 0) + (diffDays -1);
+                        profile.consecutiveMissedDays += diffDays -1;
                     }
 
                     let totalDeduction = 0;
-                    for(let i=0; i < diffDays - 1; i++){
-                        // Original penalty logic is preserved.
+                     for(let i=0; i < diffDays - 1; i++){
                         const dayPenalty = Math.min(50, 2**((profile.consecutiveMissedDays - (diffDays-1) + i)));
                         totalDeduction += dayPenalty;
                     }
@@ -1936,11 +1931,9 @@
                     }
                 }
             }
-            // These calls are crucial to persist changes and update the UI immediately.
             savePlayerProfiles();
             updateProgressUI();
         }
-
 
         function calculateAndApplyXP(correctAnswers) {
             if (!currentPlayerName) return 0;
@@ -1961,8 +1954,7 @@
 
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayString = getTodayDateString.call({getDate: () => yesterday.getDate(), getMonth: () => yesterday.getMonth(), getFullYear: () => yesterday.getFullYear()});
-
+                const yesterdayString = yesterday.toISOString().split('T')[0];
 
                 if (lastDate === yesterdayString) {
                     profile.currentStreak = (profile.currentStreak || 0) + 1;
@@ -2200,8 +2192,8 @@
 
         function editQuestionSet(setName) {
             currentEditingSet = setName;
-            switchAdminTab('adminQuestionSets'); // Ensure we are on the correct base tab
-            document.getElementById('adminQuestionSets').classList.add('hidden'); // Hide the list view
+            document.getElementById('adminQuestionSets').classList.add('hidden');
+            document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('editQuestionsSection'));
             document.getElementById('editQuestionsSection').classList.remove('hidden');
 
             document.getElementById('editQuestionsTitle').textContent = `Edit Details & Questions in Set: ${setName}`;
@@ -2610,10 +2602,7 @@
         }
 
         function updateAllBadges() {
-            if (isAdminLoggedIn) {
-                updateAdminBadges();
-                return;
-            };
+            if (isAdminLoggedIn) return;
             const { dueToday, all: fullBacklog } = getRevisionItems();
 
             const revisionButton = document.querySelector('nav button[onclick="switchTab(\'revision\')"]');
@@ -2621,18 +2610,6 @@
 
             const backlogButton = document.querySelector('nav button[onclick="switchTab(\'backlog\')"]');
             updateBadgeOnButton(backlogButton, fullBacklog.length);
-        }
-
-        function updateAdminBadges() {
-            const badge = document.getElementById('reported-questions-badge');
-            if (!badge) return;
-            const count = reportedQuestions.length;
-            if (count > 0) {
-                badge.textContent = count;
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
-            }
         }
 
         function updateBadgeOnButton(button, count) {
@@ -2874,16 +2851,17 @@
         function enterAdminMode(username) {
             isAdminLoggedIn = true;
             document.querySelector('.container').classList.add('hidden');
+            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.remove('hidden');
             document.getElementById('adminWelcome').textContent = `Welcome, ${username}!`;
             updatePlayerSelects();
             switchAdminTab('adminQuestionSets');
-            updateAdminBadges();
         }
 
         function adminLogout() {
             isAdminLoggedIn = false;
             document.querySelector('.container').classList.remove('hidden');
+            // document.getElementById('adminLoginBtn').classList.remove('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.add('hidden');
         }
 
@@ -3053,12 +3031,10 @@
             if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
             showNotification('Question reported for admin review.', 'success');
             document.getElementById('reportQuestionBtn').classList.add('hidden');
-            updateAdminBadges();
         }
 
         function renderReportedQuestions() {
             const listDiv = document.getElementById('reportedQuestionsList');
-            updateAdminBadges();
             if (reportedQuestions.length === 0) { listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>'; return; }
             listDiv.innerHTML = reportedQuestions.map(report => {
                 const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
@@ -3075,7 +3051,6 @@
             if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
             renderReportedQuestions();
             if (!silent) showNotification('Report dismissed.', 'success');
-            updateAdminBadges();
         }
 
         function editReportedQuestion(reportId) {
@@ -3083,21 +3058,16 @@
             if (!report) return;
             const qIndex = (questionSets[report.setName]?.questions || []).findIndex(q => q.question === report.question.question);
             if (qIndex === -1) { showNotification('Original question not found. It may have been edited or deleted.', 'error'); dismissReport(reportId); return; }
-            
             editingFromReport = { active: true, reportId: report.reportId };
-            
-            switchAdminTab('adminQuestionSets'); // Switch to the question sets main tab
-            
-            // The edit UI is inside the 'adminQuestionSets' tab content, but we need to toggle views
-            document.getElementById('addQuestionsContent').parentElement.classList.add('hidden');
-            
-            editQuestionSet(report.setName); // This function now handles showing the edit section
+            document.getElementById('reportedQuestionsSection').classList.add('hidden');
+            editQuestionSet(report.setName);
             setTimeout(() => editSpecificQuestion(report.setName, qIndex), 100);
         }
         
         function returnToReportedQuestionsView() {
             editingFromReport = { active: false, reportId: null };
-            switchAdminTab('adminReportedQuestions');
+            document.getElementById('editQuestionsSection').classList.add('hidden');
+            document.getElementById('reportedQuestionsSection').classList.remove('hidden');
             renderReportedQuestions();
         }
     </script>
