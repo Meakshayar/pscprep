@@ -1198,44 +1198,54 @@
 
         // --- FIREBASE FUNCTIONS ---
         function initializeFirebase() {
-            if (!firebaseConfig) {
-                 firebaseConfig = {
-                    apiKey: "AIzaSyDZvvbL1D6JXKhJ0rPqUaScGPm2tpPa-Co",
-                    authDomain: "pscprep-48107.firebaseapp.com",
-                    databaseURL: "https://pscprep-48107-default-rtdb.asia-southeast1.firebasedatabase.app",
-                    projectId: "pscprep-48107",
-                    storageBucket: "pscprep-48107.firebasestorage.app",
-                    messagingSenderId: "922762730255",
-                    appId: "1:922762730255:web:94312af6f4bb7ec3f03c7a"
-                };
-                localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
-            }
-            if(document.getElementById('firebaseConfig')) {
-                document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
-            }
-            
-            try {
-                if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                updateFirebaseStatus('Connecting...', false);
-                
-                db.ref('.info/connected').on('value', snapshot => {
-                    if (snapshot.val() === true) {
-                        updateFirebaseStatus('Connected', true);
-                        isFirebaseConnected = true;
-                        setupFirebaseListeners();
-                        loadFromFirebase();
-                    } else {
-                        updateFirebaseStatus('Disconnected', false);
-                        isFirebaseConnected = false;
-                    }
-                });
-            } catch (error) {
-                console.error('Firebase Init Error:', error);
-                updateFirebaseStatus('Init Failed', false);
-            }
+    // Clear old Firebase config from localStorage to force refresh
+    localStorage.removeItem('firebaseConfig');
+    
+    // Your NEW Firebase configuration
+    firebaseConfig = {
+        apiKey: "AIzaSyDZvvbL1D6JXKhJ0rPqUaScGPm2tpPa-Co",
+        authDomain: "pscprep-48107.firebaseapp.com",
+        databaseURL: "https://pscprep-48107-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "pscprep-48107",
+        storageBucket: "pscprep-48107.firebasestorage.app",
+        messagingSenderId: "922762730255",
+        appId: "1:922762730255:web:94312af6f4bb7ec3f03c7a"
+    };
+    
+    // Force save the new config
+    localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
+    
+    if(document.getElementById('firebaseConfig')) {
+        document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
+    }
+    
+    try {
+        // Clear any existing Firebase apps
+        if (firebase.apps.length > 0) {
+            firebase.app().delete();
         }
-
+        
+        // Initialize with NEW config
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        updateFirebaseStatus('Connecting...', false);
+        
+        db.ref('.info/connected').on('value', snapshot => {
+            if (snapshot.val() === true) {
+                updateFirebaseStatus('Connected', true);
+                isFirebaseConnected = true;
+                setupFirebaseListeners();
+                loadFromFirebase();
+            } else {
+                updateFirebaseStatus('Disconnected', false);
+                isFirebaseConnected = false;
+            }
+        });
+    } catch (error) {
+        console.error('Firebase Init Error:', error);
+        updateFirebaseStatus('Init Failed', false);
+    }
+}
         function updateFirebaseStatus(status, isConnected) {
             const statusEl = document.getElementById('firebaseStatus');
             if (statusEl) {
