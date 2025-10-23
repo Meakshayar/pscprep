@@ -1162,25 +1162,17 @@
         }
 
         function logout() {
-    // Clean up Firebase listeners
-    if (db && currentPlayerName) {
-        db.ref(`playerProfiles/${currentPlayerName}`).off();
-        db.ref(`revisionProgress/${currentPlayerName}`).off();
-    }
-    
-    currentPlayerName = '';
-    localStorage.removeItem('pscLastPlayer');
-    window.location.reload();
-}
+            currentPlayerName = '';
+            localStorage.removeItem('pscLastPlayer');
+            window.location.reload();
+        }
 
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
         // --- FIREBASE FUNCTIONS ---
     
     // Your NEW Firebase configuration
- // --- OPTIMIZED FIREBASE SYNC FUNCTIONS ---
-
-function initializeFirebase() {
+ function initializeFirebase() {
     firebaseConfig = {
         apiKey: "AIzaSyAFBNJ89YFvCoyd0OL-2JVhDrHkEcUHAJU",
         authDomain: "pscprep-89bed.firebaseapp.com",
@@ -1198,18 +1190,20 @@ function initializeFirebase() {
     }
     
     try {
-        // Initialize Firebase
+        if (firebase.apps.length > 0) {
+            firebase.app().delete();
+        }
+        
         firebase.initializeApp(firebaseConfig);
         db = firebase.database();
         updateFirebaseStatus('Connecting...', false);
         
-        // Monitor connection
         db.ref('.info/connected').on('value', snapshot => {
             if (snapshot.val() === true) {
                 updateFirebaseStatus('Connected', true);
                 isFirebaseConnected = true;
                 setupOptimizedFirebaseListeners();
-                loadEssentialData(); // Load data after connection
+                
             } else {
                 updateFirebaseStatus('Disconnected', false);
                 isFirebaseConnected = false;
@@ -1218,195 +1212,9 @@ function initializeFirebase() {
     } catch (error) {
         console.error('Firebase Init Error:', error);
         updateFirebaseStatus('Init Failed', false);
-        // Continue with local data
-        loadEssentialData();
-    }
-}
-function setupOptimizedFirebaseListeners() {
-    if (!db) return;
-    
-    // Listen for player profile changes (real-time for current player only)
-    if (currentPlayerName) {
-        db.ref(`playerProfiles/${currentPlayerName}`).on('value', snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                playerProfiles[currentPlayerName] = data;
-                localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-                updateProgressUI();
-            }
-        });
-    }
-    
-    // Listen for revision progress changes (real-time for current player only)
-    if (currentPlayerName) {
-        db.ref(`revisionProgress/${currentPlayerName}`).on('value', snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                revisionProgress[currentPlayerName] = data;
-                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                renderRevisionPage();
-                renderBacklogPage();
-                updateAllBadges();
-            }
-        });
-    }
-    
-    // Daily scores - only when viewing leaderboard (we'll handle this separately)
-}
-
-function loadEssentialData() {
-    // Load player profiles once (essential for login)
-    if (isFirebaseConnected) {
-        db.ref('playerProfiles').once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                playerProfiles = data;
-                localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
-                updatePlayerSelects();
-                checkAutoLogin();
-            }
-        }).catch(error => {
-            console.log('Using local player profiles');
-            updatePlayerSelects();
-            checkAutoLogin();
-        });
-    } else {
-        updatePlayerSelects();
-        checkAutoLogin();
-    }
-
-    // Load question sets metadata first, not full sets
-    loadQuestionSetsMetadata();
-}
-
-// Add this new function to load only metadata first
-function loadQuestionSetsMetadata() {
-    if (isFirebaseConnected) {
-        // Load only the structure, not the full questions
-        db.ref('questionSets').once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                questionSets = data; // Keep full data for now, we'll optimize later
-                localStorage.setItem('pscQuestionSets', JSON.stringify(data));
-                updateSubjectSelect();
-            }
-        });
     }
 }
 
-// Load full question set only when needed
-function loadFullQuestionSet(setName) {
-    return new Promise((resolve, reject) => {
-        // Check if we already have it locally
-        if (questionSets[setName] && questionSets[setName].questions) {
-            resolve(questionSets[setName]);
-            return;
-        }
-
-        if (isFirebaseConnected) {
-            db.ref(`questionSets/${setName}`).once('value').then(snapshot => {
-                const setData = snapshot.val();
-                if (setData) {
-                    questionSets[setName] = setData;
-                    localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                    resolve(setData);
-                } else {
-                    reject(new Error('Set not found'));
-                }
-            }).catch(reject);
-        } else {
-            reject(new Error('Firebase not connected'));
-        }
-    });
-}
-// Enhanced sync function that only pushes changes
-function syncToFirebase() {
-    if (!isFirebaseConnected) { 
-        showNotification('Firebase not connected', 'error'); 
-        return; 
-    }
-    
-    // Only sync essential data
-    db.ref('questionSets').set(questionSets);
-    db.ref('playerProfiles').set(playerProfiles);
-    
-    // Only sync current player's revision progress to minimize data
-    if (currentPlayerName) {
-        db.ref(`revisionProgress/${currentPlayerName}`).set(revisionProgress[currentPlayerName] || {});
-    }
-    
-    // Sync daily scores
-    db.ref('dailyRevisionScores').set(dailyRevisionScores);
-    
-    showNotification('Data synced to Firebase!');
-}// Enhanced login function that loads player-specific data
-function loginPlayer(name, isAutoLogin = false) {
-    currentPlayerName = name;
-    localStorage.setItem('pscLastPlayer', currentPlayerName);
-    
-    handleDailyLogin();
-
-    // Set up real-time listeners for this specific player
-    setupPlayerSpecificListeners();
-    
-    if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
-    document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-    loadPlayerProgress();
-    switchPracticeView('practiceSetupView');
-    updateAllBadges();
-    updateSubjectSelect();
-}
-
-function setupPlayerSpecificListeners() {
-    if (!db || !currentPlayerName) return;
-    
-    // Remove any existing listeners
-    if (db.ref(`playerProfiles/${currentPlayerName}`).off) {
-        db.ref(`playerProfiles/${currentPlayerName}`).off();
-    }
-    if (db.ref(`revisionProgress/${currentPlayerName}`).off) {
-        db.ref(`revisionProgress/${currentPlayerName}`).off();
-    }
-    
-    // Listen for this player's profile changes
-    db.ref(`playerProfiles/${currentPlayerName}`).on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            playerProfiles[currentPlayerName] = data;
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            updateProgressUI();
-        }
-    });
-    
-    // Listen for this player's revision progress
-    db.ref(`revisionProgress/${currentPlayerName}`).on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            revisionProgress[currentPlayerName] = data;
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-            renderRevisionPage();
-            renderBacklogPage();
-            updateAllBadges();
-        }
-    });
-}
-
-// Enhanced function to save revision progress with sync
-function saveRevisionProgress() {
-    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    if (isFirebaseConnected && currentPlayerName) {
-        // Only sync the current player's revision progress
-        db.ref(`revisionProgress/${currentPlayerName}`).set(revisionProgress[currentPlayerName] || {});
-    }
-}
-
-// Update the endPractice function to use the new sync
-// In the endPractice function, replace this line:
-// if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
-// With:
-if (isFirebaseConnected && currentPlayerName) {
-    db.ref(`revisionProgress/${currentPlayerName}`).set(revisionProgress[currentPlayerName] || {});
-}
 function setupOptimizedFirebaseListeners() {
     if (!db) return;
     
@@ -1452,105 +1260,30 @@ function setupOptimizedFirebaseListeners() {
         function setupOptimizedFirebaseListeners() {
     if (!db) return;
     
-    // Listen for player profile changes (real-time for current player only)
-    if (currentPlayerName) {
-        db.ref(`playerProfiles/${currentPlayerName}`).on('value', snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                playerProfiles[currentPlayerName] = data;
-                localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-                updateProgressUI();
-            }
-        });
-    }
-    
-    // Listen for revision progress changes (real-time for current player only)
-    if (currentPlayerName) {
-        db.ref(`revisionProgress/${currentPlayerName}`).on('value', snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                revisionProgress[currentPlayerName] = data;
-                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                renderRevisionPage();
-                renderBacklogPage();
-                updateAllBadges();
-            }
-        });
-    }
+    // Load question sets ONCE (not real-time)
+    db.ref('questionSets').once('value').then(snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            questionSets = data;
+            localStorage.setItem('pscQuestionSets', JSON.stringify(data));
+            loadQuestionSets();
+            updateSubjectSelect();
+        }
+    });
 
-    function loadEssentialData() {
-    // Load question sets once (not real-time)
-    if (isFirebaseConnected) {
-        db.ref('questionSets').once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                questionSets = data;
-                localStorage.setItem('pscQuestionSets', JSON.stringify(data));
-                loadQuestionSets();
-                updateSubjectSelect();
-            }
-        }).catch(error => {
-            console.log('Using local question sets');
-        });
-    }
-
-    // Load player profiles once
-    if (isFirebaseConnected) {
-        db.ref('playerProfiles').once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                playerProfiles = data;
-                localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
-                updatePlayerSelects();
-                checkAutoLogin();
-            }
-        }).catch(error => {
-            console.log('Using local player profiles');
+    // Load player profiles ONCE
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            playerProfiles = data;
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
             updatePlayerSelects();
-            checkAutoLogin();
-        });
-    } else {
-        // Use local data if Firebase not connected
-        updatePlayerSelects();
-        checkAutoLogin();
-    }
-}
+            checkAutoLogin(); // Move auto-login here
+        }
+    });
 
-function setupPlayerSpecificListeners() {
-    if (!db || !currentPlayerName) return;
-    
-    // Remove any existing listeners
-    if (db.ref(`playerProfiles/${currentPlayerName}`).off) {
-        db.ref(`playerProfiles/${currentPlayerName}`).off();
-    }
-    if (db.ref(`revisionProgress/${currentPlayerName}`).off) {
-        db.ref(`revisionProgress/${currentPlayerName}`).off();
-    }
-    
-    // Listen for this player's profile changes
-    db.ref(`playerProfiles/${currentPlayerName}`).on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            playerProfiles[currentPlayerName] = data;
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            updateProgressUI();
-        }
-    });
-    
-    // Listen for this player's revision progress
-    db.ref(`revisionProgress/${currentPlayerName}`).on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            revisionProgress[currentPlayerName] = data;
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-            renderRevisionPage();
-            renderBacklogPage();
-            updateAllBadges();
-        }
-    });
-}
-    
-    // Daily scores - only when viewing leaderboard (we'll handle this separately)
+    // Only enable real-time listener for leaderboard when needed
+    // Remove the general dailyRevisionScores listener
 }
         function saveFirebaseConfig() {
             try {
@@ -1576,20 +1309,12 @@ function setupPlayerSpecificListeners() {
               .catch(err => showNotification(`Connection test failed: ${err.message}`, 'error'));
         }
         
-       function syncToFirebase() {
-    if (!isFirebaseConnected) { 
-        showNotification('Firebase not connected', 'error'); 
-        return; 
-    }
-    
-    // Sync admin credentials to ensure all devices have them
-    if (adminCredentials) {
-        db.ref('adminCredentials').set(adminCredentials);
-    }
-    
+        function syncToFirebase() {
+    if (!isFirebaseConnected) { showNotification('Firebase not connected', 'error'); return; }
     db.ref('questionSets').set(questionSets);
     db.ref('playerProfiles').set(playerProfiles);
     db.ref('dailyRevisionScores').set(dailyRevisionScores);
+    db.ref('adminCredentials').set(adminCredentials);
     showNotification('Essential data synced to Firebase!');
 }
 
@@ -1957,21 +1682,23 @@ function setupPlayerSpecificListeners() {
         }
         
         function loginPlayer(name, isAutoLogin = false) {
-    currentPlayerName = name;
-    localStorage.setItem('pscLastPlayer', currentPlayerName);
-    
-    handleDailyLogin();
+            currentPlayerName = name;
+            localStorage.setItem('pscLastPlayer', currentPlayerName);
+            
+            handleDailyLogin();
 
-    // Set up real-time listeners for this specific player
-    setupPlayerSpecificListeners();
-    
-    if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
-    document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-    loadPlayerProgress();
-    switchPracticeView('practiceSetupView');
-    updateAllBadges();
-    updateSubjectSelect();
-}
+            // --- ADD THIS NEW SECTION ---
+            // Stop listening to any old player's progress
+            // --- END OF NEW SECTION ---
+
+            if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
+            document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
+            loadPlayerProgress();
+            switchPracticeView('practiceSetupView');
+            updateAllBadges();
+            updateSubjectSelect();
+        }
+
         function updateUserPassword() {
             const userToUpdate = document.getElementById('passwordUserSelect').value;
             const newPassword = document.getElementById('newUserPassword').value;
@@ -2007,55 +1734,44 @@ function setupPlayerSpecificListeners() {
             switchPracticeView('practiceSessionView');
             startPractice(selectedSetName, isRev, revisionKey);
         }
-function startPractice(setName, isRev, revisionKey) { 
-    if (practiceInProgress) return;
-    
-    // Show loading state
-    document.getElementById('practiceSessionView').innerHTML = '<p>Loading questions...</p>';
-    
-    loadFullQuestionSet(setName).then(set => {
-        practiceInProgress = true;
-        initAudio();
-        isRevisionMode = isRev; 
-        currentRevisionKey = revisionKey;
-        currentSet = [...(set.questions || [])].sort(() => Math.random() - 0.5);
-        
-        if (currentSet.length === 0) { 
-            showNotification('Selected set is empty.', 'error'); 
-            practiceInProgress = false;
-            switchPracticeView('practiceSetupView');
-            return; 
-        }
-        
-        const category = set.category || 'gk';
-        let timePerQuestion = category === 'math' ? 45 : 10;
 
-        currentQuestionIndex = 0; score = 0; timeElapsed = 0;
-        totalTimeLimit = currentSet.length * timePerQuestion; 
-        currentAttempt = { 
-            playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
-            answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
-            isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
-        };
-        
-        document.getElementById('practiceScore').textContent = 'Score: 0';
-        clearInterval(timer); 
-        timer = setInterval(() => { 
-            timeElapsed++; 
-            const remaining = totalTimeLimit - timeElapsed;
-            document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-            if (remaining <= 0) { 
-                showNotification('Time limit reached!', 'error'); 
-                endPractice();
+        function startPractice(setName, isRev, revisionKey) { 
+            if (practiceInProgress) return;
+            practiceInProgress = true;
+            initAudio();
+            isRevisionMode = isRev; currentRevisionKey = revisionKey;
+            currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
+            if (currentSet.length === 0) { 
+                showNotification('Selected set is empty.', 'error'); 
+                practiceInProgress = false;
+                switchPracticeView('practiceSetupView');
+                return; 
             }
-        }, 1000);
-        
-        showNextQuestion();
-    }).catch(error => {
-        showNotification('Error loading question set: ' + error.message, 'error');
-        switchPracticeView('practiceSetupView');
-    });
-}
+            
+            const set = questionSets[setName];
+            const category = set.category || 'gk';
+            let timePerQuestion = category === 'math' ? 45 : 10;
+
+            currentQuestionIndex = 0; score = 0; timeElapsed = 0;
+            totalTimeLimit = currentSet.length * timePerQuestion; 
+            currentAttempt = { 
+                playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
+                answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
+                isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
+            };
+            document.getElementById('practiceScore').textContent = 'Score: 0';
+            clearInterval(timer); 
+            timer = setInterval(() => { 
+                timeElapsed++; 
+                const remaining = totalTimeLimit - timeElapsed;
+                document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
+                if (remaining <= 0) { 
+                    showNotification('Time limit reached!', 'error'); 
+                    endPractice();
+                }
+            }, 1000);
+            showNextQuestion();
+        }
         
         function showNextQuestion() {
             if (currentQuestionIndex >= currentSet.length) {
@@ -2190,9 +1906,7 @@ function startPractice(setName, isRev, revisionKey) {
                 if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
                 revisionProgress[currentPlayerName][currentRevisionKey] = { percentage, date: new Date().toISOString(), success };
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                if (isFirebaseConnected && currentPlayerName) {
-    db.ref(`revisionProgress/${currentPlayerName}`).set(revisionProgress[currentPlayerName] || {});
-}
+                if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
                 renderRevisionPage();
                 renderBacklogPage();
             }
@@ -2970,103 +2684,53 @@ function startPractice(setName, isRev, revisionKey) {
         
         // --- ADMIN FUNCTIONS ---
         function handleAdminLogin() {
-    // First, try to load admin credentials from Firebase
-    if (isFirebaseConnected) {
-        db.ref('adminCredentials').once('value').then(snapshot => {
-            const firebaseAdminCreds = snapshot.val();
-            if (firebaseAdminCreds) {
-                adminCredentials = firebaseAdminCreds;
-                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+            if (!adminCredentials) {
+                // First-time setup
+                document.getElementById('adminModalTitle').textContent = "Create Admin Account";
+                document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
+                document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
+                document.getElementById('adminSubmitBtn').textContent = "Create Admin";
+                document.getElementById('adminSubmitBtn').onclick = createAdmin;
+            } else {
+                // Regular login
+                document.getElementById('adminModalTitle').textContent = "Admin Login";
+                document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
+                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+                document.getElementById('adminSubmitBtn').textContent = "Login";
+                document.getElementById('adminSubmitBtn').onclick = loginAdmin;
             }
-            showAdminLoginModal();
-        }).catch(() => {
-            showAdminLoginModal();
-        });
-    } else {
-        showAdminLoginModal();
-    }
-}
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminPasswordConfirm').value = '';
+            openModal('adminAuthModal');
+        }
 
-function showAdminLoginModal() {
-    if (!adminCredentials) {
-        // First-time setup
-        document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-        document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-        document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-        document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-        document.getElementById('adminSubmitBtn').onclick = createAdmin;
-    } else {
-        // Regular login
-        document.getElementById('adminModalTitle').textContent = "Admin Login";
-        document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-        document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-        document.getElementById('adminSubmitBtn').textContent = "Login";
-        document.getElementById('adminSubmitBtn').onclick = loginAdmin;
-    }
-    document.getElementById('adminUsername').value = '';
-    document.getElementById('adminPassword').value = '';
-    document.getElementById('adminPasswordConfirm').value = '';
-    openModal('adminAuthModal');
-}
         function createAdmin() {
-    const username = document.getElementById('adminUsername').value.trim();
-    const password = document.getElementById('adminPassword').value;
-    const confirmPass = document.getElementById('adminPasswordConfirm').value;
-    if (!username || !password) { showNotification('Username and password cannot be empty.', 'error'); return; }
-    if (password !== confirmPass) { showNotification('Passwords do not match.', 'error'); return; }
+            const username = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value;
+            const confirmPass = document.getElementById('adminPasswordConfirm').value;
+            if (!username || !password) { showNotification('Username and password cannot be empty.', 'error'); return; }
+            if (password !== confirmPass) { showNotification('Passwords do not match.', 'error'); return; }
 
-    adminCredentials = { username, password };
-    localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-    
-    // Always sync to Firebase, even if other devices see "create admin"
-    if (isFirebaseConnected) {
-        db.ref('adminCredentials').set(adminCredentials).then(() => {
+            adminCredentials = { username, password };
+            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+            if (isFirebaseConnected) db.ref('adminCredentials').set(adminCredentials);
+            
             closeModal('adminAuthModal');
-            showNotification('Admin account created and synced successfully!', 'success');
+            showNotification('Admin account created successfully!', 'success');
             enterAdminMode(username);
-        }).catch(error => {
-            showNotification('Admin created locally but sync failed: ' + error.message, 'warning');
-            closeModal('adminAuthModal');
-            enterAdminMode(username);
-        });
-    } else {
-        closeModal('adminAuthModal');
-        showNotification('Admin account created locally!', 'success');
-        enterAdminMode(username);
-    }
-}
+        }
 
-       function loginAdmin() {
-    const username = document.getElementById('adminUsername').value;
-    const password = document.getElementById('adminPassword').value;
-    
-    // Check both local and potentially updated Firebase credentials
-    const checkCredentials = (creds) => {
-        return username === creds.username && password === creds.password;
-    };
-    
-    if (adminCredentials && checkCredentials(adminCredentials)) {
-        closeModal('adminAuthModal');
-        enterAdminMode(username);
-    } else if (isFirebaseConnected) {
-        // Double check with Firebase in case credentials were updated elsewhere
-        db.ref('adminCredentials').once('value').then(snapshot => {
-            const firebaseCreds = snapshot.val();
-            if (firebaseCreds && checkCredentials(firebaseCreds)) {
-                adminCredentials = firebaseCreds;
-                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+        function loginAdmin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            if (adminCredentials && username === adminCredentials.username && password === adminCredentials.password) {
                 closeModal('adminAuthModal');
                 enterAdminMode(username);
             } else {
                 showNotification('Invalid admin credentials.', 'error');
             }
-        }).catch(() => {
-            showNotification('Invalid admin credentials.', 'error');
-        });
-    } else {
-        showNotification('Invalid admin credentials.', 'error');
-    }
-}
+        }
 
         function enterAdminMode(username) {
             isAdminLoggedIn = true;
