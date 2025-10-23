@@ -1066,6 +1066,7 @@
         
         let currentAttendanceCalendarDate = new Date();
         let currentAdminAttendanceDate = new Date();
+        let dailyScoresListener = null;
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
@@ -1202,7 +1203,7 @@
                 updateFirebaseStatus('Connected', true);
                 isFirebaseConnected = true;
                 setupOptimizedFirebaseListeners();
-                loadFromFirebase();
+                
             } else {
                 updateFirebaseStatus('Disconnected', false);
                 isFirebaseConnected = false;
@@ -1281,7 +1282,17 @@ function setupOptimizedFirebaseListeners() {
                     localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
                     updatePlayerSelects(); // Update all dropdowns
                     console.log('Player profiles loaded once.');
-                }
+                }// --- ADD THIS LINE ---
+            // Now that profiles are loaded, try to auto-login
+            checkAutoLogin();
+            // --- END ---
+
+        }).catch(err => {
+            // --- ADD THIS CATCH BLOCK ---
+            // If it fails, still try to auto-login (with offline data)
+            console.error("Error loading player profiles: ", err);
+            checkAutoLogin();
+            // --- END ---
             });
             
             // 3. Load Admin Credentials ONCE
@@ -1302,20 +1313,6 @@ function setupOptimizedFirebaseListeners() {
                 }
             });
 
-            // 5. Keep REAL-TIME listener ONLY for the small leaderboard data
-            db.ref('dailyRevisionScores').on('value', snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    dailyRevisionScores = data;
-                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-                    
-                    // If the user is looking at the leaderboard, refresh it
-                    if (document.getElementById('leaderboard')?.classList.contains('active')) {
-                        showLeaderboards();
-                    }
-                    console.log('Leaderboard scores updated (real-time).');
-                }
-            });
 
             updateFirebaseStatus('Connected', true);
         }
@@ -1352,37 +1349,7 @@ function setupOptimizedFirebaseListeners() {
     showNotification('Essential data synced to Firebase!');
 }
 
-        function loadFromFirebase() {
-            if (!isFirebaseConnected) { 
-                showNotification('Firebase not connected. Loading offline data.', 'warning'); 
-                // If not connected, we load from localStorage and proceed
-                loadQuestionSets(); 
-                updatePlayerSelects();
-                checkAutoLogin(); // Use our new function
-                return; 
-            }
-            
-            db.ref('/').once('value').then(snapshot => {
-                const data = snapshot.val();
-                if(data.questionSets) { questionSets = data.questionSets; localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets)); }
-                if(data.revisionProgress) { revisionProgress = data.revisionProgress; localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress)); }
-                if(data.playerProfiles) { playerProfiles = data.playerProfiles; localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles)); }
-                if(data.reportedQuestions) { reportedQuestions = data.reportedQuestions; localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); }
-                if(data.dailyRevisionScores) { dailyRevisionScores = data.dailyRevisionScores; localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores)); }
-                if(data.adminCredentials) { adminCredentials = data.adminCredentials; localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials)); }
-                
-                // Now that all data is loaded and saved...
-                loadQuestionSets(); 
-                updatePlayerSelects(); 
-                renderRevisionPage(); 
-                renderBacklogPage(); 
-                
-                // --- ADDED THIS ---
-                // Now that all data is fresh, check for auto-login
-                checkAutoLogin();
-                // --- END ---
-            });
-        }
+        
 
         function checkAutoLogin() {
             const lastPlayer = localStorage.getItem('pscLastPlayer');
@@ -1601,22 +1568,47 @@ function setupOptimizedFirebaseListeners() {
 
         // --- CORE APP FUNCTIONS ---
        function switchTab(tabName) {
-    document.body.classList.remove('practice-active');
-    document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
-    const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
-    if(mainTabButton) mainTabButton.classList.add('active');
-    document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
-    
-    document.getElementById(tabName).classList.add('active');
-    if(tabName === 'leaderboard') showLeaderboards();
-    if(tabName === 'revision') renderRevisionPage();
-    if(tabName === 'backlog') renderBacklogPage();
-    if(tabName === 'attendance') {
-        currentAttendanceCalendarDate = new Date();
-        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-    }
-}
+            document.body.classList.remove('practice-active');
+            document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
+            const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
+            if(mainTabButton) mainTabButton.classList.add('active');
+            document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
 
+            // --- NEW LISTENER LOGIC ---
+            // Turn off the leaderboard listener if it's on
+            if (dailyScoresListener) {
+                dailyScoresListener.off();
+                dailyScoresListener = null;
+                console.log('Leaderboard listener OFF');
+            }
+
+            if(tabName === 'leaderboard') {
+                showLeaderboards(); // Show with local data first
+                // Now, turn ON the real-time listener
+                if (db && isFirebaseConnected) {
+                    dailyScoresListener = db.ref('dailyRevisionScores');
+                    dailyScoresListener.on('value', snapshot => {
+                        const data = snapshot.val();
+                        if (data) {
+                            dailyRevisionScores = data;
+                            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                            showLeaderboards(); // Refresh the view with new data
+                            console.log('Leaderboard scores updated (real-time).');
+                        }
+                    });
+                }
+            }
+            // --- END NEW LOGIC ---
+
+            if(tabName === 'revision') renderRevisionPage();
+            if(tabName === 'backlog') renderBacklogPage();
+            if(tabName === 'attendance') {
+                currentAttendanceCalendarDate = new Date();
+                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+            }
+        }
         function switchAdminTab(tabName) {
             document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
