@@ -1265,32 +1265,69 @@ function setupOptimizedFirebaseListeners() {
             }
         }
 
-        function setupFirebaseListeners() {
+        function setupOptimizedFirebaseListeners() {
             if (!db) return;
-            const refs = {
-                questionSets: 'pscQuestionSets', practiceHistory: 'pscPracticeHistory',
-                revisionProgress: 'pscRevisionProgress', playerProfiles: 'pscPlayerProfiles',
-                reportedQuestions: 'pscReportedQuestions', dailyRevisionScores: 'pscDailyRevisionScores',
-                adminCredentials: 'pscAdminCredentials'
-            };
+            
+            updateFirebaseStatus('Loading initial data...', false);
 
-            const updateLocalData = (snapshot, key, globalVar) => {
+            // 1. Load Question Sets ONCE (not real-time)
+            db.ref('questionSets').once('value').then(snapshot => {
                 const data = snapshot.val();
                 if (data) {
-                    window[globalVar] = data;
-                    localStorage.setItem(key, JSON.stringify(data));
+                    questionSets = data;
+                    localStorage.setItem('pscQuestionSets', JSON.stringify(data));
+                    loadQuestionSets(); // Update admin UI
+                    updateSubjectSelect(); // Update practice UI
+                    console.log('Question sets loaded once.');
                 }
-            };
+            });
+
+            // 2. Load Player Profiles ONCE (for the login dropdown)
+            db.ref('playerProfiles').once('value').then(snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    playerProfiles = data;
+                    localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
+                    updatePlayerSelects(); // Update all dropdowns
+                    console.log('Player profiles loaded once.');
+                }
+            });
             
-            db.ref('questionSets').on('value', s => { updateLocalData(s, 'pscQuestionSets', 'questionSets'); loadQuestionSets(); updateSubjectSelect(); });
-            db.ref('practiceHistory').on('value', s => { updateLocalData(s, 'pscPracticeHistory', 'practiceHistory'); updatePlayerSelects(); if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards(); });
-            db.ref('revisionProgress').on('value', s => { updateLocalData(s, 'pscRevisionProgress', 'revisionProgress'); renderRevisionPage(); renderBacklogPage(); });
-            db.ref('playerProfiles').on('value', s => { updateLocalData(s, 'pscPlayerProfiles', 'playerProfiles'); if (currentPlayerName) { loadPlayerProgress(); } });
-            db.ref('reportedQuestions').on('value', s => { updateLocalData(s, 'pscReportedQuestions', 'reportedQuestions'); });
-            db.ref('dailyRevisionScores').on('value', s => { updateLocalData(s, 'pscDailyRevisionScores', 'dailyRevisionScores'); });
-            db.ref('adminCredentials').on('value', s => { updateLocalData(s, 'pscAdminCredentials', 'adminCredentials'); });
+            // 3. Load Admin Credentials ONCE
+            db.ref('adminCredentials').once('value').then(snapshot => {
+                 const data = snapshot.val();
+                if(data) {
+                    adminCredentials = data;
+                    localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+                }
+            });
+
+            // 4. Load Reported Questions ONCE (admin will refresh manually)
+            db.ref('reportedQuestions').once('value').then(snapshot => {
+                const data = snapshot.val();
+                if(data) {
+                    reportedQuestions = data;
+                    localStorage.setItem('pscReportedQuestions', JSON.stringify(data));
+                }
+            });
+
+            // 5. Keep REAL-TIME listener ONLY for the small leaderboard data
+            db.ref('dailyRevisionScores').on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    dailyRevisionScores = data;
+                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                    
+                    // If the user is looking at the leaderboard, refresh it
+                    if (document.getElementById('leaderboard')?.classList.contains('active')) {
+                        showLeaderboards();
+                    }
+                    console.log('Leaderboard scores updated (real-time).');
+                }
+            });
+
+            updateFirebaseStatus('Connected', true);
         }
-        
         function saveFirebaseConfig() {
             try {
                 const config = JSON.parse(document.getElementById('firebaseConfig').value);
@@ -1671,6 +1708,29 @@ function setupOptimizedFirebaseListeners() {
             localStorage.setItem('pscLastPlayer', currentPlayerName);
             
             handleDailyLogin();
+
+            // --- ADD THIS NEW SECTION ---
+            // Stop listening to any old player's progress
+            if (window.revisionListener) {
+                window.revisionListener.off();
+            }
+            // Listen ONLY to the current player's revision progress
+            window.revisionListener = db.ref('revisionProgress/' + currentPlayerName);
+            window.revisionListener.on('value', snapshot => {
+                const data = snapshot.val();
+                if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
+                
+                if (data) {
+                    revisionProgress[currentPlayerName] = data;
+                    // We must save the *entire* revisionProgress object
+                    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+                    console.log(`Revision progress for ${currentPlayerName} loaded.`);
+                    renderRevisionPage();
+                    renderBacklogPage();
+                    updateAllBadges();
+                }
+            });
+            // --- END OF NEW SECTION ---
 
             if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
@@ -2919,4 +2979,3 @@ function setupOptimizedFirebaseListeners() {
     </script>
 </body>
 </html>
-
