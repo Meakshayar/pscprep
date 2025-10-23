@@ -1222,7 +1222,6 @@ function initializeFirebase() {
         loadEssentialData();
     }
 }
-
 function setupOptimizedFirebaseListeners() {
     if (!db) return;
     
@@ -1256,22 +1255,7 @@ function setupOptimizedFirebaseListeners() {
 }
 
 function loadEssentialData() {
-    // Load question sets once (not real-time)
-    if (isFirebaseConnected) {
-        db.ref('questionSets').once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                questionSets = data;
-                localStorage.setItem('pscQuestionSets', JSON.stringify(data));
-                loadQuestionSets();
-                updateSubjectSelect();
-            }
-        }).catch(error => {
-            console.log('Using local question sets');
-        });
-    }
-
-    // Load player profiles once
+    // Load player profiles once (essential for login)
     if (isFirebaseConnected) {
         db.ref('playerProfiles').once('value').then(snapshot => {
             const data = snapshot.val();
@@ -1287,12 +1271,54 @@ function loadEssentialData() {
             checkAutoLogin();
         });
     } else {
-        // Use local data if Firebase not connected
         updatePlayerSelects();
         checkAutoLogin();
     }
+
+    // Load question sets metadata first, not full sets
+    loadQuestionSetsMetadata();
 }
 
+// Add this new function to load only metadata first
+function loadQuestionSetsMetadata() {
+    if (isFirebaseConnected) {
+        // Load only the structure, not the full questions
+        db.ref('questionSets').once('value').then(snapshot => {
+            const data = snapshot.val();
+            if (data) {
+                questionSets = data; // Keep full data for now, we'll optimize later
+                localStorage.setItem('pscQuestionSets', JSON.stringify(data));
+                updateSubjectSelect();
+            }
+        });
+    }
+}
+
+// Load full question set only when needed
+function loadFullQuestionSet(setName) {
+    return new Promise((resolve, reject) => {
+        // Check if we already have it locally
+        if (questionSets[setName] && questionSets[setName].questions) {
+            resolve(questionSets[setName]);
+            return;
+        }
+
+        if (isFirebaseConnected) {
+            db.ref(`questionSets/${setName}`).once('value').then(snapshot => {
+                const setData = snapshot.val();
+                if (setData) {
+                    questionSets[setName] = setData;
+                    localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                    resolve(setData);
+                } else {
+                    reject(new Error('Set not found'));
+                }
+            }).catch(reject);
+        } else {
+            reject(new Error('Firebase not connected'));
+        }
+    });
+}
 // Enhanced sync function that only pushes changes
 function syncToFirebase() {
     if (!isFirebaseConnected) { 
@@ -1550,12 +1576,20 @@ function setupPlayerSpecificListeners() {
               .catch(err => showNotification(`Connection test failed: ${err.message}`, 'error'));
         }
         
-        function syncToFirebase() {
-    if (!isFirebaseConnected) { showNotification('Firebase not connected', 'error'); return; }
+       function syncToFirebase() {
+    if (!isFirebaseConnected) { 
+        showNotification('Firebase not connected', 'error'); 
+        return; 
+    }
+    
+    // Sync admin credentials to ensure all devices have them
+    if (adminCredentials) {
+        db.ref('adminCredentials').set(adminCredentials);
+    }
+    
     db.ref('questionSets').set(questionSets);
     db.ref('playerProfiles').set(playerProfiles);
     db.ref('dailyRevisionScores').set(dailyRevisionScores);
-    db.ref('adminCredentials').set(adminCredentials);
     showNotification('Essential data synced to Firebase!');
 }
 
@@ -1973,44 +2007,55 @@ function setupPlayerSpecificListeners() {
             switchPracticeView('practiceSessionView');
             startPractice(selectedSetName, isRev, revisionKey);
         }
-
-        function startPractice(setName, isRev, revisionKey) { 
-            if (practiceInProgress) return;
-            practiceInProgress = true;
-            initAudio();
-            isRevisionMode = isRev; currentRevisionKey = revisionKey;
-            currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
-            if (currentSet.length === 0) { 
-                showNotification('Selected set is empty.', 'error'); 
-                practiceInProgress = false;
-                switchPracticeView('practiceSetupView');
-                return; 
-            }
-            
-            const set = questionSets[setName];
-            const category = set.category || 'gk';
-            let timePerQuestion = category === 'math' ? 45 : 10;
-
-            currentQuestionIndex = 0; score = 0; timeElapsed = 0;
-            totalTimeLimit = currentSet.length * timePerQuestion; 
-            currentAttempt = { 
-                playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
-                answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
-                isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
-            };
-            document.getElementById('practiceScore').textContent = 'Score: 0';
-            clearInterval(timer); 
-            timer = setInterval(() => { 
-                timeElapsed++; 
-                const remaining = totalTimeLimit - timeElapsed;
-                document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-                if (remaining <= 0) { 
-                    showNotification('Time limit reached!', 'error'); 
-                    endPractice();
-                }
-            }, 1000);
-            showNextQuestion();
+function startPractice(setName, isRev, revisionKey) { 
+    if (practiceInProgress) return;
+    
+    // Show loading state
+    document.getElementById('practiceSessionView').innerHTML = '<p>Loading questions...</p>';
+    
+    loadFullQuestionSet(setName).then(set => {
+        practiceInProgress = true;
+        initAudio();
+        isRevisionMode = isRev; 
+        currentRevisionKey = revisionKey;
+        currentSet = [...(set.questions || [])].sort(() => Math.random() - 0.5);
+        
+        if (currentSet.length === 0) { 
+            showNotification('Selected set is empty.', 'error'); 
+            practiceInProgress = false;
+            switchPracticeView('practiceSetupView');
+            return; 
         }
+        
+        const category = set.category || 'gk';
+        let timePerQuestion = category === 'math' ? 45 : 10;
+
+        currentQuestionIndex = 0; score = 0; timeElapsed = 0;
+        totalTimeLimit = currentSet.length * timePerQuestion; 
+        currentAttempt = { 
+            playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
+            answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
+            isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
+        };
+        
+        document.getElementById('practiceScore').textContent = 'Score: 0';
+        clearInterval(timer); 
+        timer = setInterval(() => { 
+            timeElapsed++; 
+            const remaining = totalTimeLimit - timeElapsed;
+            document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
+            if (remaining <= 0) { 
+                showNotification('Time limit reached!', 'error'); 
+                endPractice();
+            }
+        }, 1000);
+        
+        showNextQuestion();
+    }).catch(error => {
+        showNotification('Error loading question set: ' + error.message, 'error');
+        switchPracticeView('practiceSetupView');
+    });
+}
         
         function showNextQuestion() {
             if (currentQuestionIndex >= currentSet.length) {
@@ -2925,53 +2970,103 @@ function setupPlayerSpecificListeners() {
         
         // --- ADMIN FUNCTIONS ---
         function handleAdminLogin() {
-            if (!adminCredentials) {
-                // First-time setup
-                document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-                document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-                document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-                document.getElementById('adminSubmitBtn').onclick = createAdmin;
-            } else {
-                // Regular login
-                document.getElementById('adminModalTitle').textContent = "Admin Login";
-                document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Login";
-                document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+    // First, try to load admin credentials from Firebase
+    if (isFirebaseConnected) {
+        db.ref('adminCredentials').once('value').then(snapshot => {
+            const firebaseAdminCreds = snapshot.val();
+            if (firebaseAdminCreds) {
+                adminCredentials = firebaseAdminCreds;
+                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
             }
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminPassword').value = '';
-            document.getElementById('adminPasswordConfirm').value = '';
-            openModal('adminAuthModal');
-        }
+            showAdminLoginModal();
+        }).catch(() => {
+            showAdminLoginModal();
+        });
+    } else {
+        showAdminLoginModal();
+    }
+}
 
+function showAdminLoginModal() {
+    if (!adminCredentials) {
+        // First-time setup
+        document.getElementById('adminModalTitle').textContent = "Create Admin Account";
+        document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
+        document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
+        document.getElementById('adminSubmitBtn').textContent = "Create Admin";
+        document.getElementById('adminSubmitBtn').onclick = createAdmin;
+    } else {
+        // Regular login
+        document.getElementById('adminModalTitle').textContent = "Admin Login";
+        document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
+        document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+        document.getElementById('adminSubmitBtn').textContent = "Login";
+        document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+    }
+    document.getElementById('adminUsername').value = '';
+    document.getElementById('adminPassword').value = '';
+    document.getElementById('adminPasswordConfirm').value = '';
+    openModal('adminAuthModal');
+}
         function createAdmin() {
-            const username = document.getElementById('adminUsername').value.trim();
-            const password = document.getElementById('adminPassword').value;
-            const confirmPass = document.getElementById('adminPasswordConfirm').value;
-            if (!username || !password) { showNotification('Username and password cannot be empty.', 'error'); return; }
-            if (password !== confirmPass) { showNotification('Passwords do not match.', 'error'); return; }
+    const username = document.getElementById('adminUsername').value.trim();
+    const password = document.getElementById('adminPassword').value;
+    const confirmPass = document.getElementById('adminPasswordConfirm').value;
+    if (!username || !password) { showNotification('Username and password cannot be empty.', 'error'); return; }
+    if (password !== confirmPass) { showNotification('Passwords do not match.', 'error'); return; }
 
-            adminCredentials = { username, password };
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-            if (isFirebaseConnected) db.ref('adminCredentials').set(adminCredentials);
-            
+    adminCredentials = { username, password };
+    localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+    
+    // Always sync to Firebase, even if other devices see "create admin"
+    if (isFirebaseConnected) {
+        db.ref('adminCredentials').set(adminCredentials).then(() => {
             closeModal('adminAuthModal');
-            showNotification('Admin account created successfully!', 'success');
+            showNotification('Admin account created and synced successfully!', 'success');
             enterAdminMode(username);
-        }
+        }).catch(error => {
+            showNotification('Admin created locally but sync failed: ' + error.message, 'warning');
+            closeModal('adminAuthModal');
+            enterAdminMode(username);
+        });
+    } else {
+        closeModal('adminAuthModal');
+        showNotification('Admin account created locally!', 'success');
+        enterAdminMode(username);
+    }
+}
 
-        function loginAdmin() {
-            const username = document.getElementById('adminUsername').value;
-            const password = document.getElementById('adminPassword').value;
-            if (adminCredentials && username === adminCredentials.username && password === adminCredentials.password) {
+       function loginAdmin() {
+    const username = document.getElementById('adminUsername').value;
+    const password = document.getElementById('adminPassword').value;
+    
+    // Check both local and potentially updated Firebase credentials
+    const checkCredentials = (creds) => {
+        return username === creds.username && password === creds.password;
+    };
+    
+    if (adminCredentials && checkCredentials(adminCredentials)) {
+        closeModal('adminAuthModal');
+        enterAdminMode(username);
+    } else if (isFirebaseConnected) {
+        // Double check with Firebase in case credentials were updated elsewhere
+        db.ref('adminCredentials').once('value').then(snapshot => {
+            const firebaseCreds = snapshot.val();
+            if (firebaseCreds && checkCredentials(firebaseCreds)) {
+                adminCredentials = firebaseCreds;
+                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
                 closeModal('adminAuthModal');
                 enterAdminMode(username);
             } else {
                 showNotification('Invalid admin credentials.', 'error');
             }
-        }
+        }).catch(() => {
+            showNotification('Invalid admin credentials.', 'error');
+        });
+    } else {
+        showNotification('Invalid admin credentials.', 'error');
+    }
+}
 
         function enterAdminMode(username) {
             isAdminLoggedIn = true;
