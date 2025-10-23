@@ -1258,64 +1258,33 @@ function setupOptimizedFirebaseListeners() {
         }
 
         function setupOptimizedFirebaseListeners() {
-            if (!db) return;
-            
-            updateFirebaseStatus('Loading initial data...', false);
-
-            // 1. Load Question Sets ONCE (not real-time)
-            db.ref('questionSets').once('value').then(snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    questionSets = data;
-                    localStorage.setItem('pscQuestionSets', JSON.stringify(data));
-                    loadQuestionSets(); // Update admin UI
-                    updateSubjectSelect(); // Update practice UI
-                    console.log('Question sets loaded once.');
-                }
-            });
-
-            // 2. Load Player Profiles ONCE (for the login dropdown)
-            db.ref('playerProfiles').once('value').then(snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    playerProfiles = data;
-                    localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
-                    updatePlayerSelects(); // Update all dropdowns
-                    console.log('Player profiles loaded once.');
-                }// --- ADD THIS LINE ---
-            // Now that profiles are loaded, try to auto-login
-            checkAutoLogin();
-            // --- END ---
-
-        }).catch(err => {
-            // --- ADD THIS CATCH BLOCK ---
-            // If it fails, still try to auto-login (with offline data)
-            console.error("Error loading player profiles: ", err);
-            checkAutoLogin();
-            // --- END ---
-            });
-            
-            // 3. Load Admin Credentials ONCE
-            db.ref('adminCredentials').once('value').then(snapshot => {
-                 const data = snapshot.val();
-                if(data) {
-                    adminCredentials = data;
-                    localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-                }
-            });
-
-            // 4. Load Reported Questions ONCE (admin will refresh manually)
-            db.ref('reportedQuestions').once('value').then(snapshot => {
-                const data = snapshot.val();
-                if(data) {
-                    reportedQuestions = data;
-                    localStorage.setItem('pscReportedQuestions', JSON.stringify(data));
-                }
-            });
-
-
-            updateFirebaseStatus('Connected', true);
+    if (!db) return;
+    
+    // Load question sets ONCE (not real-time)
+    db.ref('questionSets').once('value').then(snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            questionSets = data;
+            localStorage.setItem('pscQuestionSets', JSON.stringify(data));
+            loadQuestionSets();
+            updateSubjectSelect();
         }
+    });
+
+    // Load player profiles ONCE
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            playerProfiles = data;
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
+            updatePlayerSelects();
+            checkAutoLogin(); // Move auto-login here
+        }
+    });
+
+    // Only enable real-time listener for leaderboard when needed
+    // Remove the general dailyRevisionScores listener
+}
         function saveFirebaseConfig() {
             try {
                 const config = JSON.parse(document.getElementById('firebaseConfig').value);
@@ -1568,47 +1537,45 @@ function setupOptimizedFirebaseListeners() {
 
         // --- CORE APP FUNCTIONS ---
        function switchTab(tabName) {
-            document.body.classList.remove('practice-active');
-            document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
-            const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
-            if(mainTabButton) mainTabButton.classList.add('active');
-            document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
-            
-            document.getElementById(tabName).classList.add('active');
+    document.body.classList.remove('practice-active');
+    document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
+    const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
+    if(mainTabButton) mainTabButton.classList.add('active');
+    document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
+    
+    document.getElementById(tabName).classList.add('active');
 
-            // --- NEW LISTENER LOGIC ---
-            // Turn off the leaderboard listener if it's on
-            if (dailyScoresListener) {
-                dailyScoresListener.off();
-                dailyScoresListener = null;
-                console.log('Leaderboard listener OFF');
-            }
+    // FIXED: Better leaderboard listener management
+    if (dailyScoresListener) {
+        dailyScoresListener.off();
+        dailyScoresListener = null;
+        console.log('Leaderboard listener OFF');
+    }
 
-            if(tabName === 'leaderboard') {
-                showLeaderboards(); // Show with local data first
-                // Now, turn ON the real-time listener
-                if (db && isFirebaseConnected) {
-                    dailyScoresListener = db.ref('dailyRevisionScores');
-                    dailyScoresListener.on('value', snapshot => {
-                        const data = snapshot.val();
-                        if (data) {
-                            dailyRevisionScores = data;
-                            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-                            showLeaderboards(); // Refresh the view with new data
-                            console.log('Leaderboard scores updated (real-time).');
-                        }
-                    });
+    if(tabName === 'leaderboard') {
+        showLeaderboards(); // Show with local data first
+        // Only listen when actually viewing leaderboard
+        if (db && isFirebaseConnected) {
+            dailyScoresListener = db.ref('dailyRevisionScores');
+            dailyScoresListener.on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    dailyRevisionScores = data;
+                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                    showLeaderboards();
+                    console.log('Leaderboard scores updated.');
                 }
-            }
-            // --- END NEW LOGIC ---
-
-            if(tabName === 'revision') renderRevisionPage();
-            if(tabName === 'backlog') renderBacklogPage();
-            if(tabName === 'attendance') {
-                currentAttendanceCalendarDate = new Date();
-                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-            }
+            });
         }
+    }
+
+    if(tabName === 'revision') renderRevisionPage();
+    if(tabName === 'backlog') renderBacklogPage();
+    if(tabName === 'attendance') {
+        currentAttendanceCalendarDate = new Date();
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    }
+}
         function switchAdminTab(tabName) {
             document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
@@ -1722,25 +1689,6 @@ function setupOptimizedFirebaseListeners() {
 
             // --- ADD THIS NEW SECTION ---
             // Stop listening to any old player's progress
-            if (window.revisionListener) {
-                window.revisionListener.off();
-            }
-            // Listen ONLY to the current player's revision progress
-            window.revisionListener = db.ref('revisionProgress/' + currentPlayerName);
-            window.revisionListener.on('value', snapshot => {
-                const data = snapshot.val();
-                if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
-                
-                if (data) {
-                    revisionProgress[currentPlayerName] = data;
-                    // We must save the *entire* revisionProgress object
-                    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                    console.log(`Revision progress for ${currentPlayerName} loaded.`);
-                    renderRevisionPage();
-                    renderBacklogPage();
-                    updateAllBadges();
-                }
-            });
             // --- END OF NEW SECTION ---
 
             if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
