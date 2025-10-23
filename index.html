@@ -1071,21 +1071,14 @@
         document.addEventListener('DOMContentLoaded', init);
 
         function init() {
-            initializeFirebase();
-            loadQuestionSets();
-            updatePlayerSelects();
+            initializeFirebase(); // This will connect and then call loadFromFirebase()
             populateAvatars();
             setDailyQuote();
             
             document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
             document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-            const lastPlayer = localStorage.getItem('pscLastPlayer');
-            if (lastPlayer && playerProfiles[lastPlayer]) {
-                loginPlayer(lastPlayer, true); 
-            } else {
-                switchPracticeView('welcomeView');
-            }
+            // All the data loading and auto-login logic has been moved to loadFromFirebase()
 
             document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
             
@@ -1098,7 +1091,6 @@
                     currentEditingSet = null;
                 }
             });
-            renderRevisionPage();
             
             document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
                 document.getElementById('adminSystem').classList.add('hidden');
@@ -1106,7 +1098,6 @@
                 document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
                 renderReportedQuestions();
             });
-
             document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
                  document.getElementById('reportedQuestionsSection').classList.add('hidden');
                  document.getElementById('adminSystem').classList.remove('hidden');
@@ -1362,7 +1353,15 @@ function setupOptimizedFirebaseListeners() {
 }
 
         function loadFromFirebase() {
-            if (!isFirebaseConnected) { showNotification('Firebase not connected', 'error'); return; }
+            if (!isFirebaseConnected) { 
+                showNotification('Firebase not connected. Loading offline data.', 'warning'); 
+                // If not connected, we load from localStorage and proceed
+                loadQuestionSets(); 
+                updatePlayerSelects();
+                checkAutoLogin(); // Use our new function
+                return; 
+            }
+            
             db.ref('/').once('value').then(snapshot => {
                 const data = snapshot.val();
                 if(data.questionSets) { questionSets = data.questionSets; localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets)); }
@@ -1371,8 +1370,28 @@ function setupOptimizedFirebaseListeners() {
                 if(data.reportedQuestions) { reportedQuestions = data.reportedQuestions; localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions)); }
                 if(data.dailyRevisionScores) { dailyRevisionScores = data.dailyRevisionScores; localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores)); }
                 if(data.adminCredentials) { adminCredentials = data.adminCredentials; localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials)); }
-                loadQuestionSets(); updatePlayerSelects(); renderRevisionPage(); renderBacklogPage(); 
+                
+                // Now that all data is loaded and saved...
+                loadQuestionSets(); 
+                updatePlayerSelects(); 
+                renderRevisionPage(); 
+                renderBacklogPage(); 
+                
+                // --- ADDED THIS ---
+                // Now that all data is fresh, check for auto-login
+                checkAutoLogin();
+                // --- END ---
             });
+        }
+
+        function checkAutoLogin() {
+            const lastPlayer = localStorage.getItem('pscLastPlayer');
+            // We use the *global* playerProfiles, which has just been updated
+            if (lastPlayer && playerProfiles[lastPlayer]) {
+                loginPlayer(lastPlayer, true); 
+            } else {
+                switchPracticeView('welcomeView');
+            }
         }
         
         // --- DATA MANAGEMENT ---
