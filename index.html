@@ -1046,7 +1046,6 @@
         let playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
         let dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
-        let adminCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials')) || null;
 
         let isAdminLoggedIn = false;
         
@@ -1505,24 +1504,24 @@ function checkAutoLogin() {
         
         // Show helpful message if no data
         if (!hasQuestionSets) {
-            showNotification('No question sets found. Click "Download All Data" to get started.', 'warning');
+            showNotification('No question sets found. loading data!', 'warning');
         }
     }
 }
 
 function handleAdminLogin() {
-    // 1. Reset the Modal UI
+    // Reset modal UI for a clean login attempt
     document.getElementById('adminModalTitle').textContent = "Secure Admin Login";
     document.getElementById('adminModalPrompt').textContent = "Enter your Admin Email & Password";
     
-    // Hide the 'Confirm Password' box if it exists (we don't need it for login)
+    // Ensure the 'Confirm Password' box is hidden, as it's not needed for login
     const confirmGroup = document.getElementById('adminPasswordConfirmGroup');
     if(confirmGroup) confirmGroup.classList.add('hidden');
     
     const btn = document.getElementById('adminSubmitBtn');
     btn.textContent = "Login";
     
-    // 2. Clear previous inputs
+    // Clear inputs
     const emailInput = document.getElementById('adminUsername');
     const passInput = document.getElementById('adminPassword');
     
@@ -1530,42 +1529,38 @@ function handleAdminLogin() {
     emailInput.value = '';
     passInput.value = '';
 
-    // 3. Define what happens when you click "Login"
+    // Set the click action to Firebase Auth ONLY
     btn.onclick = function() {
         const email = emailInput.value;
         const pass = passInput.value;
         
         showNotification("Verifying credentials...", "info");
 
-        // THE MAGICAL PART: Ask Firebase to log us in
+        // STEP 1: Firebase Auth Check (is the email/password correct?)
         firebase.auth().signInWithEmailAndPassword(email, pass)
         .then((userCredential) => {
-            // Firebase says: "Password is correct!"
+            // STEP 2: Database Check (is this user UID an Admin?)
             const uid = userCredential.user.uid;
-            
-            // Now check: Is this user listed in our 'admins' list?
             db.ref('admins/' + uid).once('value').then(snapshot => {
                 if (snapshot.val() === true) {
-                    // YES! They are an admin.
                     closeModal('adminAuthModal');
                     showNotification("Login Successful! Welcome Admin.", "success");
                     enterAdminMode(); // Turn on the Admin UI
                 } else {
-                    // Password correct, but not in the admin list.
+                    // Logged in, but not an admin in the database
                     firebase.auth().signOut();
                     showNotification("Access Denied: You are not an Admin.", "error");
                 }
             });
         })
         .catch((error) => {
-            // Password wrong or user doesn't exist
+            // Failed at step 1 (wrong email or password)
             showNotification("Login Failed: " + error.message, "error");
         });
     };
 
     openModal('adminAuthModal');
 }
-
 function showAdminLoginModal() {
     if (!adminCredentials) {
         // First-time setup
