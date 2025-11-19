@@ -10,6 +10,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
     <style>
         :root {
@@ -1510,31 +1511,59 @@ function checkAutoLogin() {
 }
 
 function handleAdminLogin() {
-    // Check if we have admin credentials locally
-    if (!adminCredentials) {
-        // No local admin data - try to download it
-        if (isFirebaseConnected) {
-            showNotification('Downloading admin data...');
-            db.ref('adminCredentials').once('value').then(snapshot => {
-                const firebaseAdminCreds = snapshot.val();
-                if (firebaseAdminCreds) {
-                    adminCredentials = firebaseAdminCreds;
-                    localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-                    // Now show the admin login modal
-                    showAdminLoginModal();
+    // 1. Reset the Modal UI
+    document.getElementById('adminModalTitle').textContent = "Secure Admin Login";
+    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Email & Password";
+    
+    // Hide the 'Confirm Password' box if it exists (we don't need it for login)
+    const confirmGroup = document.getElementById('adminPasswordConfirmGroup');
+    if(confirmGroup) confirmGroup.classList.add('hidden');
+    
+    const btn = document.getElementById('adminSubmitBtn');
+    btn.textContent = "Login";
+    
+    // 2. Clear previous inputs
+    const emailInput = document.getElementById('adminUsername');
+    const passInput = document.getElementById('adminPassword');
+    
+    emailInput.placeholder = "Email (e.g. admin@pscprep.com)";
+    emailInput.value = '';
+    passInput.value = '';
+
+    // 3. Define what happens when you click "Login"
+    btn.onclick = function() {
+        const email = emailInput.value;
+        const pass = passInput.value;
+        
+        showNotification("Verifying credentials...", "info");
+
+        // THE MAGICAL PART: Ask Firebase to log us in
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+        .then((userCredential) => {
+            // Firebase says: "Password is correct!"
+            const uid = userCredential.user.uid;
+            
+            // Now check: Is this user listed in our 'admins' list?
+            db.ref('admins/' + uid).once('value').then(snapshot => {
+                if (snapshot.val() === true) {
+                    // YES! They are an admin.
+                    closeModal('adminAuthModal');
+                    showNotification("Login Successful! Welcome Admin.", "success");
+                    enterAdminMode(); // Turn on the Admin UI
                 } else {
-                    showNotification('No admin account found on server.', 'error');
+                    // Password correct, but not in the admin list.
+                    firebase.auth().signOut();
+                    showNotification("Access Denied: You are not an Admin.", "error");
                 }
-            }).catch(error => {
-                showNotification('Failed to download admin data: ' + error.message, 'error');
             });
-        } else {
-            showNotification('No internet connection. Cannot login as admin.', 'error');
-        }
-    } else {
-        // We have local admin data - proceed normally
-        showAdminLoginModal();
-    }
+        })
+        .catch((error) => {
+            // Password wrong or user doesn't exist
+            showNotification("Login Failed: " + error.message, "error");
+        });
+    };
+
+    openModal('adminAuthModal');
 }
 
 function showAdminLoginModal() {
@@ -3172,10 +3201,15 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         }
 
         function adminLogout() {
-            isAdminLoggedIn = false;
-            document.querySelector('.container').classList.remove('hidden');
-            document.getElementById('adminPanel').classList.add('hidden');
-        }
+    firebase.auth().signOut().then(() => {
+        isAdminLoggedIn = false;
+        document.querySelector('.container').classList.remove('hidden');
+        document.getElementById('adminPanel').classList.add('hidden');
+        showNotification("Logged out securely.", "success");
+    }).catch((error) => {
+        showNotification("Error logging out", "error");
+    });
+}
 
         function renderAdminBacklogManager(playerName) {
             const listDiv = document.getElementById('adminBacklogList');
@@ -3443,3 +3477,4 @@ function downloadQuestionSet(setName) {
     </script>
 </body>
 </html>
+
