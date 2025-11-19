@@ -621,36 +621,166 @@
         /* --- END CALENDAR STYLES --- */
 
         /* --- RESPONSIVE ADJUSTMENTS --- */
-        @media screen and (max-width: 600px) {
-            body { padding: 5px; }
-            .container, #adminPanel { padding: 0; border-radius: 0; }
-            nav button { font-size: 12px; padding: 12px 5px; }
-            .tab-content { padding: 15px; }
+@media screen and (max-width: 600px) {
+    body { 
+        padding: 5px; 
+        align-items: flex-start;
+    }
+    .container, #adminPanel { 
+        padding: 0; 
+        border-radius: 0; 
+        width: 100%;
+        max-width: 100%;
+        min-height: 100vh;
+    }
+    nav button { 
+        font-size: 11px; 
+        padding: 10px 3px; 
+    }
+    .tab-content { 
+        padding: 10px; 
+    }
 
-            #practiceQuestion {
-                font-size: 1.1em;
-                margin-bottom: 15px;
-            }
-            .option {
-                font-size: 14px;
-                padding: 12px;
-            }
-            #practiceSessionView {
-                padding: 15px;
-                padding-top: 55px;
-            }
-            button {
-                padding: 10px 18px;
-                font-size: 14px;
-            }
-            .calendar-day, .calendar-day-header {
-                font-size: 11px;
-                padding: 5px;
-            }
-            .calendar-grid {
-                gap: 2px;
-            }
+    /* Specific adjustments for 540x960 screens */
+    @media screen and (max-width: 540px) and (max-height: 960px) {
+        body {
+            padding: 0;
         }
+        
+        #practiceQuestion {
+            font-size: 1.1em;
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+        
+        .option {
+            font-size: 13px;
+            padding: 10px;
+            margin: 8px 0;
+        }
+        
+        #practiceSessionView {
+            padding: 12px;
+            padding-top: 50px;
+        }
+        
+        button {
+            padding: 8px 15px;
+            font-size: 13px;
+            margin: 3px;
+        }
+        
+        .timer {
+            top: 10px;
+            right: 15px;
+            font-size: 1em;
+            padding: 6px 12px;
+        }
+        
+        .score {
+            font-size: 1.1em;
+            padding: 10px;
+            margin: 15px 0;
+        }
+        
+        /* Adjust header for smaller screens */
+        header {
+            padding: 15px 20px;
+        }
+        
+        header h1 {
+            font-size: 1.5em;
+        }
+        
+        header p {
+            font-size: 0.9em;
+        }
+        
+        /* Adjust player stats */
+        .player-stats {
+            padding: 8px;
+            margin-top: 10px;
+        }
+        
+        .player-stats p {
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+        
+        /* Adjust modal content */
+        .modal-content {
+            padding: 20px;
+            width: 95%;
+            max-width: 95%;
+        }
+        
+        /* Adjust leaderboard tables */
+        .leaderboard-table th, 
+        .leaderboard-table td {
+            padding: 8px;
+            font-size: 0.9em;
+        }
+        
+        /* Adjust calendar */
+        .calendar-day, .calendar-day-header {
+            font-size: 10px;
+            padding: 4px;
+        }
+        
+        .calendar-grid {
+            gap: 1px;
+            min-width: 350px;
+        }
+        
+        /* Adjust dropdown menu */
+        .dropdown-content {
+            min-width: 140px;
+        }
+        
+        .dropdown-content button {
+            padding: 10px 12px;
+            font-size: 0.9em;
+        }
+        
+        /* Adjust form elements */
+        input, textarea, select {
+            padding: 10px;
+            font-size: 14px;
+        }
+        
+        /* Adjust tab navigation */
+        nav {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+        
+        nav button {
+            white-space: nowrap;
+            min-width: 70px;
+        }
+        
+        /* Adjust revision badges */
+        .revision-badge {
+            font-size: 9px;
+            padding: 1px 4px;
+        }
+    }
+    
+    /* For slightly larger screens but still mobile */
+    @media screen and (min-width: 541px) and (max-width: 600px) {
+        #practiceQuestion {
+            font-size: 1.2em;
+        }
+        
+        .option {
+            font-size: 14px;
+        }
+        
+        button {
+            font-size: 14px;
+        }
+    }
+}
     </style>
 </head>
 <body>
