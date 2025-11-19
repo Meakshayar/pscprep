@@ -713,6 +713,9 @@
                     <div style="text-align: center; margin: 10px 0;">
                         <button onclick="downloadQuestionSetsIfNeeded()" class="btn-success">Download Latest Question Sets</button>
                     </div>
+                    <div style="text-align: center; margin: 10px 0;">
+    <button onclick="syncAllData()" class="btn-warning" style="background: #e67e22;">SYNC DATA BETWEEN DEVICES</button>
+</div>
                 </div>
                 
                 <div id="practiceSetupView" class="view-stage hidden">
@@ -3055,6 +3058,46 @@ function initializeFirebase() {
             document.getElementById('reportedQuestionsSection').classList.remove('hidden');
             renderReportedQuestions();
         }
+
+        function syncAllData() {
+    showNotification('Syncing all data between devices...');
+    
+    // Force download latest data from Firebase
+    if (isFirebaseConnected) {
+        // Download question sets
+        db.ref('questionSets').once('value').then(snapshot => {
+            const firebaseSets = snapshot.val() || {};
+            questionSets = firebaseSets;
+            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            
+            // Download player profiles
+            return db.ref('playerProfiles').once('value');
+        }).then(snapshot => {
+            const firebaseProfiles = snapshot.val() || {};
+            playerProfiles = firebaseProfiles;
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+            
+            // Download revision progress
+            return db.ref('revisionProgress').once('value');
+        }).then(snapshot => {
+            const firebaseProgress = snapshot.val() || {};
+            revisionProgress = firebaseProgress;
+            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+            
+            showNotification('All data synced successfully! Page will reload...');
+            
+            // Reload the page to use new data
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+            
+        }).catch(error => {
+            showNotification('Sync failed: ' + error.message, 'error');
+        });
+    } else {
+        showNotification('Firebase not connected', 'error');
+    }
+}
     </script>
 </body>
 </html>
