@@ -708,7 +708,7 @@
                     </div>
 
                     <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
-                        <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
+                        <button id="adminLoginBtn" onclick="checkAdminAndLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
                     </div>
                 </div>
                 
@@ -1511,10 +1511,10 @@ function checkAutoLogin() {
 
 function handleAdminLogin() {
     // Reset modal UI for a clean login attempt
-    document.getElementById('adminModalTitle').textContent = "Secure Admin Login";
-    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Email & Password";
+    document.getElementById('adminModalTitle').textContent = "Admin Login";
+    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Username & Password";
     
-    // Ensure the 'Confirm Password' box is hidden, as it's not needed for login
+    // Hide the confirm password field
     const confirmGroup = document.getElementById('adminPasswordConfirmGroup');
     if(confirmGroup) confirmGroup.classList.add('hidden');
     
@@ -1522,67 +1522,49 @@ function handleAdminLogin() {
     btn.textContent = "Login";
     
     // Clear inputs
-    const emailInput = document.getElementById('adminUsername');
+    const usernameInput = document.getElementById('adminUsername');
     const passInput = document.getElementById('adminPassword');
     
-    emailInput.placeholder = "Email (e.g. admin@pscprep.com)";
-    emailInput.value = '';
+    usernameInput.placeholder = "Admin Username";
+    usernameInput.value = '';
     passInput.value = '';
 
-    // Set the click action to Firebase Auth ONLY
+    // Set the click action to check against stored credentials
     btn.onclick = function() {
-        const email = emailInput.value;
-        const pass = passInput.value;
+        const username = usernameInput.value;
+        const password = passInput.value;
         
-        showNotification("Verifying credentials...", "info");
-
-        // STEP 1: Firebase Auth Check (is the email/password correct?)
-        firebase.auth().signInWithEmailAndPassword(email, pass)
-        .then((userCredential) => {
-            // STEP 2: Database Check (is this user UID an Admin?)
-            const uid = userCredential.user.uid;
-            db.ref('admins/' + uid).once('value').then(snapshot => {
-                if (snapshot.val() === true) {
-                    closeModal('adminAuthModal');
-                    showNotification("Login Successful! Welcome Admin.", "success");
-                    enterAdminMode(); // Turn on the Admin UI
-                } else {
-                    // Logged in, but not an admin in the database
-                    firebase.auth().signOut();
-                    showNotification("Access Denied: You are not an Admin.", "error");
-                }
-            });
-        })
-        .catch((error) => {
-            // Failed at step 1 (wrong email or password)
-            showNotification("Login Failed: " + error.message, "error");
-        });
+        // Check if we have admin credentials stored
+        if (!adminCredentials) {
+            showNotification("No admin account found. Please create one first.", "error");
+            return;
+        }
+        
+        // Check if credentials match
+        if (username === adminCredentials.username && password === adminCredentials.password) {
+            closeModal('adminAuthModal');
+            showNotification("Login Successful! Welcome Admin.", "success");
+            enterAdminMode(username);
+        } else {
+            showNotification("Invalid username or password", "error");
+        }
     };
 
     openModal('adminAuthModal');
 }
+
 function showAdminLoginModal() {
-    if (!adminCredentials) {
-        // First-time setup
-        document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-        document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-        document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-        document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-        document.getElementById('adminSubmitBtn').onclick = createAdmin;
-    } else {
-        // Regular login
-        document.getElementById('adminModalTitle').textContent = "Admin Login";
-        document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-        document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-        document.getElementById('adminSubmitBtn').textContent = "Login";
-        document.getElementById('adminSubmitBtn').onclick = loginAdmin;
-    }
+    document.getElementById('adminModalTitle').textContent = "Admin Login";
+    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Username & Password";
+    document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+    document.getElementById('adminSubmitBtn').textContent = "Login";
+    
     document.getElementById('adminUsername').value = '';
     document.getElementById('adminPassword').value = '';
     document.getElementById('adminPasswordConfirm').value = '';
+    
     openModal('adminAuthModal');
 }
-
         function updateUIAfterLogin() {
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
             loadPlayerProgress();
@@ -3138,26 +3120,61 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         
         // --- ADMIN FUNCTIONS ---
         function handleAdminLogin() {
-            if (!adminCredentials) {
-                // First-time setup
-                document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-                document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-                document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-                document.getElementById('adminSubmitBtn').onclick = createAdmin;
+    // Reset modal UI for a clean login attempt
+    document.getElementById('adminModalTitle').textContent = "Admin Login";
+    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Email & Password";
+    
+    // Hide the confirm password field
+    const confirmGroup = document.getElementById('adminPasswordConfirmGroup');
+    if(confirmGroup) confirmGroup.classList.add('hidden');
+    
+    const btn = document.getElementById('adminSubmitBtn');
+    btn.textContent = "Login";
+    
+    // Clear inputs
+    const emailInput = document.getElementById('adminUsername');
+    const passInput = document.getElementById('adminPassword');
+    
+    emailInput.placeholder = "Email";
+    emailInput.value = '';
+    passInput.value = '';
+
+    // Set the click action to Firebase Auth
+    btn.onclick = function() {
+        const email = emailInput.value;
+        const password = passInput.value;
+        
+        showNotification("Verifying credentials...", "info");
+
+        // Use Firebase Authentication
+        firebase.auth().signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            // Signed in successfully
+            const user = userCredential.user;
+            
+            // Check if this user is in the admins list
+            return db.ref('admins/' + user.uid).once('value');
+        })
+        .then((snapshot) => {
+            if (snapshot.val() === true) {
+                // User is an admin
+                closeModal('adminAuthModal');
+                showNotification("Login Successful! Welcome Admin.", "success");
+                enterAdminMode();
             } else {
-                // Regular login
-                document.getElementById('adminModalTitle').textContent = "Admin Login";
-                document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Login";
-                document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+                // User is not an admin
+                firebase.auth().signOut();
+                showNotification("Access Denied: You are not an Admin.", "error");
             }
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminPassword').value = '';
-            document.getElementById('adminPasswordConfirm').value = '';
-            openModal('adminAuthModal');
-        }
+        })
+        .catch((error) => {
+            // Login failed
+            showNotification("Login Failed: " + error.message, "error");
+        });
+    };
+
+    openModal('adminAuthModal');
+}
 
         function createAdmin() {
             const username = document.getElementById('adminUsername').value.trim();
@@ -3200,9 +3217,26 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         isAdminLoggedIn = false;
         document.querySelector('.container').classList.remove('hidden');
         document.getElementById('adminPanel').classList.add('hidden');
-        showNotification("Logged out securely.", "success");
+        showNotification("Logged out successfully.", "success");
     }).catch((error) => {
         showNotification("Error logging out", "error");
+    });
+}
+
+function checkAdminAndLogin() {
+    // Check if there are any admins in the database
+    db.ref('admins').once('value').then(snapshot => {
+        const admins = snapshot.val();
+        if (admins && Object.keys(admins).length > 0) {
+            // Admins exist, show login
+            handleAdminLogin();
+        } else {
+            // No admins, show create account
+            createAdminAccount();
+        }
+    }).catch(error => {
+        // If error, show create account as fallback
+        createAdminAccount();
     });
 }
 
