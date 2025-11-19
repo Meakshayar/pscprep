@@ -12,6 +12,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
+
+        nav.hidden {
+    display: none !important;
+}
         :root {
             --primary-color: #8e44ad;
             --secondary-color: #3498db;
@@ -621,7 +625,163 @@
             font-weight: bold;
         }
         /* --- END CALENDAR STYLES --- */
+/* Modern Login Styles */
+.login-container {
+    max-width: 500px;
+    margin: 0 auto;
+}
 
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.login-header p {
+    color: var(--dark-color);
+    font-size: 1.1em;
+    opacity: 0.8;
+}
+
+.login-form {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.form-section {
+    margin-bottom: 25px;
+}
+
+.form-section h3 {
+    color: var(--dark-color);
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.styled-select, .styled-input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s;
+    background: #f8f9fa;
+}
+
+.styled-select:focus, .styled-input:focus {
+    border-color: var(--primary-color);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.1);
+    outline: none;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.divider {
+    text-align: center;
+    margin: 25px 0;
+    position: relative;
+}
+
+.divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e1e5e9;
+}
+
+.divider span {
+    background: white;
+    padding: 0 15px;
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+.admin-section {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.btn-admin {
+    background: transparent;
+    color: var(--dark-color);
+    border: 2px solid #e1e5e9;
+    padding: 12px 25px;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-admin:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.sync-section {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.btn-sync {
+    background: var(--success-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-sync:hover {
+    background: #27ae60;
+    transform: translateY(-1px);
+}
         /* --- RESPONSIVE ADJUSTMENTS --- */
         @media screen and (max-width: 600px) {
             body { padding: 5px; }
@@ -684,84 +844,106 @@
             </div>
         </header>
 
-        <nav id="tab-nav">
-            <button onclick="switchTab('practice')" class="active">Practice</button>
-            <button onclick="switchTab('revision')">Revision Plan</button>
-            <button onclick="switchTab('backlog')">Backlog</button>
-            <button onclick="switchTab('leaderboard')">Leaderboard</button>
-            <button onclick="switchTab('attendance')">Attendance</button>
-            <button onclick="switchTab('reportedQuestions')">Reported Questions</button>
-        </nav>
+        <nav id="tab-nav" class="hidden">
+    <button onclick="switchTab('practice')" class="active">Practice</button>
+    <button onclick="switchTab('revision')">Revision Plan</button>
+    <button onclick="switchTab('backlog')">Backlog</button>
+    <button onclick="switchTab('leaderboard')">Leaderboard</button>
+    <button onclick="switchTab('attendance')">Attendance</button>
+</nav>
         
         <main>
             <div id="practice" class="tab-content active">
-                <div id="welcomeView" class="view-stage">
-                    <div class="dashboard-card">
-                        <h2 id="welcomeMessage">Select or create a player to begin!</h2>
-                        <div class="quote-container">
-                             <p id="motivationalQuote"></p>
-                        </div>
-                    </div>
-                    <div class="player-selector" style="padding: 20px;">
-                        <label>Select an Existing Player:</label>
-                        <select id="playerSelect" onchange="handlePlayerSelection()" class="styled-select" style="margin-bottom:10px;"></select>
-                        <hr style="margin: 20px 0;">
-                        <h4>Or Create a New Player:</h4>
-                        <input type="text" id="newPlayerName" placeholder="Enter new player name" class="styled-input">
-                        <button onclick="createPlayer()">Create Player</button>
-                    </div>
+    <!-- LOGIN GATEWAY -->
+    <div id="loginGatewayView" class="view-stage">
+    <div class="login-container">
 
-                    <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
-                        <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
+        <div class="quote-container" style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); margin: 20px 0; border-radius: var(--border-radius);">
+            <p id="motivationalQuote" style="color: white; text-align: center; font-style: italic; margin: 0; padding: 15px;"></p>
+        </div>
 
-
-                    </div>
-
-                    <!-- ADD THIS NEW BUTTON -->
-<div style="text-align: center; margin: 10px 0;">
-    <button onclick="syncAllDataFromFirebase()" class="btn-success">Refresh Data from Cloud</button>
-</div>
+        <div class="login-form">
+            <div class="form-section">
+                <h3>Login to Your Account</h3>
+                <div class="form-group">
+                    <select id="playerSelect" class="styled-select">
+                        <option value="">-- Choose your profile --</option>
+                    </select>
                 </div>
+                <button onclick="handlePlayerSelection()" class="btn-primary">Login</button>
                 
-                <div id="practiceSetupView" class="view-stage hidden">
-                    <h2 id="setupWelcome">Welcome, Player!</h2>
-                    <div class="quote-container" style="background: #f8f9fa; border-left-color: var(--primary-color); margin: 15px 0;">
-                        <p id="motivationalQuoteLoggedIn" style="color: var(--dark-color); text-shadow: none;"></p>
-                    </div>
-                    <hr style="margin: 20px 0;">
-                    <h2>Start Practice</h2>
-                    <div class="form-group">
-                        <label>1. Select Subject:</label>
-                        <select id="subjectSelect" onchange="updatePracticeSetSelect(this.value)"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>2. Select Question Set:</label>
-                        <select id="practiceSetSelect"></select>
-                    </div>
-                    <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled>Start Practice</button>
-
-
-                    <div style="text-align: center; margin: 10px 0;">
-                    <button onclick="checkForUpdates()" class="btn-warning">Check for New Question Sets</button>
-</div>
-                </div>
-
-                <div id="practiceSessionView" class="view-stage hidden">
-                    <div class="timer" id="practiceTimer">00:00</div>
-                    
-                    <div id="practiceQuestion" style="font-size: 1.3em; margin-bottom: 20px; font-weight: bold; text-align: center;"></div>
-                    <div id="practiceOptions"></div>
-                    <div class="score" id="practiceScore" style="margin-top: 20px;">Score: 0</div>
-                    <div style="text-align: center; margin-top: 10px;">
-                        <button onclick="skipQuestion()" class="btn-warning" id="skipQuestionBtn">Skip Now</button>
-                        <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn">End Practice</button>
-                        <button id="reportQuestionBtn" onclick="reportCurrentQuestion()" class="btn-warning" style="background: #e67e22; margin-top: 20px;">Report Question</button>
-                    </div>
-                    <div id="nextQuestionContainer" class="hidden" style="text-align: center; margin-top: 15px;">
-                        <button onclick="proceedToNextQuestion()" class="btn-success">Next Question</button>
-                    </div>
+                <!-- NEW: Separate Create Player Button -->
+                <div style="text-align: center; margin-top: 15px;">
+                    <button onclick="showCreatePlayerForm()" class="btn-admin" style="padding: 8px 16px; font-size: 14px;">
+                        Create New Player
+                    </button>
                 </div>
             </div>
+
+            <!-- HIDDEN CREATE PLAYER FORM -->
+            <div id="createPlayerForm" class="form-section hidden" style="border-top: 1px solid #e1e5e9; padding-top: 20px; margin-top: 20px;">
+                <h3>Create New Player</h3>
+                <div class="form-group">
+                    <input type="text" id="newPlayerName" placeholder="Enter your name" class="styled-input">
+                </div>
+                <button onclick="createPlayer()" class="btn-primary">Create Player</button>
+                <div style="text-align: center; margin-top: 10px;">
+                    <button onclick="hideCreatePlayerForm()" class="btn-admin" style="padding: 6px 12px; font-size: 12px;">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <button onclick="handleAdminLogin()" class="btn-admin">Admin Login</button>
+        </div>
+
+        <div class="sync-section">
+            <button onclick="syncAllDataFromFirebase()" class="btn-sync">Refresh Data from Cloud</button>
+        </div>
+    </div>
+</div>
+    <!-- PRACTICE SETUP (SAME AS BEFORE) -->
+    <div id="practiceSetupView" class="view-stage hidden">
+        <h2 id="setupWelcome">Welcome, Player!</h2>
+        <div class="quote-container" style="background: #f8f9fa; border-left-color: var(--primary-color); margin: 15px 0;">
+            <p id="motivationalQuoteLoggedIn" style="color: var(--dark-color); text-shadow: none;"></p>
+        </div>
+        <hr style="margin: 20px 0;">
+        <h2>Start Practice</h2>
+        <div class="form-group">
+            <label>1. Select Subject:</label>
+            <select id="subjectSelect" onchange="updatePracticeSetSelect(this.value)"></select>
+        </div>
+        <div class="form-group">
+            <label>2. Select Question Set:</label>
+            <select id="practiceSetSelect"></select>
+        </div>
+        <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled>Start Practice</button>
+
+        <div style="text-align: center; margin: 10px 0;">
+            <button onclick="checkForUpdates()" class="btn-warning">Check for New Question Sets</button>
+        </div>
+    </div>
+
+    <!-- PRACTICE SESSION (SAME AS BEFORE) -->
+    <div id="practiceSessionView" class="view-stage hidden">
+        <div class="timer" id="practiceTimer">00:00</div>
+        
+        <div id="practiceQuestion" style="font-size: 1.3em; margin-bottom: 20px; font-weight: bold; text-align: center;"></div>
+        <div id="practiceOptions"></div>
+        <div class="score" id="practiceScore" style="margin-top: 20px;">Score: 0</div>
+        <div style="text-align: center; margin-top: 10px;">
+            <button onclick="skipQuestion()" class="btn-warning" id="skipQuestionBtn">Skip Now</button>
+            <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn">End Practice</button>
+            <button id="reportQuestionBtn" onclick="reportCurrentQuestion()" class="btn-warning" style="background: #e67e22; margin-top: 20px;">Report Question</button>
+        </div>
+        <div id="nextQuestionContainer" class="hidden" style="text-align: center; margin-top: 15px;">
+            <button onclick="proceedToNextQuestion()" class="btn-success">Next Question</button>
+        </div>
+    </div>
+</div>
 
             <div id="revision" class="tab-content">
                 <h2>Revision Plan (Due Today)</h2>
@@ -849,9 +1031,9 @@
 
         <nav id="admin-tab-nav">
     <button onclick="switchAdminTab('adminQuestionSets')" class="active">Question Sets</button>
+    <button onclick="switchAdminTab('reportedQuestions')">Reported Questions</button>
     <button onclick="switchAdminTab('adminBacklogManager')">Manage Backlogs</button>
     <button onclick="switchAdminTab('adminAttendance')">Attendance Register</button>
-    <button onclick="switchAdminTab('reportedQuestions')">Reported Questions</button>
     <button onclick="switchAdminTab('adminSystem')">System</button>
 </nav>
 
@@ -1042,7 +1224,15 @@
             { minXp: 9000, title: "Platinum 💠", nextLevelXp: 12000 },
             { minXp: 12000, title: "Diamond 💎", nextLevelXp: Infinity }
         ];
+function showCreatePlayerForm() {
+    document.getElementById('createPlayerForm').classList.remove('hidden');
+    document.getElementById('newPlayerName').focus();
+}
 
+function hideCreatePlayerForm() {
+    document.getElementById('createPlayerForm').classList.add('hidden');
+    document.getElementById('newPlayerName').value = '';
+}
         const quotes = [
             "The secret to getting ahead is getting started.", 
             "Believe you can and you're halfway there.", 
@@ -1322,7 +1512,7 @@ function loadLocalDataImmediately() {
     console.log('Local data loaded. Players found:', getAllPlayerNames());
     
     // Don't auto-login here - wait for Firebase sync to complete
-    switchPracticeView('welcomeView');
+    switchPracticeView('loginGatewayView');
 }
 
 
@@ -1598,7 +1788,7 @@ function syncPendingUserData() {
             if (lastPlayer && playerProfiles[lastPlayer]) {
                 loginPlayer(lastPlayer, true); 
             } else {
-                switchPracticeView('welcomeView');
+                switchPracticeView('loginGatewayView');
             }
         }
         
@@ -1964,12 +2154,15 @@ function syncPendingUserData() {
             // --- END OF NEW SECTION ---
 
             if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
-            document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-            loadPlayerProgress();
-            switchPracticeView('practiceSetupView');
-            updateAllBadges();
-            updateSubjectSelect();
-        }
+            // SHOW THE NAV TABS AFTER LOGIN
+    document.getElementById('tab-nav').classList.remove('hidden');
+    
+    document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
+    loadPlayerProgress();
+    switchPracticeView('practiceSetupView');
+    updateAllBadges();
+    updateSubjectSelect();
+}
 
         function updateUserPassword() {
             const userToUpdate = document.getElementById('passwordUserSelect').value;
