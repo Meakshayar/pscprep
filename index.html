@@ -10,7 +10,6 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
     <style>
         :root {
@@ -621,166 +620,36 @@
         /* --- END CALENDAR STYLES --- */
 
         /* --- RESPONSIVE ADJUSTMENTS --- */
-@media screen and (max-width: 600px) {
-    body { 
-        padding: 5px; 
-        align-items: flex-start;
-    }
-    .container, #adminPanel { 
-        padding: 0; 
-        border-radius: 0; 
-        width: 100%;
-        max-width: 100%;
-        min-height: 100vh;
-    }
-    nav button { 
-        font-size: 11px; 
-        padding: 10px 3px; 
-    }
-    .tab-content { 
-        padding: 10px; 
-    }
+        @media screen and (max-width: 600px) {
+            body { padding: 5px; }
+            .container, #adminPanel { padding: 0; border-radius: 0; }
+            nav button { font-size: 12px; padding: 12px 5px; }
+            .tab-content { padding: 15px; }
 
-    /* Specific adjustments for 540x960 screens */
-    @media screen and (max-width: 540px) and (max-height: 960px) {
-        body {
-            padding: 0;
+            #practiceQuestion {
+                font-size: 1.1em;
+                margin-bottom: 15px;
+            }
+            .option {
+                font-size: 14px;
+                padding: 12px;
+            }
+            #practiceSessionView {
+                padding: 15px;
+                padding-top: 55px;
+            }
+            button {
+                padding: 10px 18px;
+                font-size: 14px;
+            }
+            .calendar-day, .calendar-day-header {
+                font-size: 11px;
+                padding: 5px;
+            }
+            .calendar-grid {
+                gap: 2px;
+            }
         }
-        
-        #practiceQuestion {
-            font-size: 1.1em;
-            margin-bottom: 12px;
-            line-height: 1.3;
-        }
-        
-        .option {
-            font-size: 13px;
-            padding: 10px;
-            margin: 8px 0;
-        }
-        
-        #practiceSessionView {
-            padding: 12px;
-            padding-top: 50px;
-        }
-        
-        button {
-            padding: 8px 15px;
-            font-size: 13px;
-            margin: 3px;
-        }
-        
-        .timer {
-            top: 10px;
-            right: 15px;
-            font-size: 1em;
-            padding: 6px 12px;
-        }
-        
-        .score {
-            font-size: 1.1em;
-            padding: 10px;
-            margin: 15px 0;
-        }
-        
-        /* Adjust header for smaller screens */
-        header {
-            padding: 15px 20px;
-        }
-        
-        header h1 {
-            font-size: 1.5em;
-        }
-        
-        header p {
-            font-size: 0.9em;
-        }
-        
-        /* Adjust player stats */
-        .player-stats {
-            padding: 8px;
-            margin-top: 10px;
-        }
-        
-        .player-stats p {
-            font-size: 0.9em;
-            margin-bottom: 3px;
-        }
-        
-        /* Adjust modal content */
-        .modal-content {
-            padding: 20px;
-            width: 95%;
-            max-width: 95%;
-        }
-        
-        /* Adjust leaderboard tables */
-        .leaderboard-table th, 
-        .leaderboard-table td {
-            padding: 8px;
-            font-size: 0.9em;
-        }
-        
-        /* Adjust calendar */
-        .calendar-day, .calendar-day-header {
-            font-size: 10px;
-            padding: 4px;
-        }
-        
-        .calendar-grid {
-            gap: 1px;
-            min-width: 350px;
-        }
-        
-        /* Adjust dropdown menu */
-        .dropdown-content {
-            min-width: 140px;
-        }
-        
-        .dropdown-content button {
-            padding: 10px 12px;
-            font-size: 0.9em;
-        }
-        
-        /* Adjust form elements */
-        input, textarea, select {
-            padding: 10px;
-            font-size: 14px;
-        }
-        
-        /* Adjust tab navigation */
-        nav {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-        }
-        
-        nav button {
-            white-space: nowrap;
-            min-width: 70px;
-        }
-        
-        /* Adjust revision badges */
-        .revision-badge {
-            font-size: 9px;
-            padding: 1px 4px;
-        }
-    }
-    
-    /* For slightly larger screens but still mobile */
-    @media screen and (min-width: 541px) and (max-width: 600px) {
-        #practiceQuestion {
-            font-size: 1.2em;
-        }
-        
-        .option {
-            font-size: 14px;
-        }
-        
-        button {
-            font-size: 14px;
-        }
-    }
-}
     </style>
 </head>
 <body>
@@ -838,7 +707,7 @@
                     </div>
 
                     <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
-                        <button id="adminLoginBtn" onclick="checkAdminAndLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
+                        <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
                     </div>
                 </div>
                 
@@ -1042,7 +911,6 @@
             </div>
 
             <div id="adminSystem" class="tab-content">
-                <button onclick="forceSyncAllData()" class="btn-success" style="margin-top: 10px;">Force Full Data Sync</button>
                 <h2>System Management</h2>
                 <h3>Firebase Configuration</h3>
                 <div class="form-group">
@@ -1177,6 +1045,7 @@
         let playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
         let dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+        let adminCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials')) || null;
 
         let isAdminLoggedIn = false;
         
@@ -1198,8 +1067,13 @@
 
         // --- INITIALIZATION ---
 
-       function initializeNewDevice() {
+        function initializeNewDevice() {
     console.log('Initializing new device...');
+    
+    if (!isFirebaseConnected) {
+        showNotification('Waiting for internet connection...', 'warning');
+        return;
+    }
     
     // Check if this is a new device (no local data)
     const hasLocalData = Object.keys(questionSets).length > 0 || Object.keys(playerProfiles).length > 0;
@@ -1209,86 +1083,8 @@
         
         // Download essential data for new device
         downloadEssentialData();
-    } else {
-        // We have local data, but still check for updates
-        console.log('Device has local data, checking for updates...');
-        checkForUpdatedQuestionSets();
-        
-        // Check for auto-login with existing data
-        checkAutoLogin();
     }
 }
-function downloadAllDataForNewDevice() {
-    if (!isFirebaseConnected) return;
-    
-    showNotification('Downloading all data for first-time setup...');
-    
-    // 1. Download ALL question sets (not just metadata)
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        questionSets = firebaseSets;
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        
-        // 2. Download player profiles
-        return db.ref('playerProfiles').once('value');
-    }).then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        playerProfiles = firebaseProfiles;
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        
-        // 3. Download revision progress
-        return db.ref('revisionProgress').once('value');
-    }).then(snapshot => {
-        const firebaseProgress = snapshot.val() || {};
-        revisionProgress = firebaseProgress;
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-        
-        // 4. Download daily scores
-        return db.ref('dailyRevisionScores').once('value');
-    }).then(snapshot => {
-        const firebaseScores = snapshot.val() || {};
-        dailyRevisionScores = firebaseScores;
-        localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-        
-        // 5. Download admin credentials
-        return db.ref('adminCredentials').once('value');
-    }).then(snapshot => {
-        const firebaseAdminCreds = snapshot.val();
-        if (firebaseAdminCreds) {
-            adminCredentials = firebaseAdminCreds;
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-        }
-        
-        showNotification('Device setup complete! All data downloaded.');
-        
-        // Update UI with new data
-        updatePlayerSelects();
-        loadQuestionSets();
-        updateSubjectSelect();
-        
-    }).catch(error => {
-        showNotification('Setup failed: ' + error.message, 'error');
-    });
-}
-
-function forceSyncAllData() {
-    if (!isFirebaseConnected) {
-        showNotification('No internet connection', 'error');
-        return;
-    }
-    
-    showNotification('Forcing full data sync...');
-    
-    // Clear local data first to ensure fresh download
-    questionSets = {};
-    playerProfiles = {};
-    revisionProgress = {};
-    dailyRevisionScores = {};
-    
-    // Then download everything
-    downloadAllDataForNewDevice();
-}
-
 
 function downloadEssentialData() {
     if (!isFirebaseConnected) return;
@@ -1343,38 +1139,7 @@ function init() {
 
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
-    // Start monitoring Firebase connection status
-    monitorFirebaseConnection();
-}
-
-// NEW FUNCTION: Monitor Firebase connection and load data when ready
-function monitorFirebaseConnection() {
-    if (!db) {
-        console.log('Firebase not initialized yet, retrying...');
-        setTimeout(() => monitorFirebaseConnection(), 1000);
-        return;
-    }
-    
-    // Listen for connection state changes
-    db.ref('.info/connected').on('value', (snapshot) => {
-        const connected = snapshot.val() === true;
-        
-        if (connected && !isFirebaseConnected) {
-            console.log('Firebase connected, loading data...');
-            isFirebaseConnected = true;
-            updateFirebaseStatus('Connected', true);
-            
-            // Now that we're connected, initialize the device
-            initializeNewDevice();
-            
-            // Start background sync
-            startBackgroundSync();
-        } else if (!connected && isFirebaseConnected) {
-            console.log('Firebase disconnected');
-            isFirebaseConnected = false;
-            updateFirebaseStatus('Disconnected', false);
-        }
-    });
+    // ... rest of your existing init code
 }
 
 function initializeNewDevice() {
@@ -1465,76 +1230,32 @@ function initializeFirebase() {
         };
         localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
     }
-    
-    // Make sure the config has all required fields
-    if (!firebaseConfig.projectId || !firebaseConfig.databaseURL) {
-        console.error('Firebase config is missing required fields:', firebaseConfig);
-        updateFirebaseStatus('Config Error - Missing Project ID or Database URL', false);
-        isFirebaseConnected = false;
-        return;
-    }
-    
-    if(document.getElementById('firebaseConfig')) {
-        document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
-    }
-    
-    try {
-        // Check if Firebase is already initialized
-        let app;
-        if (firebase.apps.length === 0) {
-            // Initialize Firebase with the complete config
-            app = firebase.initializeApp(firebaseConfig);
-            console.log('Firebase initialized successfully');
-        } else {
-            app = firebase.app();
-            console.log('Using existing Firebase app');
-        }
-        
-        // Initialize Database
-        db = firebase.database();
-        
-        // Test the connection
-        db.ref('.info/connected').once('value').then(snapshot => {
-            if (snapshot.val() === true) {
+            
+            localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
+            
+            if(document.getElementById('firebaseConfig')) {
+                document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
+            }
+            
+            try {
+                if (firebase.apps.length > 0) {
+                    db = firebase.database();
+                } else {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.database();
+                }
+                
                 updateFirebaseStatus('Connected (Optimized Mode)', true);
                 isFirebaseConnected = true;
-                console.log('Firebase connected successfully');
+                console.log('Firebase connected in optimized mode');
                 
-                // Start background processes now that we're connected
-                startBackgroundSync();
-            } else {
-                updateFirebaseStatus('Connected but offline', false);
+            } catch (error) {
+                console.error('Firebase Init Error:', error);
+                updateFirebaseStatus('Init Failed - Using Local Data', false);
                 isFirebaseConnected = false;
             }
-        }).catch(error => {
-            console.error('Firebase connection test failed:', error);
-            updateFirebaseStatus('Connection Failed', false);
-            isFirebaseConnected = false;
-        });
-        
-    } catch (error) {
-        console.error('Firebase Init Error:', error);
-        updateFirebaseStatus('Init Failed - Using Local Data', false);
-        isFirebaseConnected = false;
-    }
-}
+        }
 
-function testFirebaseConnectionSimple() {
-    if (!db) {
-        showNotification('Firebase not initialized', 'error');
-        return false;
-    }
-    
-    // Simple test by reading a small value
-    return db.ref('.info/connected').once('value')
-        .then(snapshot => {
-            return snapshot.val() === true;
-        })
-        .catch(error => {
-            console.error('Firebase connection test failed:', error);
-            return false;
-        });
-}
         function loadUserDataFromFirebase() {
     if (!isFirebaseConnected) return;
     
@@ -1600,80 +1321,52 @@ function testFirebaseConnectionSimple() {
     // Check for auto-login immediately with local data
     checkAutoLogin();
     
-    // Start background sync only if Firebase is properly connected
-    if (isFirebaseConnected && db) {
-        setTimeout(() => {
-            startBackgroundSync();
-        }, 2000); // Wait 2 seconds to ensure everything is loaded
+    // Start background sync if Firebase is connected
+    if (isFirebaseConnected) {
+        startBackgroundSync();
     }
 }
+
 function startBackgroundSync() {
-    if (!isFirebaseConnected) {
-        console.log('Firebase not connected, skipping background sync');
-        return;
-    }
-    
     console.log('Starting background sync...');
     
-    // First, test the connection
-    testFirebaseConnectionSimple().then(connected => {
-        if (!connected) {
-            console.log('No Firebase connection, skipping sync');
-            return;
-        }
-        
-        // Check for new question sets (but only if we don't have any or it's been a while)
-        const lastQuestionSetCheck = localStorage.getItem('pscLastQuestionSetCheck') || 0;
-        const oneHourAgo = Date.now() - (60 * 60 * 1000); // Check every hour
-        
-        if (Object.keys(questionSets).length === 0 || lastQuestionSetCheck < oneHourAgo) {
-            console.log('Checking for updated question sets...');
-            checkForUpdatedQuestionSets();
-        }
-        
-        // If a user is logged in, sync their data
-        if (currentPlayerName) {
-            console.log('Syncing user data for:', currentPlayerName);
-            syncUserData(currentPlayerName);
-        }
-        
-        // Update today's leaderboard data
-        updateTodayLeaderboardData();
-    });
+    // Check for new question sets (but only if we don't have any or it's been a while)
+    const lastQuestionSetCheck = localStorage.getItem('pscLastQuestionSetCheck') || 0;
+    const oneHourAgo = Date.now() - (60 * 60 * 1000); // Check every hour
+    
+    if (Object.keys(questionSets).length === 0 || lastQuestionSetCheck < oneHourAgo) {
+        console.log('Checking for updated question sets...');
+        checkForUpdatedQuestionSets();
+    }
+    
+    // If a user is logged in, sync their data
+    if (currentPlayerName) {
+        console.log('Syncing user data for:', currentPlayerName);
+        syncUserData(currentPlayerName);
+    }
+    
+    // Update today's leaderboard data
+    updateTodayLeaderboardData();
 }
 
 function checkForUpdatedQuestionSets() {
     if (!isFirebaseConnected) return;
     
-    // Download ALL question sets to ensure uniformity across devices
+    // First, just check if there are any new sets by getting the keys
     db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
+        const firebaseSetKeys = Object.keys(snapshot.val() || {});
+        const localSetKeys = Object.keys(questionSets);
         
-        // Check if we need to update any sets
-        let needsUpdate = false;
-        Object.keys(firebaseSets).forEach(setName => {
-            const localSet = questionSets[setName];
-            const firebaseSet = firebaseSets[setName];
-            
-            if (!localSet || !localSet.questions || localSet.questions.length === 0) {
-                // We don't have this set or it's empty, download it
-                questionSets[setName] = firebaseSet;
-                needsUpdate = true;
-            } else if (firebaseSet.lastModified > (localSet.lastModified || 0)) {
-                // Firebase has a newer version
-                questionSets[setName] = firebaseSet;
-                needsUpdate = true;
-            }
-        });
+        // Check if we have new sets in Firebase
+        const newSets = firebaseSetKeys.filter(key => !localSetKeys.includes(key));
         
-        if (needsUpdate) {
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            loadQuestionSets();
-            updateSubjectSelect();
-            
-            if (currentPlayerName) {
-                showNotification('Question sets updated!');
-            }
+        if (newSets.length > 0) {
+            console.log('Found new question sets:', newSets);
+            // Download only the new sets
+            downloadSpecificQuestionSets(newSets);
+        } else {
+            // Check if any existing sets have been modified
+            checkForModifiedSets(firebaseSetKeys, snapshot.val());
         }
         
         localStorage.setItem('pscLastQuestionSetCheck', Date.now());
@@ -1681,6 +1374,7 @@ function checkForUpdatedQuestionSets() {
         console.log('Error checking for updated question sets:', error);
     });
 }
+
 function downloadSpecificQuestionSets(setNames) {
     if (!isFirebaseConnected) return;
     
@@ -1810,67 +1504,61 @@ function checkAutoLogin() {
         
         // Show helpful message if no data
         if (!hasQuestionSets) {
-            showNotification('No question sets found. loading data!', 'warning');
+            showNotification('No question sets found. Click "Download All Data" to get started.', 'warning');
         }
     }
 }
 
 function handleAdminLogin() {
-    // Reset modal UI for a clean login attempt
-    document.getElementById('adminModalTitle').textContent = "Admin Login";
-    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Username & Password";
-    
-    // Hide the confirm password field
-    const confirmGroup = document.getElementById('adminPasswordConfirmGroup');
-    if(confirmGroup) confirmGroup.classList.add('hidden');
-    
-    const btn = document.getElementById('adminSubmitBtn');
-    btn.textContent = "Login";
-    
-    // Clear inputs
-    const usernameInput = document.getElementById('adminUsername');
-    const passInput = document.getElementById('adminPassword');
-    
-    usernameInput.placeholder = "Admin Username";
-    usernameInput.value = '';
-    passInput.value = '';
-
-    // Set the click action to check against stored credentials
-    btn.onclick = function() {
-        const username = usernameInput.value;
-        const password = passInput.value;
-        
-        // Check if we have admin credentials stored
-        if (!adminCredentials) {
-            showNotification("No admin account found. Please create one first.", "error");
-            return;
-        }
-        
-        // Check if credentials match
-        if (username === adminCredentials.username && password === adminCredentials.password) {
-            closeModal('adminAuthModal');
-            showNotification("Login Successful! Welcome Admin.", "success");
-            enterAdminMode(username);
+    // Check if we have admin credentials locally
+    if (!adminCredentials) {
+        // No local admin data - try to download it
+        if (isFirebaseConnected) {
+            showNotification('Downloading admin data...');
+            db.ref('adminCredentials').once('value').then(snapshot => {
+                const firebaseAdminCreds = snapshot.val();
+                if (firebaseAdminCreds) {
+                    adminCredentials = firebaseAdminCreds;
+                    localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+                    // Now show the admin login modal
+                    showAdminLoginModal();
+                } else {
+                    showNotification('No admin account found on server.', 'error');
+                }
+            }).catch(error => {
+                showNotification('Failed to download admin data: ' + error.message, 'error');
+            });
         } else {
-            showNotification("Invalid username or password", "error");
+            showNotification('No internet connection. Cannot login as admin.', 'error');
         }
-    };
-
-    openModal('adminAuthModal');
+    } else {
+        // We have local admin data - proceed normally
+        showAdminLoginModal();
+    }
 }
 
 function showAdminLoginModal() {
-    document.getElementById('adminModalTitle').textContent = "Admin Login";
-    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Username & Password";
-    document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-    document.getElementById('adminSubmitBtn').textContent = "Login";
-    
+    if (!adminCredentials) {
+        // First-time setup
+        document.getElementById('adminModalTitle').textContent = "Create Admin Account";
+        document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
+        document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
+        document.getElementById('adminSubmitBtn').textContent = "Create Admin";
+        document.getElementById('adminSubmitBtn').onclick = createAdmin;
+    } else {
+        // Regular login
+        document.getElementById('adminModalTitle').textContent = "Admin Login";
+        document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
+        document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+        document.getElementById('adminSubmitBtn').textContent = "Login";
+        document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+    }
     document.getElementById('adminUsername').value = '';
     document.getElementById('adminPassword').value = '';
     document.getElementById('adminPasswordConfirm').value = '';
-    
     openModal('adminAuthModal');
 }
+
         function updateUIAfterLogin() {
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
             loadPlayerProgress();
@@ -3426,61 +3114,26 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         
         // --- ADMIN FUNCTIONS ---
         function handleAdminLogin() {
-    // Reset modal UI for a clean login attempt
-    document.getElementById('adminModalTitle').textContent = "Admin Login";
-    document.getElementById('adminModalPrompt').textContent = "Enter your Admin Email & Password";
-    
-    // Hide the confirm password field
-    const confirmGroup = document.getElementById('adminPasswordConfirmGroup');
-    if(confirmGroup) confirmGroup.classList.add('hidden');
-    
-    const btn = document.getElementById('adminSubmitBtn');
-    btn.textContent = "Login";
-    
-    // Clear inputs
-    const emailInput = document.getElementById('adminUsername');
-    const passInput = document.getElementById('adminPassword');
-    
-    emailInput.placeholder = "Email";
-    emailInput.value = '';
-    passInput.value = '';
-
-    // Set the click action to Firebase Auth
-    btn.onclick = function() {
-        const email = emailInput.value;
-        const password = passInput.value;
-        
-        showNotification("Verifying credentials...", "info");
-
-        // Use Firebase Authentication
-        firebase.auth().signInWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            // Signed in successfully
-            const user = userCredential.user;
-            
-            // Check if this user is in the admins list
-            return db.ref('admins/' + user.uid).once('value');
-        })
-        .then((snapshot) => {
-            if (snapshot.val() === true) {
-                // User is an admin
-                closeModal('adminAuthModal');
-                showNotification("Login Successful! Welcome Admin.", "success");
-                enterAdminMode();
+            if (!adminCredentials) {
+                // First-time setup
+                document.getElementById('adminModalTitle').textContent = "Create Admin Account";
+                document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
+                document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
+                document.getElementById('adminSubmitBtn').textContent = "Create Admin";
+                document.getElementById('adminSubmitBtn').onclick = createAdmin;
             } else {
-                // User is not an admin
-                firebase.auth().signOut();
-                showNotification("Access Denied: You are not an Admin.", "error");
+                // Regular login
+                document.getElementById('adminModalTitle').textContent = "Admin Login";
+                document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
+                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+                document.getElementById('adminSubmitBtn').textContent = "Login";
+                document.getElementById('adminSubmitBtn').onclick = loginAdmin;
             }
-        })
-        .catch((error) => {
-            // Login failed
-            showNotification("Login Failed: " + error.message, "error");
-        });
-    };
-
-    openModal('adminAuthModal');
-}
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminPasswordConfirm').value = '';
+            openModal('adminAuthModal');
+        }
 
         function createAdmin() {
             const username = document.getElementById('adminUsername').value.trim();
@@ -3519,32 +3172,10 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         }
 
         function adminLogout() {
-    firebase.auth().signOut().then(() => {
-        isAdminLoggedIn = false;
-        document.querySelector('.container').classList.remove('hidden');
-        document.getElementById('adminPanel').classList.add('hidden');
-        showNotification("Logged out successfully.", "success");
-    }).catch((error) => {
-        showNotification("Error logging out", "error");
-    });
-}
-
-function checkAdminAndLogin() {
-    // Check if there are any admins in the database
-    db.ref('admins').once('value').then(snapshot => {
-        const admins = snapshot.val();
-        if (admins && Object.keys(admins).length > 0) {
-            // Admins exist, show login
-            handleAdminLogin();
-        } else {
-            // No admins, show create account
-            createAdminAccount();
+            isAdminLoggedIn = false;
+            document.querySelector('.container').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
         }
-    }).catch(error => {
-        // If error, show create account as fallback
-        createAdminAccount();
-    });
-}
 
         function renderAdminBacklogManager(playerName) {
             const listDiv = document.getElementById('adminBacklogList');
@@ -3728,42 +3359,50 @@ function checkAdminAndLogin() {
         }
 
        function syncAllData() {
-    showNotification('Syncing all data across devices...');
+    showNotification('Syncing essential data...');
     
     if (isFirebaseConnected) {
-        // Download ALL question sets to ensure uniformity
-        const questionPromise = db.ref('questionSets').once('value').then(snapshot => {
-            const firebaseSets = snapshot.val() || {};
-            questionSets = firebaseSets;
+        // ONLY download player profiles and admin credentials (small data)
+        const playerPromise = db.ref('playerProfiles').once('value').then(snapshot => {
+            const firebaseProfiles = snapshot.val() || {};
+            playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+            updatePlayerSelects();
+        });
+
+        const adminPromise = db.ref('adminCredentials').once('value').then(snapshot => {
+            const firebaseAdminCreds = snapshot.val();
+            if (firebaseAdminCreds) {
+                adminCredentials = firebaseAdminCreds;
+                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+            }
+        });
+
+        // Download ONLY the question set NAMES (metadata), not the actual questions
+        const metadataPromise = db.ref('setMetadata').once('value').then(snapshot => {
+            const firebaseMetadata = snapshot.val() || {};
+            
+            // Update our local list of available sets
+            Object.keys(firebaseMetadata).forEach(setName => {
+                if (!questionSets[setName]) {
+                    // Only create empty placeholder - don't download questions yet
+                    questionSets[setName] = {
+                        questions: [], // EMPTY - we'll download later when needed
+                        uploadDate: firebaseMetadata[setName].uploadDate,
+                        category: firebaseMetadata[setName].category,
+                        subject: firebaseMetadata[setName].subject,
+                        type: 'questions'
+                    };
+                }
+            });
+            
             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
             loadQuestionSets();
             updateSubjectSelect();
         });
 
-        // Download player profiles
-        const playerPromise = db.ref('playerProfiles').once('value').then(snapshot => {
-            const firebaseProfiles = snapshot.val() || {};
-            playerProfiles = firebaseProfiles;
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            updatePlayerSelects();
-        });
-
-        // Download revision progress
-        const progressPromise = db.ref('revisionProgress').once('value').then(snapshot => {
-            const firebaseProgress = snapshot.val() || {};
-            revisionProgress = firebaseProgress;
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-        });
-
-        // Download daily scores
-        const scoresPromise = db.ref('dailyRevisionScores').once('value').then(snapshot => {
-            const firebaseScores = snapshot.val() || {};
-            dailyRevisionScores = firebaseScores;
-            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-        });
-
-        Promise.all([questionPromise, playerPromise, progressPromise, scoresPromise]).then(() => {
-            showNotification('All data synced across devices!');
+        Promise.all([playerPromise, adminPromise, metadataPromise]).then(() => {
+            showNotification('Essential data synced! Questions will load when needed.');
             
             if (currentPlayerName) {
                 updateUIAfterLogin();
