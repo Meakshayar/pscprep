@@ -1142,16 +1142,24 @@
         }
 
         // --- OPTIMIZED FIREBASE FUNCTIONS ---
-        function initializeFirebase() {
-            firebaseConfig = {
-                apiKey: "AIzaSyBpmZ-LEBH7YJ79NUwG-ZTrrsL6FVa3Ueo",
-                authDomain: "revision-61cb3.firebaseapp.com",
-                databaseURL: "https://revision-61cb3-default-rtdb.firebaseio.com",
-                projectId: "revision-61cb3",
-                storageBucket: "revision-61cb3.firebasestorage.app",
-                messagingSenderId: "912742749047",
-                appId: "1:912742749047:web:ca6f6863b5d56656b30772"
-            };
+        // --- OPTIMIZED FIREBASE FUNCTIONS ---
+function initializeFirebase() {
+    // First try to load saved config
+    firebaseConfig = JSON.parse(localStorage.getItem('firebaseConfig'));
+    
+    // If no config exists, use the default one
+    if (!firebaseConfig) {
+        firebaseConfig = {
+            apiKey: "AIzaSyBpmZ-LEBH7YJ79NUwG-ZTrrsL6FVa3Ueo",
+            authDomain: "revision-61cb3.firebaseapp.com",
+            databaseURL: "https://revision-61cb3-default-rtdb.firebaseio.com",
+            projectId: "revision-61cb3",
+            storageBucket: "revision-61cb3.firebasestorage.app",
+            messagingSenderId: "912742749047",
+            appId: "1:912742749047:web:ca6f6863b5d56656b30772"
+        };
+        localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
+    }
             
             localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
             
@@ -1178,6 +1186,39 @@
             }
         }
 
+        function loadUserDataFromFirebase() {
+    if (!isFirebaseConnected) return;
+    
+    console.log('Loading user data from Firebase...');
+    
+    // Load player profiles from Firebase
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        updatePlayerSelects();
+        console.log('Player profiles loaded from Firebase');
+    }).catch(error => {
+        console.log('Error loading player profiles:', error);
+    });
+    
+    // Load admin credentials from Firebase
+    db.ref('adminCredentials').once('value').then(snapshot => {
+        const firebaseAdminCreds = snapshot.val();
+        if (firebaseAdminCreds) {
+            adminCredentials = firebaseAdminCreds;
+            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+            console.log('Admin credentials loaded from Firebase');
+        }
+    }).catch(error => {
+        console.log('Error loading admin credentials:', error);
+    });
+    
+    // Continue with auto-login after a short delay to allow data to load
+    setTimeout(() => {
+        checkAutoLogin();
+    }, 1000);
+}
         function downloadQuestionSetsIfNeeded() {
             if (!isFirebaseConnected) {
                 showNotification('Firebase not connected', 'error');
@@ -1208,24 +1249,28 @@
         }
 
         function loadLocalDataImmediately() {
-            // Load all data from localStorage
-            questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
-            playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-            revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
-            practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
-            dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
-            
-            // Update UI with local data immediately
-            updatePlayerSelects();
-            loadQuestionSets();
-            updateSubjectSelect();
-            
-            console.log('Local data loaded. Players found:', getAllPlayerNames());
-            
-            // Check auto-login after profiles are loaded
-            checkAutoLogin();
-        }
-
+    // Load all data from localStorage
+    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+    playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
+    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
+    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+    adminCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials')) || null;
+    
+    // Update UI with local data immediately
+    updatePlayerSelects();
+    loadQuestionSets();
+    updateSubjectSelect();
+    
+    console.log('Local data loaded. Players found:', getAllPlayerNames());
+    
+    // NEW: Load user profiles and admin credentials from Firebase when login page loads
+    if (isFirebaseConnected) {
+        //loadUserDataFromFirebase();
+    } else {
+        checkAutoLogin();
+    }
+}
         function checkAutoLogin() {
             const lastPlayer = localStorage.getItem('pscLastPlayer');
             if (lastPlayer && playerProfiles[lastPlayer]) {
