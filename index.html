@@ -712,7 +712,14 @@
 
                     <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
                         <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
+
+
                     </div>
+
+                    <!-- ADD THIS NEW BUTTON -->
+<div style="text-align: center; margin: 10px 0;">
+    <button onclick="syncAllDataFromFirebase()" class="btn-success">Refresh Data from Cloud</button>
+</div>
                 </div>
                 
                 <div id="practiceSetupView" class="view-stage hidden">
@@ -1144,7 +1151,39 @@
         }
     }
 }
+function syncAllDataFromFirebase() {
+    if (!isFirebaseConnected) {
+        showNotification('Firebase not connected', 'error');
+        return;
+    }
+    
+    showNotification('Syncing data from cloud...');
+    
+    // Sync question sets
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        questionSets = { ...questionSets, ...firebaseSets };
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        loadQuestionSets();
+        updateSubjectSelect();
+    });
 
+    // Sync player profiles
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        updatePlayerSelects();
+        showNotification('Data synced from cloud! Players and question sets updated.');
+    });
+
+    // Sync revision progress
+    db.ref('revisionProgress').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        revisionProgress = { ...revisionProgress, ...data };
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+    });
+}
 // Add this new function to load local data immediately
 function loadLocalDataImmediately() {
     // Load all data from localStorage
@@ -1154,20 +1193,15 @@ function loadLocalDataImmediately() {
     practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
     dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
     
-    // Update UI with local data
+    // Update UI with local data immediately
     updatePlayerSelects();
     loadQuestionSets();
     updateSubjectSelect();
     
-    // Check for auto-login with local data
-    const lastPlayer = localStorage.getItem('pscLastPlayer');
-    if (lastPlayer && playerProfiles[lastPlayer]) {
-        loginPlayer(lastPlayer, true);
-    } else {
-        switchPracticeView('welcomeView');
-    }
-    
     console.log('Local data loaded. Players found:', getAllPlayerNames());
+    
+    // Don't auto-login here - wait for Firebase sync to complete
+    switchPracticeView('welcomeView');
 }
 
 
@@ -1333,29 +1367,39 @@ function saveQuestionSets(){
 function setupOptimizedFirebaseListeners() {
     if (!db) return;
     
-    // Load question sets once (not real-time)
+    // Load question sets from Firebase and merge with local
     db.ref('questionSets').once('value').then(snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            questionSets = data;
-            localStorage.setItem('pscQuestionSets', JSON.stringify(data));
-            loadQuestionSets();
-            updateSubjectSelect();
-        }
+        const firebaseSets = snapshot.val() || {};
+        // Merge Firebase sets with local, Firebase takes priority for conflicts
+        questionSets = { ...questionSets, ...firebaseSets };
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        loadQuestionSets();
+        updateSubjectSelect();
+        console.log('Question sets synced from Firebase');
     });
 
-    // Load player profiles once
+    // Load player profiles from Firebase and merge with local
     db.ref('playerProfiles').once('value').then(snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            playerProfiles = data;
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(data));
-            updatePlayerSelects();
-            if (currentPlayerName) loadPlayerProgress();
-        }
+        const firebaseProfiles = snapshot.val() || {};
+        // Merge strategy: Keep all players from both sources
+        // If same player exists in both, Firebase data takes priority
+        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        updatePlayerSelects();
+        console.log('Player profiles synced from Firebase');
+        
+        // Check auto-login after profiles are loaded
+        checkAutoLogin();
     });
 
-    // Daily scores update more frequently but we'll limit this
+    // Load other data from Firebase
+    db.ref('revisionProgress').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        revisionProgress = { ...revisionProgress, ...data };
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+    });
+
+    // Real-time listener only for daily scores (leaderboard)
     db.ref('dailyRevisionScores').on('value', snapshot => {
         const data = snapshot.val();
         if (data) {
@@ -1364,8 +1408,7 @@ function setupOptimizedFirebaseListeners() {
             if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
         }
     });
-}
-        function updateFirebaseStatus(status, isConnected) {
+}        function updateFirebaseStatus(status, isConnected) {
             const statusEl = document.getElementById('firebaseStatus');
             if (statusEl) {
                 statusEl.textContent = status;
