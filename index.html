@@ -85,6 +85,7 @@
             min-height: 0; /* ADDED: Critical for scrolling in flexbox */
         }
 
+
         @keyframes gradientAnimation {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -410,6 +411,7 @@
             color: var(--danger-color);
         }
 
+
         .history-item, .question-set { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: var(--border-radius); border-left: 4px solid var(--secondary-color);}
         
         .history-correct { color: var(--secondary-color); font-weight: bold; }
@@ -483,6 +485,7 @@
         .stat-card .correct { color: var(--success-color); }
         .stat-card .wrong { color: var(--danger-color); }
         /* --- END STATS MODAL STYLES --- */
+
 
         .dashboard-card {
             background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
@@ -650,6 +653,7 @@
                 gap: 2px;
             }
         }
+
     </style>
 </head>
 <body>
@@ -708,7 +712,14 @@
 
                     <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
                         <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
+
+
                     </div>
+
+                    <!-- ADD THIS NEW BUTTON -->
+<div style="text-align: center; margin: 10px 0;">
+    <button onclick="syncAllDataFromFirebase()" class="btn-success">Refresh Data from Cloud</button>
+</div>
                 </div>
                 
                 <div id="practiceSetupView" class="view-stage hidden">
@@ -728,10 +739,11 @@
                     </div>
                     <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled>Start Practice</button>
 
-                    <!--<div style="text-align: center; margin: 10px 0;">
-                        <button onclick="downloadQuestionSetsIfNeeded()" class="btn-warning">Check for New Question Sets</button>
-                    </div> -->
-                </div> 
+
+                    <div style="text-align: center; margin: 10px 0;">
+                    <button onclick="checkForUpdates()" class="btn-warning">Check for New Question Sets</button>
+</div>
+                </div>
 
                 <div id="practiceSessionView" class="view-stage hidden">
                     <div class="timer" id="practiceTimer">00:00</div>
@@ -790,6 +802,7 @@
                 </div>
             </div>
 
+            
             <div id="attendance" class="tab-content">
                 <h2>My Attendance & Revisions</h2>
                 <p>Your attendance is marked when you complete a session. Dots indicate days with due revisions.</p>
@@ -880,6 +893,7 @@
                 </div>
             </div>
             
+
             <div id="adminBacklogManager" class="tab-content">
                 <h2>Manage Player Backlogs</h2>
                  <div class="form-group">
@@ -1008,11 +1022,12 @@
     <div id="statsModal" class="modal"><div id="statsModalContent" class="modal-content"><h2>Player Statistics</h2><div class="stat-grid"><div class="stat-card"><h4>Title</h4><p id="statsTitle">_</p></div><div class="stat-card"><h4>Total XP</h4><p id="statsXP">_</p></div><div class="stat-card"><h4>Current Streak</h4><p id="statsStreak">_</p></div><div class="stat-card"><h4>Total Correct</h4><p id="statsCorrect" class="correct">_</p></div></div><button onclick="closeModal('statsModal')">Close</button></div></div>
     <div id="adminAuthModal" class="modal"><div class="modal-content"><h3 id="adminModalTitle">Admin Login</h3><p id="adminModalPrompt"></p><div class="form-group"><input type="text" id="adminUsername" placeholder="Username"></div><div class="form-group"><input type="password" id="adminPassword" placeholder="Password"></div><div id="adminPasswordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div><button id="adminSubmitBtn"></button><button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button></div></div>
 
+
     <script>
         // --- CONSTANTS ---
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
-        const DESTRUCTIVE_ACTION_PASSWORD = "2525";
+        const DESTRUCTIVE_ACTION_PASSWORD = "2525"; // Added as requested
         
         // --- GAMIFICATION & LEVELING SYSTEM ---
         const LEVEL_CONFIG = [
@@ -1035,7 +1050,131 @@
         let audioCtx;
 
         // --- APP STATE ---
-        let firebaseConfig = JSON.parse(localStorage.getItem('firebaseConfig')) || null;
+        // --- 1. UPDATED CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs",
+            authDomain: "pscprep-6bb66.firebaseapp.com",
+            databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com",
+            projectId: "pscprep-6bb66",
+            storageBucket: "pscprep-6bb66.firebasestorage.app",
+            messagingSenderId: "926517422096",
+            appId: "1:926517422096:web:ec706c3d125877c74d4295"
+        };
+
+        // --- 2. NEW OPTIMIZED SYNC LOGIC ---
+        
+        function initializeFirebase() {
+            // Initialize Firebase with your hardcoded config
+            if (firebase.apps.length === 0) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+
+            updateFirebaseStatus('Connecting...', false);
+
+            // Connection Listener
+            db.ref('.info/connected').on('value', snapshot => {
+                if (snapshot.val() === true) {
+                    updateFirebaseStatus('Connected', true);
+                    isFirebaseConnected = true;
+                    console.log('Firebase connected.');
+                    
+                    // START THE SMART SYNC
+                    setupSmartSync(); 
+                } else {
+                    updateFirebaseStatus('Disconnected (Offline Mode)', false);
+                    isFirebaseConnected = false;
+                }
+            });
+        }
+
+        function setupSmartSync() {
+            if (!db) return;
+
+            // 1. Check for NEW Question Sets only (Bandwidth Saver)
+            checkForNewQuestionSets();
+
+            // 2. Sync ONLY the current player's profile (Tiny data)
+            if (currentPlayerName) {
+                db.ref(`playerProfiles/${currentPlayerName}`).once('value').then(snapshot => {
+                    const cloudProfile = snapshot.val();
+                    if (cloudProfile) {
+                        // Merge cloud data with local data
+                        playerProfiles[currentPlayerName] = { ...playerProfiles[currentPlayerName], ...cloudProfile };
+                        savePlayerProfiles(); // Save to local storage
+                        updateProgressUI();
+                    }
+                });
+            }
+
+            // 3. Load Leaderboard (Lightweight)
+            db.ref('dailyRevisionScores').on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    dailyRevisionScores = data;
+                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                    if(document.getElementById('leaderboard').classList.contains('active')) {
+                        showLeaderboards();
+                    }
+                }
+            });
+        }
+
+        function checkForNewQuestionSets() {
+            // Get the timestamp of the last time we successfully synced
+            const lastSyncTime = localStorage.getItem('pscLastSyncTimestamp') || 0;
+            console.log("Checking for sets uploaded after:", new Date(parseInt(lastSyncTime)).toLocaleString());
+
+            // Query Firebase: "Give me sets where 'lastModified' is greater than my last sync"
+            db.ref('questionSets')
+                .orderByChild('lastModified')
+                .startAt(parseInt(lastSyncTime) + 1) // +1 to avoid duplicates
+                .once('value')
+                .then(snapshot => {
+                    const newSets = snapshot.val();
+                    if (newSets) {
+                        const count = Object.keys(newSets).length;
+                        console.log(`Found ${count} new/updated sets.`);
+                        
+                        // Merge new sets into local storage
+                        questionSets = { ...questionSets, ...newSets };
+                        saveQuestionSets(); // Updates Local Storage
+                        loadQuestionSets(); // Updates UI
+                        updateSubjectSelect();
+
+                        showNotification(`Downloaded ${count} new Question Sets!`, 'success');
+                    } else {
+                        console.log("Your Question Sets are up to date.");
+                    }
+                    // Update our local timestamp so we don't download these again next time
+                    localStorage.setItem('pscLastSyncTimestamp', Date.now());
+                });
+        }
+
+        function syncToFirebase() {
+            if (!isFirebaseConnected || !currentPlayerName) return;
+
+            // OPTIMIZATION: Only upload the specific user's data, not the whole DB
+            const updates = {};
+            
+            // 1. Update Player Profile (XP, Streak)
+            updates[`/playerProfiles/${currentPlayerName}`] = playerProfiles[currentPlayerName];
+            
+            // 2. Update Revision Progress (for this user only)
+            if(revisionProgress[currentPlayerName]) {
+                updates[`/revisionProgress/${currentPlayerName}`] = revisionProgress[currentPlayerName];
+            }
+
+            // 3. Update Daily Scores (Leaderboard)
+            updates['/dailyRevisionScores'] = dailyRevisionScores;
+
+            // Send specific updates
+            db.ref().update(updates).then(() => {
+                console.log("User progress synced to cloud.");
+            }).catch(err => {
+                console.error("Sync failed:", err);
+            });
+        }
         let db = null;
         let isFirebaseConnected = false;
         
@@ -1066,247 +1205,117 @@
         let dailyScoresListener = null;
 
         // --- INITIALIZATION ---
-
-        function initializeNewDevice() {
-    console.log('Initializing new device...');
-    
-    if (!isFirebaseConnected) {
-        showNotification('Waiting for internet connection...', 'warning');
-        return;
-    }
-    
-    // Check if this is a new device (no local data)
-    const hasLocalData = Object.keys(questionSets).length > 0 || Object.keys(playerProfiles).length > 0;
-    
-    if (!hasLocalData) {
-        showNotification('Setting up your device for the first time...');
-        
-        // Download essential data for new device
-        downloadEssentialData();
-    }
-}
-
-function downloadEssentialData() {
-    if (!isFirebaseConnected) return;
-    
-    showNotification('Downloading essential data...');
-    
-    // 1. Download question sets (essential for app to function)
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        questionSets = firebaseSets;
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        
-        // 2. Download player profiles (essential for login)
-        return db.ref('playerProfiles').once('value');
-    }).then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        playerProfiles = firebaseProfiles;
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        
-        // 3. Download admin credentials (essential for admin login)
-        return db.ref('adminCredentials').once('value');
-    }).then(snapshot => {
-        const firebaseAdminCreds = snapshot.val();
-        if (firebaseAdminCreds) {
-            adminCredentials = firebaseAdminCreds;
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-        }
-        
-        showNotification('Device setup complete!');
-        
-        // Update UI with new data
-        updatePlayerSelects();
-        loadQuestionSets();
-        updateSubjectSelect();
-        
-    }).catch(error => {
-        showNotification('Setup failed: ' + error.message, 'error');
-    });
-}
-
         document.addEventListener('DOMContentLoaded', init);
-function init() {
-    initializeFirebase();
+
+        function init() {
+    initializeFirebase(); // This will connect and then call loadFromFirebase()
     populateAvatars();
     setDailyQuote();
-    
-    // Load ALL local data immediately
-    loadLocalDataImmediately();
     
     document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
+    // Load local data immediately while Firebase connects
+    loadLocalDataImmediately();
+    
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
-    // ... rest of your existing init code
-}
-
-function initializeNewDevice() {
-    console.log('Initializing new device...');
-    
-    if (!isFirebaseConnected) {
-        showNotification('Waiting for internet connection...', 'warning');
-        return;
-    }
-    
-    // Check if this is a new device (no local data)
-    const hasLocalData = Object.keys(questionSets).length > 0 || Object.keys(playerProfiles).length > 0;
-    
-    if (!hasLocalData) {
-        showNotification('Setting up your device for the first time...');
-        
-        // Download essential data for new device
-        downloadEssentialData();
-    }
-}
-
-function downloadEssentialData() {
-    if (!isFirebaseConnected) return;
-    
-    showNotification('Downloading essential data...');
-    
-    // 1. Download player profiles FIRST (so users appear immediately)
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        playerProfiles = firebaseProfiles;
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        updatePlayerSelects();
-        
-        // 2. Download question set metadata
-        return db.ref('setMetadata').once('value');
-    }).then(snapshot => {
-        const firebaseMetadata = snapshot.val() || {};
-        
-        // Update our local list of available sets
-        Object.keys(firebaseMetadata).forEach(setName => {
-            if (!questionSets[setName]) {
-                // Only create empty placeholder - don't download questions yet
-                questionSets[setName] = {
-                    questions: [], // EMPTY - we'll download later when needed
-                    uploadDate: firebaseMetadata[setName].uploadDate,
-                    category: firebaseMetadata[setName].category,
-                    subject: firebaseMetadata[setName].subject,
-                    type: 'questions'
-                };
-            }
-        });
-        
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-        
-        // 3. Download admin credentials
-        return db.ref('adminCredentials').once('value');
-    }).then(snapshot => {
-        const firebaseAdminCreds = snapshot.val();
-        if (firebaseAdminCreds) {
-            adminCredentials = firebaseAdminCreds;
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+    document.getElementById('backToSetListBtn').addEventListener('click', () => {
+        if (editingFromReport.active) {
+            returnToReportedQuestionsView();
+        } else {
+            document.getElementById('editQuestionsSection').classList.add('hidden');
+            document.getElementById('adminQuestionSets').classList.remove('hidden');
+            currentEditingSet = null;
         }
-        
-        showNotification('Device setup complete!');
-        
-    }).catch(error => {
-        showNotification('Setup failed: ' + error.message, 'error');
     });
-}
-        // --- OPTIMIZED FIREBASE FUNCTIONS ---
-        // --- OPTIMIZED FIREBASE FUNCTIONS ---
-function initializeFirebase() {
-    // First try to load saved config
-    firebaseConfig = JSON.parse(localStorage.getItem('firebaseConfig'));
     
-    // If no config exists, use the default one
-    if (!firebaseConfig) {
-        firebaseConfig = {
-            apiKey: "AIzaSyBpmZ-LEBH7YJ79NUwG-ZTrrsL6FVa3Ueo",
-            authDomain: "revision-61cb3.firebaseapp.com",
-            databaseURL: "https://revision-61cb3-default-rtdb.firebaseio.com",
-            projectId: "revision-61cb3",
-            storageBucket: "revision-61cb3.firebasestorage.app",
-            messagingSenderId: "912742749047",
-            appId: "1:912742749047:web:ca6f6863b5d56656b30772"
-        };
-        localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
-    }
-            
-            localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
-            
-            if(document.getElementById('firebaseConfig')) {
-                document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
-            }
-            
-            try {
-                if (firebase.apps.length > 0) {
-                    db = firebase.database();
-                } else {
-                    firebase.initializeApp(firebaseConfig);
-                    db = firebase.database();
+    document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
+        document.getElementById('adminSystem').classList.add('hidden');
+        document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+        document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
+        renderReportedQuestions();
+    });
+    document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
+         document.getElementById('reportedQuestionsSection').classList.add('hidden');
+         document.getElementById('adminSystem').classList.remove('hidden');
+    });
+    
+     // Attendance calendar navigation
+    document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
+        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    });
+    document.getElementById('nextAttendanceMonthBtn').addEventListener('click', () => {
+        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    });
+    
+     // Admin Attendance calendar navigation
+    document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
+        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
+        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+        renderAdminAttendanceCalendar(selectedPlayer);
+    });
+    document.getElementById('adminNextAttendanceMonthBtn').addEventListener('click', () => {
+        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() + 1);
+        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+        renderAdminAttendanceCalendar(selectedPlayer);
+    });
+
+    window.onclick = function(event) {
+        if (!event.target.matches('.menu-btn')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
                 }
-                
-                updateFirebaseStatus('Connected (Optimized Mode)', true);
-                isFirebaseConnected = true;
-                console.log('Firebase connected in optimized mode');
-                
-            } catch (error) {
-                console.error('Firebase Init Error:', error);
-                updateFirebaseStatus('Init Failed - Using Local Data', false);
-                isFirebaseConnected = false;
             }
         }
-
-        function loadUserDataFromFirebase() {
-    if (!isFirebaseConnected) return;
-    
-    console.log('Loading user data from Firebase...');
-    
-    // Load player profiles from Firebase
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        updatePlayerSelects();
-        console.log('Player profiles loaded from Firebase');
-    }).catch(error => {
-        console.log('Error loading player profiles:', error);
-    });
-    
-    // Load admin credentials from Firebase
-    db.ref('adminCredentials').once('value').then(snapshot => {
-        const firebaseAdminCreds = snapshot.val();
-        if (firebaseAdminCreds) {
-            adminCredentials = firebaseAdminCreds;
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-            console.log('Admin credentials loaded from Firebase');
-        }
-    }).catch(error => {
-        console.log('Error loading admin credentials:', error);
-    });
-    
-    // Continue with auto-login after a short delay to allow data to load
-    setTimeout(() => {
-        checkAutoLogin();
-    }, 1000);
+    }
 }
-        function downloadQuestionSetsIfNeeded() {
+function syncAllDataFromFirebase() {
     if (!isFirebaseConnected) {
         showNotification('Firebase not connected', 'error');
         return;
     }
     
-    showNotification('Checking for updated question sets...');
-    checkForUpdatedQuestionSets();
-}
+    showNotification('Syncing data from cloud...');
+    
+    // Sync question sets
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        questionSets = { ...questionSets, ...firebaseSets };
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        loadQuestionSets();
+        updateSubjectSelect();
+    });
 
-   function loadLocalDataImmediately() {
+    // Sync player profiles
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        updatePlayerSelects();
+        showNotification('Data synced from cloud! Players and question sets updated.');
+    });
+
+    // Sync revision progress
+    db.ref('revisionProgress').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        revisionProgress = { ...revisionProgress, ...data };
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+    });
+}
+// Add this new function to load local data immediately
+function loadLocalDataImmediately() {
     // Load all data from localStorage
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
     revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
     practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
     dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
-    adminCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials')) || null;
     
     // Update UI with local data immediately
     updatePlayerSelects();
@@ -1315,424 +1324,95 @@ function initializeFirebase() {
     
     console.log('Local data loaded. Players found:', getAllPlayerNames());
     
-    // Check if this is a new device with no data
-    initializeNewDevice();
-    
-    // Check for auto-login immediately with local data
-    checkAutoLogin();
-    
-    // Start background sync if Firebase is connected
-    if (isFirebaseConnected) {
-        startBackgroundSync();
-    }
+    // Don't auto-login here - wait for Firebase sync to complete
+    switchPracticeView('welcomeView');
 }
 
-function startBackgroundSync() {
-    console.log('Starting background sync...');
-    
-    // Check for new question sets (but only if we don't have any or it's been a while)
-    const lastQuestionSetCheck = localStorage.getItem('pscLastQuestionSetCheck') || 0;
-    const oneHourAgo = Date.now() - (60 * 60 * 1000); // Check every hour
-    
-    if (Object.keys(questionSets).length === 0 || lastQuestionSetCheck < oneHourAgo) {
-        console.log('Checking for updated question sets...');
-        checkForUpdatedQuestionSets();
+
+        function checkForUpdates() {
+    showNotification('Checking for new question sets...');
+    checkForNewQuestionSets();
+}
+        function loadFromFirebase() {
+    if (!isFirebaseConnected) { 
+        showNotification('Firebase not connected', 'error'); 
+        return; 
     }
     
-    // If a user is logged in, sync their data
-    if (currentPlayerName) {
-        console.log('Syncing user data for:', currentPlayerName);
-        syncUserData(currentPlayerName);
+    // We're now using the optimized approach above
+    // This function can be simplified or removed
+    showNotification('Using optimized data loading strategy');
+}
+
+function switchTab(tabName) {
+    document.body.classList.remove('practice-active');
+    document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
+    const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
+    if(mainTabButton) mainTabButton.classList.add('active');
+    document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
+    
+    document.getElementById(tabName).classList.add('active');
+
+    // FIXED: Better leaderboard listener management
+    if (dailyScoresListener) {
+        dailyScoresListener.off();
+        dailyScoresListener = null;
+        console.log('Leaderboard listener OFF');
     }
-    
-    // Update today's leaderboard data
-    updateTodayLeaderboardData();
-}
 
-function checkForUpdatedQuestionSets() {
-    if (!isFirebaseConnected) return;
-    
-    // First, just check if there are any new sets by getting the keys
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSetKeys = Object.keys(snapshot.val() || {});
-        const localSetKeys = Object.keys(questionSets);
-        
-        // Check if we have new sets in Firebase
-        const newSets = firebaseSetKeys.filter(key => !localSetKeys.includes(key));
-        
-        if (newSets.length > 0) {
-            console.log('Found new question sets:', newSets);
-            // Download only the new sets
-            downloadSpecificQuestionSets(newSets);
-        } else {
-            // Check if any existing sets have been modified
-            checkForModifiedSets(firebaseSetKeys, snapshot.val());
-        }
-        
-        localStorage.setItem('pscLastQuestionSetCheck', Date.now());
-    }).catch(error => {
-        console.log('Error checking for updated question sets:', error);
-    });
-}
-
-function downloadSpecificQuestionSets(setNames) {
-    if (!isFirebaseConnected) return;
-    
-    const downloadPromises = setNames.map(setName => {
-        return db.ref(`questionSets/${setName}`).once('value').then(snapshot => {
-            const setData = snapshot.val();
-            if (setData) {
-                questionSets[setName] = setData;
-                return setName;
-            }
-            return null;
-        });
-    });
-    
-    Promise.all(downloadPromises).then(downloadedSets => {
-        const successfulDownloads = downloadedSets.filter(Boolean);
-        if (successfulDownloads.length > 0) {
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            loadQuestionSets();
-            updateSubjectSelect();
-            
-            // Show notification only if user is actively using the app
-            if (currentPlayerName) {
-                showNotification(`Downloaded ${successfulDownloads.length} new question set(s)!`);
-            }
-            
-            console.log('Downloaded question sets:', successfulDownloads);
-        }
-    });
-}
-
-function checkForModifiedSets(firebaseSetKeys, firebaseSets) {
-    let needsUpdate = false;
-    
-    firebaseSetKeys.forEach(setName => {
-        const localSet = questionSets[setName];
-        const firebaseSet = firebaseSets[setName];
-        
-        if (localSet && firebaseSet) {
-            // Compare lastModified timestamps if available
-            const localModified = localSet.lastModified || 0;
-            const firebaseModified = firebaseSet.lastModified || 0;
-            
-            if (firebaseModified > localModified) {
-                console.log(`Set ${setName} has been modified, updating...`);
-                questionSets[setName] = firebaseSet;
-                needsUpdate = true;
-            }
-        }
-    });
-    
-    if (needsUpdate) {
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-        
-        if (currentPlayerName) {
-            showNotification('Question sets updated!');
-        }
-    }
-}
-
-function syncUserData(playerName) {
-    if (!isFirebaseConnected || !playerName) return;
-    
-    console.log('Syncing data for user:', playerName);
-    
-    // Create a single promise that fetches all user data
-    const userDataPromise = db.ref(`playerProfiles/${playerName}`).once('value').then(snapshot => {
-        const firebaseProfile = snapshot.val();
-        if (firebaseProfile) {
-            // Merge with local data, giving priority to Firebase for conflicts
-            playerProfiles[playerName] = { ...playerProfiles[playerName], ...firebaseProfile };
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        }
-        return playerName;
-    }).then(playerName => {
-        // Get revision progress for this user
-        return db.ref(`revisionProgress/${playerName}`).once('value');
-    }).then(snapshot => {
-        const firebaseProgress = snapshot.val();
-        if (firebaseProgress) {
-            if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
-            revisionProgress[currentPlayerName] = { ...revisionProgress[currentPlayerName], ...firebaseProgress };
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-        }
-        return true;
-    }).catch(error => {
-        console.log('Error syncing user data:', error);
-        return false;
-    });
-    
-    // Also sync today's scores for leaderboard
-    updateTodayLeaderboardData();
-    
-    return userDataPromise;
-}
-
-function updateTodayLeaderboardData() {
-    if (!isFirebaseConnected) return;
-    
-    const todayStr = getTodayDateString();
-    db.ref(`dailyRevisionScores/${todayStr}`).once('value').then(snapshot => {
-        const todayScores = snapshot.val() || {};
-        if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
-        dailyRevisionScores[todayStr] = { ...dailyRevisionScores[todayStr], ...todayScores };
-        localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-        
-        // Update leaderboard if it's currently visible
-        if (document.getElementById('leaderboard').classList.contains('active')) {
-            showLeaderboards();
-        }
-    });
-}
- 
-function checkAutoLogin() {
-    const lastPlayer = localStorage.getItem('pscLastPlayer');
-    
-    // Only auto-login if we have player data
-    const hasPlayerData = lastPlayer && playerProfiles[lastPlayer];
-    const hasQuestionSets = Object.keys(questionSets).length > 0;
-    
-    if (hasPlayerData && hasQuestionSets) {
-        loginPlayer(lastPlayer, true); 
-    } else {
-        switchPracticeView('welcomeView');
-        
-        // Show helpful message if no data
-        if (!hasQuestionSets) {
-            showNotification('No question sets found. Click "Download All Data" to get started.', 'warning');
-        }
-    }
-}
-
-function handleAdminLogin() {
-    // Check if we have admin credentials locally
-    if (!adminCredentials) {
-        // No local admin data - try to download it
-        if (isFirebaseConnected) {
-            showNotification('Downloading admin data...');
-            db.ref('adminCredentials').once('value').then(snapshot => {
-                const firebaseAdminCreds = snapshot.val();
-                if (firebaseAdminCreds) {
-                    adminCredentials = firebaseAdminCreds;
-                    localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-                    // Now show the admin login modal
-                    showAdminLoginModal();
-                } else {
-                    showNotification('No admin account found on server.', 'error');
+    if(tabName === 'leaderboard') {
+        showLeaderboards(); // Show with local data first
+        // Only listen when actually viewing leaderboard
+        if (db && isFirebaseConnected) {
+            dailyScoresListener = db.ref('dailyRevisionScores');
+            dailyScoresListener.on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    dailyRevisionScores = data;
+                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                    showLeaderboards();
+                    console.log('Leaderboard scores updated.');
                 }
-            }).catch(error => {
-                showNotification('Failed to download admin data: ' + error.message, 'error');
             });
-        } else {
-            showNotification('No internet connection. Cannot login as admin.', 'error');
         }
-    } else {
-        // We have local admin data - proceed normally
-        showAdminLoginModal();
+    }
+
+    if(tabName === 'revision') renderRevisionPage();
+    if(tabName === 'backlog') renderBacklogPage();
+    if(tabName === 'attendance') {
+        currentAttendanceCalendarDate = new Date();
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
     }
 }
 
-function showAdminLoginModal() {
-    if (!adminCredentials) {
-        // First-time setup
-        document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-        document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-        document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-        document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-        document.getElementById('adminSubmitBtn').onclick = createAdmin;
-    } else {
-        // Regular login
-        document.getElementById('adminModalTitle').textContent = "Admin Login";
-        document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-        document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-        document.getElementById('adminSubmitBtn').textContent = "Login";
-        document.getElementById('adminSubmitBtn').onclick = loginAdmin;
-    }
-    document.getElementById('adminUsername').value = '';
-    document.getElementById('adminPassword').value = '';
-    document.getElementById('adminPasswordConfirm').value = '';
-    openModal('adminAuthModal');
-}
+// --- 3. UPDATED SAVE FUNCTION (ADDS TIMESTAMPS) ---
 
-        function updateUIAfterLogin() {
-            document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-            loadPlayerProgress();
-            switchPracticeView('practiceSetupView');
-            updateAllBadges();
-            updateSubjectSelect();
-            showNotification('Data loaded successfully!');
-        }
-
-        // --- OPTIMIZED DATA SAVING FUNCTIONS ---
-        function savePlayerProfiles() {
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        function saveQuestionSets() {
+            const timestamp = Date.now();
             
-            // Only upload the current user's data to Firebase
-            if (isFirebaseConnected && currentPlayerName) {
-                const userUpdate = {};
-                userUpdate[currentPlayerName] = playerProfiles[currentPlayerName];
-                db.ref('playerProfiles').update(userUpdate);
-            }
-        }
-
-        function saveRevisionProgress() {
-            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-            
-            // Only upload the current user's revision progress
-            if (isFirebaseConnected && currentPlayerName) {
-                const progressUpdate = {};
-                progressUpdate[currentPlayerName] = revisionProgress[currentPlayerName] || {};
-                db.ref('revisionProgress').update(progressUpdate);
-            }
-        }
-
-        function saveQuestionSets(){
-            // Add lastModified timestamp to each set
+            // Ensure every set has a lastModified timestamp
             Object.keys(questionSets).forEach(setName => {
+                // If we are editing it now, or if it never had one, update the time
                 if (!questionSets[setName].lastModified) {
-                    questionSets[setName].lastModified = Date.now();
+                    questionSets[setName].lastModified = timestamp;
                 }
             });
             
+            // If we are in Admin mode and currently editing/uploading, force update the specific set's timestamp
+            if (isAdminLoggedIn && currentEditingSet && questionSets[currentEditingSet]) {
+                 questionSets[currentEditingSet].lastModified = timestamp;
+            }
+
             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
-        }
-
-        // --- CORE APP FUNCTIONS (UPDATED FOR OPTIMIZATION) ---
-        function switchTab(tabName) {
-            document.body.classList.remove('practice-active');
-            document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
-            const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
-            if(mainTabButton) mainTabButton.classList.add('active');
-            document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
             
-            document.getElementById(tabName).classList.add('active');
-
-            if(tabName === 'leaderboard') {
-                showLeaderboards(); // Show with local data first
-                
-                // Only download today's scores for leaderboard
-                if (db && isFirebaseConnected) {
-                    const todayStr = getTodayDateString();
-                    db.ref('dailyRevisionScores/' + todayStr).once('value').then(snapshot => {
-                        const todayScores = snapshot.val() || {};
-                        if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
-                        dailyRevisionScores[todayStr] = { ...dailyRevisionScores[todayStr], ...todayScores };
-                        localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-                        showLeaderboards();
-                    });
-                }
-            }
-
-            if(tabName === 'revision') renderRevisionPage();
-            if(tabName === 'backlog') renderBacklogPage();
-            if(tabName === 'attendance') {
-                currentAttendanceCalendarDate = new Date();
-                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+            if(isFirebaseConnected) {
+                // We assume if you are saving, you are the Admin uploading new data
+                db.ref('questionSets').set(questionSets).then(() => {
+                   console.log("Question Sets uploaded to cloud.");
+                });
             }
         }
-
-        function endPractice() {
-            if (!practiceInProgress || !currentAttempt) {
-                practiceInProgress = false;
-                clearInterval(timer);
-                document.body.classList.remove('practice-active');
-                switchPracticeView('practiceSetupView');
-                return;
-            }
-            
-            practiceInProgress = false;
-            clearInterval(timer);
-
-            const totalQuestions = currentAttempt.totalQuestions;
-            const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-            
-            let xpEarned = 0;
-            let xpMessage = '';
-
-            if (isRevisionMode) {
-                const CUTOFF_DATE = new Date('2025-10-13T00:00:00');
-                const setName = currentAttempt.setName;
-                const setUploadDateStr = questionSets[setName]?.uploadDate;
-                const setUploadDate = setUploadDateStr ? new Date(setUploadDateStr + 'T00:00:00') : new Date(0); 
-
-                const isEligibleForXp = setUploadDate >= CUTOFF_DATE;
-
-                if (isEligibleForXp) {
-                    xpEarned = calculateAndApplyXP(score);
-                    xpMessage = `You earned ${xpEarned} XP!`;
-                } else {
-                    xpEarned = calculateAndApplyXP(0);
-                    xpMessage = `Score added to today's ranking. Total XP is only awarded for revisions on sets from after 13-10-2025.`;
-                    if (xpEarned > 0) {
-                        xpMessage += ` Daily activity bonus of ${xpEarned} XP applied.`;
-                    }
-                }
-                
-                const todayStr = getTodayDateString();
-                if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
-                if (!dailyRevisionScores[todayStr][currentPlayerName]) dailyRevisionScores[todayStr][currentPlayerName] = 0;
-                dailyRevisionScores[todayStr][currentPlayerName] += score;
-                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-                
-                // Optimized: Only update today's scores in Firebase
-                if (isFirebaseConnected) {
-                    const scoresUpdate = {};
-                    scoresUpdate[todayStr] = dailyRevisionScores[todayStr];
-                    db.ref('dailyRevisionScores').update(scoresUpdate);
-                }
-
-            } else {
-                xpEarned = calculateAndApplyXP(0);
-                xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP for your daily activity! Score-based XP is for revisions.` : 'XP for correct answers is awarded during revision sessions.';
-            }
-
-            currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
-            const attemptId = `attempt-${Date.now()}`;
-            practiceHistory[attemptId] = currentAttempt;
-            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-            
-            // Optimized: Only upload this attempt to Firebase
-            if (isFirebaseConnected) db.ref(`practiceHistory/${attemptId}`).set(currentAttempt);
-            
-            if (isRevisionMode) {
-                const success = percentage >= MIN_SCORE_FOR_REVISION_SUCCESS;
-                if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
-                revisionProgress[currentPlayerName][currentRevisionKey] = { percentage, date: new Date().toISOString(), success };
-                
-                // Use optimized save function
-                saveRevisionProgress();
-                
-                renderRevisionPage();
-                renderBacklogPage();
-            }
-
-            document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
-            document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
-            document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
-            document.getElementById('modalXPGained').textContent = xpMessage;
-            openModal('resultsModal');
-            
-            if (percentage > 70) startConfetti();
-
-            const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
-            if (wrongAnswers.length > 0) {
-                showWrongAnswersPopup(wrongAnswers);
-            }
-            
-            document.body.classList.remove('practice-active');
-            switchPracticeView('practiceSetupView'); 
-            isRevisionMode = false; currentRevisionKey = null; currentSet = [];
-        }
-
-        // --- THE REST OF YOUR FUNCTIONS REMAIN THE SAME ---
-        // (Only the Firebase-related functions have been optimized)
-
+        
         function setDailyQuote() {
             const quoteEl = document.getElementById('motivationalQuote');
             const quoteElLoggedIn = document.getElementById('motivationalQuoteLoggedIn');
@@ -1763,13 +1443,62 @@ function showAdminLoginModal() {
 
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-        function updateFirebaseStatus(status, isConnected) {
+        // --- FIREBASE FUNCTIONS ---
+    
+    // Your NEW Firebase configuration
+ 
+function setupOptimizedFirebaseListeners() {
+    if (!db) return;
+    
+    // Load question sets from Firebase and merge with local
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        // Merge Firebase sets with local, Firebase takes priority for conflicts
+        questionSets = { ...questionSets, ...firebaseSets };
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        loadQuestionSets();
+        updateSubjectSelect();
+        console.log('Question sets synced from Firebase');
+    });
+
+    // Load player profiles from Firebase and merge with local
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        // Merge strategy: Keep all players from both sources
+        // If same player exists in both, Firebase data takes priority
+        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        updatePlayerSelects();
+        console.log('Player profiles synced from Firebase');
+        
+        // Check auto-login after profiles are loaded
+        checkAutoLogin();
+    });
+
+    // Load other data from Firebase
+    db.ref('revisionProgress').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        revisionProgress = { ...revisionProgress, ...data };
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+    });
+
+    // Real-time listener only for daily scores (leaderboard)
+    db.ref('dailyRevisionScores').on('value', snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            dailyRevisionScores = data;
+            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+            if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
+        }
+    });
+}        function updateFirebaseStatus(status, isConnected) {
             const statusEl = document.getElementById('firebaseStatus');
             if (statusEl) {
                 statusEl.textContent = status;
             }
         }
 
+        
         function saveFirebaseConfig() {
             try {
                 const config = JSON.parse(document.getElementById('firebaseConfig').value);
@@ -1794,64 +1523,89 @@ function showAdminLoginModal() {
               .catch(err => showNotification(`Connection test failed: ${err.message}`, 'error'));
         }
         
-        function syncToFirebase() {
-            if (!isFirebaseConnected) { 
-                showNotification('Firebase not connected', 'error'); 
-                return; 
-            }
-            
-            // Only sync essential data
-            if (currentPlayerName) {
-                // Sync current player's profile and progress
-                const playerUpdate = {};
-                playerUpdate[currentPlayerName] = playerProfiles[currentPlayerName];
-                db.ref('playerProfiles').update(playerUpdate);
-                
-                const progressUpdate = {};
-                progressUpdate[currentPlayerName] = revisionProgress[currentPlayerName] || {};
-                db.ref('revisionProgress').update(progressUpdate);
-            }
-            
-            // Sync daily scores
-            db.ref('dailyRevisionScores').set(dailyRevisionScores);
-            
-            showNotification('User progress synced to Firebase!');
+      
+
+        function setupOptimizedFirebaseListeners() {
+    if (!db) return;
+    
+    // Load local data first
+    loadLocalData();
+    
+    // Only download NEW question sets (check for updates)
+    checkForNewQuestionSets();
+    
+    // Real-time listener only for daily scores (leaderboard)
+    setupLeaderboardListener();
+    
+    // Upload any pending user data
+    syncPendingUserData();
+}
+
+function loadLocalData() {
+    // Load all data from localStorage first
+    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+    playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
+    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
+    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+    
+    // Update UI with local data
+    loadQuestionSets();
+    updateSubjectSelect();
+    updatePlayerSelects();
+    if (currentPlayerName) loadPlayerProgress();
+    
+    // Check for auto-login
+    checkAutoLogin();
+}
+
+
+
+function setupLeaderboardListener() {
+    if (!db) return;
+    
+    // Only enable real-time listener for leaderboard when needed
+    if (dailyScoresListener) {
+        dailyScoresListener.off();
+    }
+    
+    // We'll set this up only when leaderboard tab is active (see modified switchTab function)
+}
+
+function syncPendingUserData() {
+    if (!currentPlayerName) return;
+    
+    // Sync user-specific data that's critical for revision tracking
+    const userDataToSync = {
+        playerProfiles: {
+            [currentPlayerName]: playerProfiles[currentPlayerName]
+        },
+        revisionProgress: {
+            [currentPlayerName]: revisionProgress[currentPlayerName] || {}
         }
+    };
+    
+    // Only sync if we have new data (you could add more sophisticated checks)
+    if (userDataToSync.playerProfiles[currentPlayerName]) {
+        db.ref('playerProfiles').update(userDataToSync.playerProfiles);
+    }
+    
+    if (userDataToSync.revisionProgress[currentPlayerName]) {
+        db.ref('revisionProgress').update(userDataToSync.revisionProgress);
+    }
+}
 
-        function loadFromFirebase() {
-            if (!isFirebaseConnected) { 
-                showNotification('Firebase not connected', 'error'); 
-                return; 
+        function checkAutoLogin() {
+            const lastPlayer = localStorage.getItem('pscLastPlayer');
+            // We use the *global* playerProfiles, which has just been updated
+            if (lastPlayer && playerProfiles[lastPlayer]) {
+                loginPlayer(lastPlayer, true); 
+            } else {
+                switchPracticeView('welcomeView');
             }
-            
-            showNotification('Loading data from Firebase...');
-            
-            // Load question sets
-            db.ref('questionSets').once('value').then(snapshot => {
-                const firebaseSets = snapshot.val() || {};
-                questionSets = { ...questionSets, ...firebaseSets };
-                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                loadQuestionSets();
-                updateSubjectSelect();
-            });
-
-            // Load player profiles
-            db.ref('playerProfiles').once('value').then(snapshot => {
-                const firebaseProfiles = snapshot.val() || {};
-                playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-                localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-                updatePlayerSelects();
-                showNotification('Data loaded from Firebase!');
-            });
-
-            // Load revision progress
-            db.ref('revisionProgress').once('value').then(snapshot => {
-                const data = snapshot.val() || {};
-                revisionProgress = { ...revisionProgress, ...data };
-                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-            });
         }
-
+        
+        // --- DATA MANAGEMENT ---
         function exportData() {
             const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -2020,6 +1774,11 @@ function showAdminLoginModal() {
             document.getElementById('xpBarFill').style.width = `${percentage}%`;
         }
         
+        function savePlayerProfiles() {
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+            if (isFirebaseConnected) { db.ref('playerProfiles').set(playerProfiles); }
+        }
+
         function loadPlayerProgress() {
             if (!currentPlayerName) return;
             updateProgressUI();
@@ -2051,6 +1810,47 @@ function showAdminLoginModal() {
             event.target.value = null; 
         }
 
+        // --- CORE APP FUNCTIONS ---
+       function switchTab(tabName) {
+    document.body.classList.remove('practice-active');
+    document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
+    const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
+    if(mainTabButton) mainTabButton.classList.add('active');
+    document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
+    
+    document.getElementById(tabName).classList.add('active');
+
+    // FIXED: Better leaderboard listener management
+    if (dailyScoresListener) {
+        dailyScoresListener.off();
+        dailyScoresListener = null;
+        console.log('Leaderboard listener OFF');
+    }
+
+    if(tabName === 'leaderboard') {
+        showLeaderboards(); // Show with local data first
+        // Only listen when actually viewing leaderboard
+        if (db && isFirebaseConnected) {
+            dailyScoresListener = db.ref('dailyRevisionScores');
+            dailyScoresListener.on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    dailyRevisionScores = data;
+                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                    showLeaderboards();
+                    console.log('Leaderboard scores updated.');
+                }
+            });
+        }
+    }
+
+    if(tabName === 'revision') renderRevisionPage();
+    if(tabName === 'backlog') renderBacklogPage();
+    if(tabName === 'attendance') {
+        currentAttendanceCalendarDate = new Date();
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    }
+}
         function switchAdminTab(tabName) {
             document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
@@ -2095,52 +1895,24 @@ function showAdminLoginModal() {
         
         // --- Player and Password Functions ---
         function handlePlayerSelection() {
-    const select = document.getElementById('playerSelect');
-    const name = select.value;
-    if (!name) return;
-    
-    if (!playerProfiles[name]) { 
-        playerProfiles[name] = createNewProfile(); 
-    }
-    
-    const profile = playerProfiles[name];
-    
-    if (profile.password) { 
-        showPasswordPrompt(name, profile.password, () => loginPlayer(name)); 
-    } else {
-        showCreatePasswordPrompt(name, (newPassword) => {
-            profile.password = newPassword;
-            savePlayerProfiles();
-            showNotification('Password created successfully!', 'success');
-            loginPlayer(name);
-        });
-    }
-}
+            const select = document.getElementById('playerSelect');
+            const name = select.value;
+            if (!name) return;
+            if (!playerProfiles[name]) { 
+                playerProfiles[name] = createNewProfile(); 
+            }
+            const profile = playerProfiles[name];
+            if (profile.password) { showPasswordPrompt(name, profile.password, () => loginPlayer(name)); } 
+            else {
+                showCreatePasswordPrompt(name, (newPassword) => {
+                    profile.password = newPassword;
+                    savePlayerProfiles();
+                    showNotification('Password created successfully!', 'success');
+                    loginPlayer(name);
+                });
+            }
+        }
 
-// ADD THIS NEW FUNCTION RIGHT AFTER THE PREVIOUS ONE
-function loginPlayer(playerName, autoLogin = false) {
-    currentPlayerName = playerName;
-    localStorage.setItem('pscLastPlayer', playerName);
-    
-    // Handle daily login logic (streaks, etc.)
-    handleDailyLogin();
-    
-    // Update UI
-    document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-    loadPlayerProgress();
-    switchPracticeView('practiceSetupView');
-    updateAllBadges();
-    updateSubjectSelect();
-    
-    if (!autoLogin) {
-        showNotification(`Welcome back, ${currentPlayerName}!`);
-    }
-    
-    // Sync user data if Firebase is connected
-    if (isFirebaseConnected) {
-        syncUserData(currentPlayerName);
-    }
-}
         function createNewProfile() {
             return {
                 password: '', totalXP: 0, totalCorrect: 0,
@@ -2184,6 +1956,24 @@ function loginPlayer(playerName, autoLogin = false) {
             });
         }
         
+        function loginPlayer(name, isAutoLogin = false) {
+            currentPlayerName = name;
+            localStorage.setItem('pscLastPlayer', currentPlayerName);
+            
+            handleDailyLogin();
+
+            // --- ADD THIS NEW SECTION ---
+            // Stop listening to any old player's progress
+            // --- END OF NEW SECTION ---
+
+            if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
+            document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
+            loadPlayerProgress();
+            switchPracticeView('practiceSetupView');
+            updateAllBadges();
+            updateSubjectSelect();
+        }
+
         function updateUserPassword() {
             const userToUpdate = document.getElementById('passwordUserSelect').value;
             const newPassword = document.getElementById('newUserPassword').value;
@@ -2221,80 +2011,42 @@ function loginPlayer(playerName, autoLogin = false) {
         }
 
         function startPractice(setName, isRev, revisionKey) { 
-    if (practiceInProgress) return;
-    
-    // CHECK if we have questions for this set, if not download them first
-    const currentSetData = questionSets[setName];
-    if (!currentSetData || !currentSetData.questions || currentSetData.questions.length === 0) {
-        showNotification('Downloading questions...');
-        downloadQuestionSet(setName).then(success => {
-            if (success) {
-                // Now start the practice with the downloaded questions
-                actuallyStartPractice(setName, isRev, revisionKey);
-            } else {
-                showNotification('Failed to download questions', 'error');
+            if (practiceInProgress) return;
+            practiceInProgress = true;
+            initAudio();
+            isRevisionMode = isRev; currentRevisionKey = revisionKey;
+            currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
+            if (currentSet.length === 0) { 
+                showNotification('Selected set is empty.', 'error'); 
                 practiceInProgress = false;
                 switchPracticeView('practiceSetupView');
+                return; 
             }
-        });
-        return;
-    }
-    
-    // If we already have questions, start normally
-    actuallyStartPractice(setName, isRev, revisionKey);
-}
+            
+            const set = questionSets[setName];
+            const category = set.category || 'gk';
+            let timePerQuestion = category === 'math' ? 45 : 10;
 
-// Extract the main practice logic into a separate function
-function actuallyStartPractice(setName, isRev, revisionKey) {
-    practiceInProgress = true;
-    initAudio();
-    isRevisionMode = isRev; 
-    currentRevisionKey = revisionKey;
-    
-    // Now we're guaranteed to have questions
-    currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
-    
-    if (currentSet.length === 0) { 
-        showNotification('Selected set is empty.', 'error'); 
-        practiceInProgress = false;
-        switchPracticeView('practiceSetupView');
-        return; 
-    }
-    
-    const set = questionSets[setName];
-    const category = set.category || 'gk';
-    let timePerQuestion = category === 'math' ? 45 : 10;
-
-    currentQuestionIndex = 0; 
-    score = 0; 
-    timeElapsed = 0;
-    totalTimeLimit = currentSet.length * timePerQuestion; 
-    currentAttempt = { 
-        playerName: currentPlayerName, 
-        setName: setName, 
-        startTime: new Date().toISOString(), 
-        answers: [], 
-        score: 0, 
-        totalQuestions: currentSet.length, 
-        timeLimit: totalTimeLimit,
-        isRevision: isRevisionMode, 
-        revisionKey: isRevisionMode ? currentRevisionKey : null
-    };
-    
-    document.getElementById('practiceScore').textContent = 'Score: 0';
-    clearInterval(timer); 
-    timer = setInterval(() => { 
-        timeElapsed++; 
-        const remaining = totalTimeLimit - timeElapsed;
-        document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-        if (remaining <= 0) { 
-            showNotification('Time limit reached!', 'error'); 
-            endPractice();
+            currentQuestionIndex = 0; score = 0; timeElapsed = 0;
+            totalTimeLimit = currentSet.length * timePerQuestion; 
+            currentAttempt = { 
+                playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
+                answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
+                isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
+            };
+            document.getElementById('practiceScore').textContent = 'Score: 0';
+            clearInterval(timer); 
+            timer = setInterval(() => { 
+                timeElapsed++; 
+                const remaining = totalTimeLimit - timeElapsed;
+                document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
+                if (remaining <= 0) { 
+                    showNotification('Time limit reached!', 'error'); 
+                    endPractice();
+                }
+            }, 1000);
+            showNextQuestion();
         }
-    }, 1000);
-    
-    showNextQuestion();
-}
         
         function showNextQuestion() {
             if (currentQuestionIndex >= currentSet.length) {
@@ -2369,6 +2121,89 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
             proceedToNextQuestion();
         }
 
+        function endPractice() {
+            if (!practiceInProgress || !currentAttempt) {
+                practiceInProgress = false;
+                clearInterval(timer);
+                document.body.classList.remove('practice-active');
+                switchPracticeView('practiceSetupView');
+                return;
+            }
+            
+            practiceInProgress = false;
+            clearInterval(timer);
+
+            const totalQuestions = currentAttempt.totalQuestions;
+            const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+            
+            let xpEarned = 0;
+            let xpMessage = '';
+
+            if (isRevisionMode) {
+                const CUTOFF_DATE = new Date('2025-10-13T00:00:00');
+                const setName = currentAttempt.setName;
+                const setUploadDateStr = questionSets[setName]?.uploadDate;
+                const setUploadDate = setUploadDateStr ? new Date(setUploadDateStr + 'T00:00:00') : new Date(0); 
+
+                const isEligibleForXp = setUploadDate >= CUTOFF_DATE;
+
+                if (isEligibleForXp) {
+                    xpEarned = calculateAndApplyXP(score);
+                    xpMessage = `You earned ${xpEarned} XP!`;
+                } else {
+                    xpEarned = calculateAndApplyXP(0);
+                    xpMessage = `Score added to today's ranking. Total XP is only awarded for revisions on sets from after 13-10-2025.`;
+                    if (xpEarned > 0) {
+                        xpMessage += ` Daily activity bonus of ${xpEarned} XP applied.`;
+                    }
+                }
+                
+                const todayStr = getTodayDateString();
+                if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
+                if (!dailyRevisionScores[todayStr][currentPlayerName]) dailyRevisionScores[todayStr][currentPlayerName] = 0;
+                dailyRevisionScores[todayStr][currentPlayerName] += score;
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                if (isFirebaseConnected) db.ref('dailyRevisionScores').set(dailyRevisionScores);
+
+            } else {
+                xpEarned = calculateAndApplyXP(0);
+                xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP for your daily activity! Score-based XP is for revisions.` : 'XP for correct answers is awarded during revision sessions.';
+            }
+
+            currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
+            const attemptId = `attempt-${Date.now()}`;
+            practiceHistory[attemptId] = currentAttempt;
+            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+            if (isFirebaseConnected) db.ref(`practiceHistory/${attemptId}`).set(currentAttempt);
+            
+            if (isRevisionMode) {
+                const success = percentage >= MIN_SCORE_FOR_REVISION_SUCCESS;
+                if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
+                revisionProgress[currentPlayerName][currentRevisionKey] = { percentage, date: new Date().toISOString(), success };
+                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+                if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
+                renderRevisionPage();
+                renderBacklogPage();
+            }
+
+            document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
+            document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
+            document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
+            document.getElementById('modalXPGained').textContent = xpMessage;
+            openModal('resultsModal');
+            
+            if (percentage > 70) startConfetti();
+
+            const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
+            if (wrongAnswers.length > 0) {
+                showWrongAnswersPopup(wrongAnswers);
+            }
+            
+            document.body.classList.remove('practice-active');
+            switchPracticeView('practiceSetupView'); 
+            isRevisionMode = false; currentRevisionKey = null; currentSet = [];
+        }
+        
         // --- XP, STREAK, and LEVELING LOGIC ---
         function getTodayDateString() {
             return new Date().toISOString().split('T')[0];
@@ -2507,10 +2342,11 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
                         <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
                     </div>
                     <div style="display: flex; flex-wrap: wrap;">
-                        <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
-                        <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
-                        <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
-                    </div>
+    <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
+    <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
+    <button onclick="exportQuestionSet('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px; background: #27ae60;">Export Text</button>
+    <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
+</div>
                 </div>`;
             }).join('') || '<p>No question sets found.</p>';
             
@@ -2568,8 +2404,13 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
             });
         }
         
-        function getAllPlayerNames() {
-            return [...new Set(Object.keys(revisionProgress).filter(Boolean).concat(Object.keys(playerProfiles).filter(Boolean)))];
+  function getAllPlayerNames() {
+    return [...new Set(Object.keys(revisionProgress).filter(Boolean).concat(Object.keys(playerProfiles).filter(Boolean)))];
+}
+
+        function saveQuestionSets(){
+             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            if(isFirebaseConnected) db.ref('questionSets').set(questionSets);
         }
 
         function toggleNewBulkSetName() {
@@ -2828,6 +2669,9 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
             }).join('') || '<tr><td colspan="3">No revision scores for today yet.</td></tr>';
         }
 
+
+
+       
         // --- REVISION FUNCTIONS ---
         function getRevisionItems(playerName = null) {
             const targetPlayer = playerName || currentPlayerName;
@@ -2995,6 +2839,7 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
             openModal('viewDetailsModal');
         }
 
+
         function renderAttendanceCalendar(year, month) {
              if (!currentPlayerName) {
                 document.getElementById('attendanceCalendarBody').innerHTML = '<p>Please select a player to view attendance.</p>';
@@ -3079,6 +2924,7 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
                 calendarBody.appendChild(dayCell);
             }
         }
+
 
         // --- STATS MODAL & POPUPS ---
         function showPlayerStatsModal() {
@@ -3165,6 +3011,7 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         function enterAdminMode(username) {
             isAdminLoggedIn = true;
             document.querySelector('.container').classList.add('hidden');
+            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.remove('hidden');
             document.getElementById('adminWelcome').textContent = `Welcome, ${username}!`;
             updatePlayerSelects();
@@ -3174,9 +3021,11 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         function adminLogout() {
             isAdminLoggedIn = false;
             document.querySelector('.container').classList.remove('hidden');
+            // document.getElementById('adminLoginBtn').classList.remove('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.add('hidden');
         }
 
+        
         function renderAdminBacklogManager(playerName) {
             const listDiv = document.getElementById('adminBacklogList');
             if (!playerName) {
@@ -3209,6 +3058,11 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
         }
 
         // --- UI & UTILITY FUNCTIONS ---
+        
+        /**
+         * Prompts for the destructive action password before executing a callback.
+         * @param {function} onSuccess - The function to call if the password is correct.
+         */
         function promptForAdminPassword(onSuccess) {
             const pass = prompt("This is a destructive action. Please enter the admin password (2525) to confirm:");
             if (pass === DESTRUCTIVE_ACTION_PASSWORD) {
@@ -3358,89 +3212,31 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
             renderReportedQuestions();
         }
 
-       function syncAllData() {
-    showNotification('Syncing essential data...');
-    
-    if (isFirebaseConnected) {
-        // ONLY download player profiles and admin credentials (small data)
-        const playerPromise = db.ref('playerProfiles').once('value').then(snapshot => {
-            const firebaseProfiles = snapshot.val() || {};
-            playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            updatePlayerSelects();
-        });
-
-        const adminPromise = db.ref('adminCredentials').once('value').then(snapshot => {
-            const firebaseAdminCreds = snapshot.val();
-            if (firebaseAdminCreds) {
-                adminCredentials = firebaseAdminCreds;
-                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-            }
-        });
-
-        // Download ONLY the question set NAMES (metadata), not the actual questions
-        const metadataPromise = db.ref('setMetadata').once('value').then(snapshot => {
-            const firebaseMetadata = snapshot.val() || {};
-            
-            // Update our local list of available sets
-            Object.keys(firebaseMetadata).forEach(setName => {
-                if (!questionSets[setName]) {
-                    // Only create empty placeholder - don't download questions yet
-                    questionSets[setName] = {
-                        questions: [], // EMPTY - we'll download later when needed
-                        uploadDate: firebaseMetadata[setName].uploadDate,
-                        category: firebaseMetadata[setName].category,
-                        subject: firebaseMetadata[setName].subject,
-                        type: 'questions'
-                    };
-                }
-            });
-            
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            loadQuestionSets();
-            updateSubjectSelect();
-        });
-
-        Promise.all([playerPromise, adminPromise, metadataPromise]).then(() => {
-            showNotification('Essential data synced! Questions will load when needed.');
-            
-            if (currentPlayerName) {
-                updateUIAfterLogin();
-            }
-        }).catch(error => {
-            showNotification('Sync failed: ' + error.message, 'error');
-        });
-    } else {
-        showNotification('No internet connection', 'error');
+        // === NEW EXPORT FUNCTION ===
+function exportQuestionSet(setName) {
+    const set = questionSets[setName];
+    if (!set || !set.questions || set.questions.length === 0) {
+        showNotification('No questions found in this set.', 'error');
+        return;
     }
-}
 
-function downloadQuestionSet(setName) {
-    if (!isFirebaseConnected) {
-        showNotification('No internet connection', 'error');
-        return Promise.reject('No connection');
-    }
-    
-    showNotification(`Downloading questions for ${setName}...`);
-    
-    return db.ref(`questionSets/${setName}`).once('value').then(snapshot => {
-        const setData = snapshot.val();
-        if (setData && setData.questions) {
-            // Replace the empty placeholder with actual questions
-            questionSets[setName] = setData;
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            showNotification(`${setName} questions downloaded!`);
-            return true;
-        } else {
-            showNotification('Error: Question set not found', 'error');
-            return false;
-        }
-    }).catch(error => {
-        showNotification('Download failed: ' + error.message, 'error');
-        return false;
+    // Format: question|option|option|option|option|rightanswercode
+    const formattedQuestions = set.questions.map(q => {
+        const questionText = q.question.replace(/\n/g, ' ').trim();
+        const options = q.options.map(opt => opt.replace(/\n/g, ' ').trim());
+        const correctAnswer = q.correctAnswer.toUpperCase();
+        
+        return `${questionText}|${options[0]}|${options[1]}|${options[2]}|${options[3]}|${correctAnswer}`;
+    }).join('\n');
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(formattedQuestions).then(() => {
+        showNotification(`Copied ${set.questions.length} questions to clipboard!`, 'success');
+    }).catch(err => {
+        // If clipboard fails, show the text in an alert
+        alert(`Export for ${setName}:\n\n${formattedQuestions}\n\nPlease copy this text manually.`);
     });
 }
     </script>
 </body>
 </html>
-
