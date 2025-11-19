@@ -10,6 +10,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
     <style>
         :root {
@@ -701,14 +702,45 @@
                              <p id="motivationalQuote"></p>
                         </div>
                     </div>
-                    <div class="player-selector" style="padding: 20px;">
-                        <label>Select an Existing Player:</label>
-                        <select id="playerSelect" onchange="handlePlayerSelection()" class="styled-select" style="margin-bottom:10px;"></select>
-                        <hr style="margin: 20px 0;">
-                        <h4>Or Create a New Player:</h4>
-                        <input type="text" id="newPlayerName" placeholder="Enter new player name" class="styled-input">
-                        <button onclick="createPlayer()">Create Player</button>
-                    </div>
+                   <div class="player-selector" style="padding: 20px;">
+    <!-- Login Form -->
+    <div id="loginForm">
+        <h3>Login with Roll Number</h3>
+        <div class="form-group">
+            <label>Roll Number (1-200):</label>
+            <input type="number" id="loginRollNo" placeholder="Enter your roll number" min="1" max="200" class="styled-input">
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="loginPassword" placeholder="Enter your password" class="styled-input">
+        </div>
+        <button onclick="loginWithRollNo()">Login</button>
+    </div>
+
+    <hr style="margin: 20px 0;">
+    
+    <!-- Registration Form -->
+    <div id="registrationForm">
+        <h3>Register New Account</h3>
+        <div class="form-group">
+            <label>Full Name:</label>
+            <input type="text" id="regName" placeholder="Enter your full name" class="styled-input">
+        </div>
+        <div class="form-group">
+            <label>Roll Number (1-200):</label>
+            <input type="number" id="regRollNo" placeholder="Choose a roll number (1-200)" min="1" max="200" class="styled-input">
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="regPassword" placeholder="Create a password" class="styled-input">
+        </div>
+        <div class="form-group">
+            <label>Confirm Password:</label>
+            <input type="password" id="regConfirmPassword" placeholder="Confirm your password" class="styled-input">
+        </div>
+        <button onclick="registerNewUser()">Register</button>
+    </div>
+</div>
 
                     <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
                         <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
@@ -1209,6 +1241,17 @@
 
         function init() {
     initializeFirebase(); // This will connect and then call loadFromFirebase()
+    function init() {
+    initializeFirebase();
+    // Auto-sync data on app load
+    setTimeout(() => {
+        if (isFirebaseConnected) {
+            syncAllDataFromFirebase();
+        }
+    }, 1000);
+    populateAvatars();
+    setDailyQuote();
+    // ... rest of code
     populateAvatars();
     setDailyQuote();
     
@@ -1275,6 +1318,7 @@
         }
     }
 }
+        }
 function syncAllDataFromFirebase() {
     if (!isFirebaseConnected) {
         showNotification('Firebase not connected', 'error');
@@ -1596,14 +1640,18 @@ function syncPendingUserData() {
 }
 
         function checkAutoLogin() {
-            const lastPlayer = localStorage.getItem('pscLastPlayer');
-            // We use the *global* playerProfiles, which has just been updated
-            if (lastPlayer && playerProfiles[lastPlayer]) {
-                loginPlayer(lastPlayer, true); 
-            } else {
-                switchPracticeView('welcomeView');
-            }
-        }
+    // Auto-sync data when login page loads
+    if (isFirebaseConnected) {
+        syncAllDataFromFirebase();
+    }
+    
+    const lastPlayer = localStorage.getItem('pscLastPlayer');
+    if (lastPlayer && playerProfiles[lastPlayer]) {
+        loginPlayer(lastPlayer, true); 
+    } else {
+        switchPracticeView('welcomeView');
+    }
+}
         
         // --- DATA MANAGEMENT ---
         function exportData() {
@@ -1894,25 +1942,7 @@ function syncPendingUserData() {
         }
         
         // --- Player and Password Functions ---
-        function handlePlayerSelection() {
-            const select = document.getElementById('playerSelect');
-            const name = select.value;
-            if (!name) return;
-            if (!playerProfiles[name]) { 
-                playerProfiles[name] = createNewProfile(); 
-            }
-            const profile = playerProfiles[name];
-            if (profile.password) { showPasswordPrompt(name, profile.password, () => loginPlayer(name)); } 
-            else {
-                showCreatePasswordPrompt(name, (newPassword) => {
-                    profile.password = newPassword;
-                    savePlayerProfiles();
-                    showNotification('Password created successfully!', 'success');
-                    loginPlayer(name);
-                });
-            }
-        }
-
+        
         function createNewProfile() {
             return {
                 password: '', totalXP: 0, totalCorrect: 0,
@@ -1921,40 +1951,9 @@ function syncPendingUserData() {
             };
         }
 
-        function createPlayer() {
-            const input = document.getElementById('newPlayerName');
-            const name = input.value.trim();
-            if (!name) { showNotification('Please enter a name for the new player.', 'error'); return; }
-            if (Object.keys(playerProfiles).some(pName => pName.toLowerCase() === name.toLowerCase())) {
-                showNotification('A player with this name already exists.', 'error');
-                return;
-            }
-            pendingPlayerName = name;
-            openModal('avatarModal');
-        }
+        
 
-        function confirmAvatar() {
-            if (!pendingPlayerName) return;
-            
-            closeModal('avatarModal');
-
-            showCreatePasswordPrompt(pendingPlayerName, (newPassword) => {
-                currentPlayerName = pendingPlayerName;
-                pendingPlayerName = null;
-                
-                playerProfiles[currentPlayerName] = createNewProfile();
-                playerProfiles[currentPlayerName].password = newPassword;
-                savePlayerProfiles();
-                
-                localStorage.setItem(`pscPlayerPFP_${currentPlayerName}`, selectedAvatarUrl || `https://api.dicebear.com/8.x/initials/svg?seed=${currentPlayerName}`);
-                updatePlayerSelects();
-                document.getElementById('playerSelect').value = currentPlayerName;
-                document.getElementById('newPlayerName').value = '';
-                loginPlayer(currentPlayerName);
-                selectedAvatarUrl = null;
-                document.querySelectorAll('.avatar-selection img').forEach(i => i.classList.remove('selected'));
-            });
-        }
+        
         
         function loginPlayer(name, isAutoLogin = false) {
             currentPlayerName = name;
@@ -2960,26 +2959,56 @@ function syncPendingUserData() {
         
         // --- ADMIN FUNCTIONS ---
         function handleAdminLogin() {
-            if (!adminCredentials) {
-                // First-time setup
-                document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-                document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-                document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-                document.getElementById('adminSubmitBtn').onclick = createAdmin;
+    document.getElementById('adminModalTitle').textContent = "Admin Login";
+    document.getElementById('adminModalPrompt').textContent = "Please enter your Firebase Admin credentials";
+    document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+    document.getElementById('adminSubmitBtn').textContent = "Login";
+    document.getElementById('adminSubmitBtn').onclick = loginAdminWithFirebase;
+    
+    document.getElementById('adminUsername').value = '';
+    document.getElementById('adminPassword').value = '';
+    openModal('adminAuthModal');
+}
+
+function loginAdminWithFirebase() {
+    const email = document.getElementById('adminUsername').value;
+    const password = document.getElementById('adminPassword').value;
+    
+    if (!email || !password) {
+        showNotification('Please enter both email and password', 'error');
+        return;
+    }
+    
+    // Use Firebase Authentication to sign in
+    firebase.auth().signInWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            // Signed in successfully
+            const user = userCredential.user;
+            
+            // Check if this is the admin user by UID
+            if (user.uid === 'fmN7C5awWCRIQ8dcoH2Fcz3fVKu1') {
+                closeModal('adminAuthModal');
+                enterAdminMode(email);
+                showNotification('Admin login successful!', 'success');
             } else {
-                // Regular login
-                document.getElementById('adminModalTitle').textContent = "Admin Login";
-                document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Login";
-                document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+                // Not the admin user
+                firebase.auth().signOut();
+                showNotification('Access denied. Admin privileges required.', 'error');
             }
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminPassword').value = '';
-            document.getElementById('adminPasswordConfirm').value = '';
-            openModal('adminAuthModal');
-        }
+        })
+        .catch((error) => {
+            const errorCode = error.code;
+            const errorMessage = error.message;
+            
+            if (errorCode === 'auth/invalid-credential') {
+                showNotification('Invalid email or password', 'error');
+            } else if (errorCode === 'auth/user-not-found') {
+                showNotification('User not found', 'error');
+            } else {
+                showNotification('Login failed: ' + errorMessage, 'error');
+            }
+        });
+}
 
         function createAdmin() {
             const username = document.getElementById('adminUsername').value.trim();
@@ -3018,13 +3047,15 @@ function syncPendingUserData() {
             switchAdminTab('adminQuestionSets');
         }
 
-        function adminLogout() {
-            isAdminLoggedIn = false;
-            document.querySelector('.container').classList.remove('hidden');
-            // document.getElementById('adminLoginBtn').classList.remove('hidden'); // Button is no longer fixed
-            document.getElementById('adminPanel').classList.add('hidden');
-        }
-
+       function adminLogout() {
+    // Sign out from Firebase Auth
+    firebase.auth().signOut().then(() => {
+        isAdminLoggedIn = false;
+        document.querySelector('.container').classList.remove('hidden');
+        document.getElementById('adminPanel').classList.add('hidden');
+        showNotification('Admin logged out', 'success');
+    });
+}
         
         function renderAdminBacklogManager(playerName) {
             const listDiv = document.getElementById('adminBacklogList');
@@ -3236,6 +3267,101 @@ function exportQuestionSet(setName) {
         // If clipboard fails, show the text in an alert
         alert(`Export for ${setName}:\n\n${formattedQuestions}\n\nPlease copy this text manually.`);
     });
+}// --- ROLL NUMBER LOGIN SYSTEM ---
+
+function loginWithRollNo() {
+    const rollNo = document.getElementById('loginRollNo').value;
+    const password = document.getElementById('loginPassword').value;
+    
+    if (!rollNo || !password) {
+        showNotification('Please enter both roll number and password', 'error');
+        return;
+    }
+    
+    // Find player by roll number
+    const playerName = findPlayerByRollNo(rollNo);
+    if (!playerName) {
+        showNotification('Roll number not found', 'error');
+        return;
+    }
+    
+    const profile = playerProfiles[playerName];
+    if (profile.password === password) {
+        loginPlayer(playerName);
+    } else {
+        showNotification('Invalid password', 'error');
+    }
+}
+
+function registerNewUser() {
+    const name = document.getElementById('regName').value.trim();
+    const rollNo = document.getElementById('regRollNo').value;
+    const password = document.getElementById('regPassword').value;
+    const confirmPassword = document.getElementById('regConfirmPassword').value;
+    
+    if (!name || !rollNo || !password) {
+        showNotification('Please fill all fields', 'error');
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showNotification('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (rollNo < 1 || rollNo > 200) {
+        showNotification('Roll number must be between 1 and 200', 'error');
+        return;
+    }
+    
+    // Check if roll number is already taken
+    if (findPlayerByRollNo(rollNo)) {
+        showNotification('Roll number already taken', 'error');
+        return;
+    }
+    
+    // Check if name already exists
+    if (playerProfiles[name]) {
+        showNotification('Name already exists', 'error');
+        return;
+    }
+    
+    // Create new player
+    playerProfiles[name] = createNewProfile();
+    playerProfiles[name].password = password;
+    playerProfiles[name].rollNo = rollNo;
+    
+    savePlayerProfiles();
+    showNotification('Registration successful! You can now login.', 'success');
+    
+    // Clear form
+    document.getElementById('regName').value = '';
+    document.getElementById('regRollNo').value = '';
+    document.getElementById('regPassword').value = '';
+    document.getElementById('regConfirmPassword').value = '';
+}
+
+function findPlayerByRollNo(rollNo) {
+    for (const playerName in playerProfiles) {
+        if (playerProfiles[playerName].rollNo == rollNo) {
+            return playerName;
+        }
+    }
+    return null;
+}
+
+// Update the createNewProfile function to include rollNo
+function createNewProfile() {
+    return {
+        password: '', 
+        rollNo: null,
+        totalXP: 0, 
+        totalCorrect: 0,
+        currentStreak: 0, 
+        lastActiveDate: null,
+        consecutiveMissedDays: 0, 
+        attendance: []
+    };
 }
     </script>
 </body>
