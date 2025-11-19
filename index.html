@@ -1198,13 +1198,8 @@
 
         // --- INITIALIZATION ---
 
-        function initializeNewDevice() {
+       function initializeNewDevice() {
     console.log('Initializing new device...');
-    
-    if (!isFirebaseConnected) {
-        showNotification('Waiting for internet connection...', 'warning');
-        return;
-    }
     
     // Check if this is a new device (no local data)
     const hasLocalData = Object.keys(questionSets).length > 0 || Object.keys(playerProfiles).length > 0;
@@ -1212,11 +1207,17 @@
     if (!hasLocalData) {
         showNotification('Setting up your device for the first time...');
         
-        // Download ALL data for new device to ensure uniformity
-        downloadAllDataForNewDevice();
+        // Download essential data for new device
+        downloadEssentialData();
+    } else {
+        // We have local data, but still check for updates
+        console.log('Device has local data, checking for updates...');
+        checkForUpdatedQuestionSets();
+        
+        // Check for auto-login with existing data
+        checkAutoLogin();
     }
 }
-
 function downloadAllDataForNewDevice() {
     if (!isFirebaseConnected) return;
     
@@ -1342,7 +1343,38 @@ function init() {
 
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
-    // ... rest of your existing init code
+    // Start monitoring Firebase connection status
+    monitorFirebaseConnection();
+}
+
+// NEW FUNCTION: Monitor Firebase connection and load data when ready
+function monitorFirebaseConnection() {
+    if (!db) {
+        console.log('Firebase not initialized yet, retrying...');
+        setTimeout(() => monitorFirebaseConnection(), 1000);
+        return;
+    }
+    
+    // Listen for connection state changes
+    db.ref('.info/connected').on('value', (snapshot) => {
+        const connected = snapshot.val() === true;
+        
+        if (connected && !isFirebaseConnected) {
+            console.log('Firebase connected, loading data...');
+            isFirebaseConnected = true;
+            updateFirebaseStatus('Connected', true);
+            
+            // Now that we're connected, initialize the device
+            initializeNewDevice();
+            
+            // Start background sync
+            startBackgroundSync();
+        } else if (!connected && isFirebaseConnected) {
+            console.log('Firebase disconnected');
+            isFirebaseConnected = false;
+            updateFirebaseStatus('Disconnected', false);
+        }
+    });
 }
 
 function initializeNewDevice() {
