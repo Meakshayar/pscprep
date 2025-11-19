@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSC Exam Prep - Gamified</title>
+    <title>PSC Exam Prep</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1131,86 +1131,70 @@ function init() {
     populateAvatars();
     setDailyQuote();
     
-    // Load ALL local data immediately
-    loadLocalDataImmediately();
-    
     document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
+    // Load ALL local data immediately
+    loadLocalDataImmediately();
+    
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
-    // ... rest of your existing init code
-}
-
-function initializeNewDevice() {
-    console.log('Initializing new device...');
-    
-    if (!isFirebaseConnected) {
-        showNotification('Waiting for internet connection...', 'warning');
-        return;
-    }
-    
-    // Check if this is a new device (no local data)
-    const hasLocalData = Object.keys(questionSets).length > 0 || Object.keys(playerProfiles).length > 0;
-    
-    if (!hasLocalData) {
-        showNotification('Setting up your device for the first time...');
-        
-        // Download essential data for new device
-        downloadEssentialData();
-    }
-}
-
-function downloadEssentialData() {
-    if (!isFirebaseConnected) return;
-    
-    showNotification('Downloading essential data...');
-    
-    // 1. Download player profiles FIRST (so users appear immediately)
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        playerProfiles = firebaseProfiles;
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        updatePlayerSelects();
-        
-        // 2. Download question set metadata
-        return db.ref('setMetadata').once('value');
-    }).then(snapshot => {
-        const firebaseMetadata = snapshot.val() || {};
-        
-        // Update our local list of available sets
-        Object.keys(firebaseMetadata).forEach(setName => {
-            if (!questionSets[setName]) {
-                // Only create empty placeholder - don't download questions yet
-                questionSets[setName] = {
-                    questions: [], // EMPTY - we'll download later when needed
-                    uploadDate: firebaseMetadata[setName].uploadDate,
-                    category: firebaseMetadata[setName].category,
-                    subject: firebaseMetadata[setName].subject,
-                    type: 'questions'
-                };
-            }
-        });
-        
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-        
-        // 3. Download admin credentials
-        return db.ref('adminCredentials').once('value');
-    }).then(snapshot => {
-        const firebaseAdminCreds = snapshot.val();
-        if (firebaseAdminCreds) {
-            adminCredentials = firebaseAdminCreds;
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+    document.getElementById('backToSetListBtn').addEventListener('click', () => {
+        if (editingFromReport.active) {
+            returnToReportedQuestionsView();
+        } else {
+            document.getElementById('editQuestionsSection').classList.add('hidden');
+            document.getElementById('adminQuestionSets').classList.remove('hidden');
+            currentEditingSet = null;
         }
-        
-        showNotification('Device setup complete!');
-        
-    }).catch(error => {
-        showNotification('Setup failed: ' + error.message, 'error');
     });
+    
+    document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
+        document.getElementById('adminSystem').classList.add('hidden');
+        document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+        document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
+        renderReportedQuestions();
+    });
+    document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
+         document.getElementById('reportedQuestionsSection').classList.add('hidden');
+         document.getElementById('adminSystem').classList.remove('hidden');
+    });
+    
+     // Attendance calendar navigation
+    document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
+        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    });
+    document.getElementById('nextAttendanceMonthBtn').addEventListener('click', () => {
+        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    });
+    
+     // Admin Attendance calendar navigation
+    document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
+        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
+        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+        renderAdminAttendanceCalendar(selectedPlayer);
+    });
+    document.getElementById('adminNextAttendanceMonthBtn').addEventListener('click', () => {
+        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() + 1);
+        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+        renderAdminAttendanceCalendar(selectedPlayer);
+    });
+
+    window.onclick = function(event) {
+        if (!event.target.matches('.menu-btn')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
 }
+
         // --- OPTIMIZED FIREBASE FUNCTIONS ---
         // --- OPTIMIZED FIREBASE FUNCTIONS ---
 function initializeFirebase() {
@@ -1299,7 +1283,7 @@ function initializeFirebase() {
     checkForUpdatedQuestionSets();
 }
 
-   function loadLocalDataImmediately() {
+    function loadLocalDataImmediately() {
     // Load all data from localStorage
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
@@ -2141,6 +2125,7 @@ function loginPlayer(playerName, autoLogin = false) {
         syncUserData(currentPlayerName);
     }
 }
+
         function createNewProfile() {
             return {
                 password: '', totalXP: 0, totalCorrect: 0,
@@ -2221,80 +2206,42 @@ function loginPlayer(playerName, autoLogin = false) {
         }
 
         function startPractice(setName, isRev, revisionKey) { 
-    if (practiceInProgress) return;
-    
-    // CHECK if we have questions for this set, if not download them first
-    const currentSetData = questionSets[setName];
-    if (!currentSetData || !currentSetData.questions || currentSetData.questions.length === 0) {
-        showNotification('Downloading questions...');
-        downloadQuestionSet(setName).then(success => {
-            if (success) {
-                // Now start the practice with the downloaded questions
-                actuallyStartPractice(setName, isRev, revisionKey);
-            } else {
-                showNotification('Failed to download questions', 'error');
+            if (practiceInProgress) return;
+            practiceInProgress = true;
+            initAudio();
+            isRevisionMode = isRev; currentRevisionKey = revisionKey;
+            currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
+            if (currentSet.length === 0) { 
+                showNotification('Selected set is empty.', 'error'); 
                 practiceInProgress = false;
                 switchPracticeView('practiceSetupView');
+                return; 
             }
-        });
-        return;
-    }
-    
-    // If we already have questions, start normally
-    actuallyStartPractice(setName, isRev, revisionKey);
-}
+            
+            const set = questionSets[setName];
+            const category = set.category || 'gk';
+            let timePerQuestion = category === 'math' ? 45 : 10;
 
-// Extract the main practice logic into a separate function
-function actuallyStartPractice(setName, isRev, revisionKey) {
-    practiceInProgress = true;
-    initAudio();
-    isRevisionMode = isRev; 
-    currentRevisionKey = revisionKey;
-    
-    // Now we're guaranteed to have questions
-    currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
-    
-    if (currentSet.length === 0) { 
-        showNotification('Selected set is empty.', 'error'); 
-        practiceInProgress = false;
-        switchPracticeView('practiceSetupView');
-        return; 
-    }
-    
-    const set = questionSets[setName];
-    const category = set.category || 'gk';
-    let timePerQuestion = category === 'math' ? 45 : 10;
-
-    currentQuestionIndex = 0; 
-    score = 0; 
-    timeElapsed = 0;
-    totalTimeLimit = currentSet.length * timePerQuestion; 
-    currentAttempt = { 
-        playerName: currentPlayerName, 
-        setName: setName, 
-        startTime: new Date().toISOString(), 
-        answers: [], 
-        score: 0, 
-        totalQuestions: currentSet.length, 
-        timeLimit: totalTimeLimit,
-        isRevision: isRevisionMode, 
-        revisionKey: isRevisionMode ? currentRevisionKey : null
-    };
-    
-    document.getElementById('practiceScore').textContent = 'Score: 0';
-    clearInterval(timer); 
-    timer = setInterval(() => { 
-        timeElapsed++; 
-        const remaining = totalTimeLimit - timeElapsed;
-        document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-        if (remaining <= 0) { 
-            showNotification('Time limit reached!', 'error'); 
-            endPractice();
+            currentQuestionIndex = 0; score = 0; timeElapsed = 0;
+            totalTimeLimit = currentSet.length * timePerQuestion; 
+            currentAttempt = { 
+                playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
+                answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
+                isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
+            };
+            document.getElementById('practiceScore').textContent = 'Score: 0';
+            clearInterval(timer); 
+            timer = setInterval(() => { 
+                timeElapsed++; 
+                const remaining = totalTimeLimit - timeElapsed;
+                document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
+                if (remaining <= 0) { 
+                    showNotification('Time limit reached!', 'error'); 
+                    endPractice();
+                }
+            }, 1000);
+            showNextQuestion();
         }
-    }, 1000);
-    
-    showNextQuestion();
-}
         
         function showNextQuestion() {
             if (currentQuestionIndex >= currentSet.length) {
@@ -3358,52 +3305,27 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
             renderReportedQuestions();
         }
 
-       function syncAllData() {
-    showNotification('Syncing essential data...');
+        function syncAllData() {
+    showNotification('Performing full data sync...');
     
     if (isFirebaseConnected) {
-        // ONLY download player profiles and admin credentials (small data)
-        const playerPromise = db.ref('playerProfiles').once('value').then(snapshot => {
-            const firebaseProfiles = snapshot.val() || {};
-            playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            updatePlayerSelects();
-        });
-
-        const adminPromise = db.ref('adminCredentials').once('value').then(snapshot => {
-            const firebaseAdminCreds = snapshot.val();
-            if (firebaseAdminCreds) {
-                adminCredentials = firebaseAdminCreds;
-                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-            }
-        });
-
-        // Download ONLY the question set NAMES (metadata), not the actual questions
-        const metadataPromise = db.ref('setMetadata').once('value').then(snapshot => {
-            const firebaseMetadata = snapshot.val() || {};
-            
-            // Update our local list of available sets
-            Object.keys(firebaseMetadata).forEach(setName => {
-                if (!questionSets[setName]) {
-                    // Only create empty placeholder - don't download questions yet
-                    questionSets[setName] = {
-                        questions: [], // EMPTY - we'll download later when needed
-                        uploadDate: firebaseMetadata[setName].uploadDate,
-                        category: firebaseMetadata[setName].category,
-                        subject: firebaseMetadata[setName].subject,
-                        type: 'questions'
-                    };
-                }
-            });
-            
+        // Force download all question sets
+        db.ref('questionSets').once('value').then(snapshot => {
+            const firebaseSets = snapshot.val() || {};
+            questionSets = firebaseSets;
             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            
+            // If user is logged in, sync their specific data
+            if (currentPlayerName) {
+                return syncUserData(currentPlayerName);
+            }
+            return true;
+        }).then(() => {
+            showNotification('Full data sync completed!');
             loadQuestionSets();
             updateSubjectSelect();
-        });
-
-        Promise.all([playerPromise, adminPromise, metadataPromise]).then(() => {
-            showNotification('Essential data synced! Questions will load when needed.');
             
+            // Reload UI if user is logged in
             if (currentPlayerName) {
                 updateUIAfterLogin();
             }
@@ -3411,36 +3333,9 @@ function actuallyStartPractice(setName, isRev, revisionKey) {
             showNotification('Sync failed: ' + error.message, 'error');
         });
     } else {
-        showNotification('No internet connection', 'error');
+        showNotification('Firebase not connected', 'error');
     }
-}
-
-function downloadQuestionSet(setName) {
-    if (!isFirebaseConnected) {
-        showNotification('No internet connection', 'error');
-        return Promise.reject('No connection');
-    }
-    
-    showNotification(`Downloading questions for ${setName}...`);
-    
-    return db.ref(`questionSets/${setName}`).once('value').then(snapshot => {
-        const setData = snapshot.val();
-        if (setData && setData.questions) {
-            // Replace the empty placeholder with actual questions
-            questionSets[setName] = setData;
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            showNotification(`${setName} questions downloaded!`);
-            return true;
-        } else {
-            showNotification('Error: Question set not found', 'error');
-            return false;
-        }
-    }).catch(error => {
-        showNotification('Download failed: ' + error.message, 'error');
-        return false;
-    });
 }
     </script>
 </body>
 </html>
-
