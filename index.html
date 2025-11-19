@@ -1077,72 +1077,98 @@
         document.addEventListener('DOMContentLoaded', init);
 
         function init() {
-            initializeFirebase(); // This will connect and then call loadFromFirebase()
-            populateAvatars();
-            setDailyQuote();
-            
-            document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
-            document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
+    initializeFirebase(); // This will connect and then call loadFromFirebase()
+    populateAvatars();
+    setDailyQuote();
+    
+    document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
+    document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-            // All the data loading and auto-login logic has been moved to loadFromFirebase()
+    // Load local data immediately while Firebase connects
+    loadLocalDataImmediately();
+    
+    document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
+    
+    document.getElementById('backToSetListBtn').addEventListener('click', () => {
+        if (editingFromReport.active) {
+            returnToReportedQuestionsView();
+        } else {
+            document.getElementById('editQuestionsSection').classList.add('hidden');
+            document.getElementById('adminQuestionSets').classList.remove('hidden');
+            currentEditingSet = null;
+        }
+    });
+    
+    document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
+        document.getElementById('adminSystem').classList.add('hidden');
+        document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+        document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
+        renderReportedQuestions();
+    });
+    document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
+         document.getElementById('reportedQuestionsSection').classList.add('hidden');
+         document.getElementById('adminSystem').classList.remove('hidden');
+    });
+    
+     // Attendance calendar navigation
+    document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
+        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    });
+    document.getElementById('nextAttendanceMonthBtn').addEventListener('click', () => {
+        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
+        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+    });
+    
+     // Admin Attendance calendar navigation
+    document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
+        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
+        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+        renderAdminAttendanceCalendar(selectedPlayer);
+    });
+    document.getElementById('adminNextAttendanceMonthBtn').addEventListener('click', () => {
+        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() + 1);
+        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+        renderAdminAttendanceCalendar(selectedPlayer);
+    });
 
-            document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
-            
-            document.getElementById('backToSetListBtn').addEventListener('click', () => {
-                if (editingFromReport.active) {
-                    returnToReportedQuestionsView();
-                } else {
-                    document.getElementById('editQuestionsSection').classList.add('hidden');
-                    document.getElementById('adminQuestionSets').classList.remove('hidden');
-                    currentEditingSet = null;
-                }
-            });
-            
-            document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
-                document.getElementById('adminSystem').classList.add('hidden');
-                document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-                document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
-                renderReportedQuestions();
-            });
-            document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
-                 document.getElementById('reportedQuestionsSection').classList.add('hidden');
-                 document.getElementById('adminSystem').classList.remove('hidden');
-            });
-            
-             // Attendance calendar navigation
-            document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
-                currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
-                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-            });
-            document.getElementById('nextAttendanceMonthBtn').addEventListener('click', () => {
-                currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
-                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-            });
-            
-             // Admin Attendance calendar navigation
-            document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
-                currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
-                const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
-                renderAdminAttendanceCalendar(selectedPlayer);
-            });
-            document.getElementById('adminNextAttendanceMonthBtn').addEventListener('click', () => {
-                currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() + 1);
-                const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
-                renderAdminAttendanceCalendar(selectedPlayer);
-            });
-
-            window.onclick = function(event) {
-                if (!event.target.matches('.menu-btn')) {
-                    var dropdowns = document.getElementsByClassName("dropdown-content");
-                    for (var i = 0; i < dropdowns.length; i++) {
-                        var openDropdown = dropdowns[i];
-                        if (openDropdown.classList.contains('show')) {
-                            openDropdown.classList.remove('show');
-                        }
-                    }
+    window.onclick = function(event) {
+        if (!event.target.matches('.menu-btn')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
                 }
             }
         }
+    }
+}
+
+// Add this new function to load local data immediately
+function loadLocalDataImmediately() {
+    // Load all data from localStorage
+    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+    playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
+    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
+    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+    
+    // Update UI with local data
+    updatePlayerSelects();
+    loadQuestionSets();
+    updateSubjectSelect();
+    
+    // Check for auto-login with local data
+    const lastPlayer = localStorage.getItem('pscLastPlayer');
+    if (lastPlayer && playerProfiles[lastPlayer]) {
+        loginPlayer(lastPlayer, true);
+    } else {
+        switchPracticeView('welcomeView');
+    }
+    
+    console.log('Local data loaded. Players found:', getAllPlayerNames());
+}
 
 
         function checkForUpdates() {
@@ -1264,27 +1290,44 @@ function saveQuestionSets(){
     }
     
     try {
+        // Check if Firebase is already initialized
         if (firebase.apps.length > 0) {
-            firebase.app().delete();
+            // If already initialized, just get the database reference
+            db = firebase.database();
+        } else {
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
         }
         
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.database();
         updateFirebaseStatus('Connecting...', false);
         
+        // Set up connection listener
         db.ref('.info/connected').on('value', snapshot => {
             if (snapshot.val() === true) {
                 updateFirebaseStatus('Connected', true);
                 isFirebaseConnected = true;
+                console.log('Firebase connected successfully');
                 setupOptimizedFirebaseListeners();
             } else {
                 updateFirebaseStatus('Disconnected', false);
                 isFirebaseConnected = false;
+                console.log('Firebase disconnected - using local data only');
             }
         });
+        
+        // Set a timeout to show status if connection takes too long
+        setTimeout(() => {
+            if (!isFirebaseConnected) {
+                updateFirebaseStatus('Connection Timeout - Using Local Data', false);
+                console.log('Firebase connection timeout');
+            }
+        }, 5000);
+        
     } catch (error) {
         console.error('Firebase Init Error:', error);
-        updateFirebaseStatus('Init Failed', false);
+        updateFirebaseStatus('Init Failed - Using Local Data', false);
+        isFirebaseConnected = false;
     }
 }
 function setupOptimizedFirebaseListeners() {
