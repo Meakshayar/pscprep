@@ -1042,6 +1042,7 @@
             </div>
 
             <div id="adminSystem" class="tab-content">
+                <button onclick="forceSyncAllData()" class="btn-success" style="margin-top: 10px;">Force Full Data Sync</button>
                 <h2>System Management</h2>
                 <h3>Firebase Configuration</h3>
                 <div class="form-group">
@@ -1211,10 +1212,82 @@
     if (!hasLocalData) {
         showNotification('Setting up your device for the first time...');
         
-        // Download essential data for new device
-        downloadEssentialData();
+        // Download ALL data for new device to ensure uniformity
+        downloadAllDataForNewDevice();
     }
 }
+
+function downloadAllDataForNewDevice() {
+    if (!isFirebaseConnected) return;
+    
+    showNotification('Downloading all data for first-time setup...');
+    
+    // 1. Download ALL question sets (not just metadata)
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        questionSets = firebaseSets;
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        
+        // 2. Download player profiles
+        return db.ref('playerProfiles').once('value');
+    }).then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        playerProfiles = firebaseProfiles;
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        
+        // 3. Download revision progress
+        return db.ref('revisionProgress').once('value');
+    }).then(snapshot => {
+        const firebaseProgress = snapshot.val() || {};
+        revisionProgress = firebaseProgress;
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+        
+        // 4. Download daily scores
+        return db.ref('dailyRevisionScores').once('value');
+    }).then(snapshot => {
+        const firebaseScores = snapshot.val() || {};
+        dailyRevisionScores = firebaseScores;
+        localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+        
+        // 5. Download admin credentials
+        return db.ref('adminCredentials').once('value');
+    }).then(snapshot => {
+        const firebaseAdminCreds = snapshot.val();
+        if (firebaseAdminCreds) {
+            adminCredentials = firebaseAdminCreds;
+            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+        }
+        
+        showNotification('Device setup complete! All data downloaded.');
+        
+        // Update UI with new data
+        updatePlayerSelects();
+        loadQuestionSets();
+        updateSubjectSelect();
+        
+    }).catch(error => {
+        showNotification('Setup failed: ' + error.message, 'error');
+    });
+}
+
+function forceSyncAllData() {
+    if (!isFirebaseConnected) {
+        showNotification('No internet connection', 'error');
+        return;
+    }
+    
+    showNotification('Forcing full data sync...');
+    
+    // Clear local data first to ensure fresh download
+    questionSets = {};
+    playerProfiles = {};
+    revisionProgress = {};
+    dailyRevisionScores = {};
+    
+    // Then download everything
+    downloadAllDataForNewDevice();
+}
+
 
 function downloadEssentialData() {
     if (!isFirebaseConnected) return;
@@ -1360,32 +1433,76 @@ function initializeFirebase() {
         };
         localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
     }
-            
-            localStorage.setItem('firebaseConfig', JSON.stringify(firebaseConfig));
-            
-            if(document.getElementById('firebaseConfig')) {
-                document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
-            }
-            
-            try {
-                if (firebase.apps.length > 0) {
-                    db = firebase.database();
-                } else {
-                    firebase.initializeApp(firebaseConfig);
-                    db = firebase.database();
-                }
-                
+    
+    // Make sure the config has all required fields
+    if (!firebaseConfig.projectId || !firebaseConfig.databaseURL) {
+        console.error('Firebase config is missing required fields:', firebaseConfig);
+        updateFirebaseStatus('Config Error - Missing Project ID or Database URL', false);
+        isFirebaseConnected = false;
+        return;
+    }
+    
+    if(document.getElementById('firebaseConfig')) {
+        document.getElementById('firebaseConfig').value = JSON.stringify(firebaseConfig, null, 2);
+    }
+    
+    try {
+        // Check if Firebase is already initialized
+        let app;
+        if (firebase.apps.length === 0) {
+            // Initialize Firebase with the complete config
+            app = firebase.initializeApp(firebaseConfig);
+            console.log('Firebase initialized successfully');
+        } else {
+            app = firebase.app();
+            console.log('Using existing Firebase app');
+        }
+        
+        // Initialize Database
+        db = firebase.database();
+        
+        // Test the connection
+        db.ref('.info/connected').once('value').then(snapshot => {
+            if (snapshot.val() === true) {
                 updateFirebaseStatus('Connected (Optimized Mode)', true);
                 isFirebaseConnected = true;
-                console.log('Firebase connected in optimized mode');
+                console.log('Firebase connected successfully');
                 
-            } catch (error) {
-                console.error('Firebase Init Error:', error);
-                updateFirebaseStatus('Init Failed - Using Local Data', false);
+                // Start background processes now that we're connected
+                startBackgroundSync();
+            } else {
+                updateFirebaseStatus('Connected but offline', false);
                 isFirebaseConnected = false;
             }
-        }
+        }).catch(error => {
+            console.error('Firebase connection test failed:', error);
+            updateFirebaseStatus('Connection Failed', false);
+            isFirebaseConnected = false;
+        });
+        
+    } catch (error) {
+        console.error('Firebase Init Error:', error);
+        updateFirebaseStatus('Init Failed - Using Local Data', false);
+        isFirebaseConnected = false;
+    }
+}
 
+function testFirebaseConnectionSimple() {
+    if (!db) {
+        showNotification('Firebase not initialized', 'error');
+        return false;
+    }
+    
+    // Simple test by reading a small value
+    return db.ref('.info/connected').once('value')
+        .then(snapshot => {
+            return snapshot.val() === true;
+        })
+        .catch(error => {
+            console.error('Firebase connection test failed:', error);
+            return false;
+        });
+}
         function loadUserDataFromFirebase() {
     if (!isFirebaseConnected) return;
     
@@ -1451,52 +1568,80 @@ function initializeFirebase() {
     // Check for auto-login immediately with local data
     checkAutoLogin();
     
-    // Start background sync if Firebase is connected
-    if (isFirebaseConnected) {
-        startBackgroundSync();
+    // Start background sync only if Firebase is properly connected
+    if (isFirebaseConnected && db) {
+        setTimeout(() => {
+            startBackgroundSync();
+        }, 2000); // Wait 2 seconds to ensure everything is loaded
     }
 }
-
 function startBackgroundSync() {
+    if (!isFirebaseConnected) {
+        console.log('Firebase not connected, skipping background sync');
+        return;
+    }
+    
     console.log('Starting background sync...');
     
-    // Check for new question sets (but only if we don't have any or it's been a while)
-    const lastQuestionSetCheck = localStorage.getItem('pscLastQuestionSetCheck') || 0;
-    const oneHourAgo = Date.now() - (60 * 60 * 1000); // Check every hour
-    
-    if (Object.keys(questionSets).length === 0 || lastQuestionSetCheck < oneHourAgo) {
-        console.log('Checking for updated question sets...');
-        checkForUpdatedQuestionSets();
-    }
-    
-    // If a user is logged in, sync their data
-    if (currentPlayerName) {
-        console.log('Syncing user data for:', currentPlayerName);
-        syncUserData(currentPlayerName);
-    }
-    
-    // Update today's leaderboard data
-    updateTodayLeaderboardData();
+    // First, test the connection
+    testFirebaseConnectionSimple().then(connected => {
+        if (!connected) {
+            console.log('No Firebase connection, skipping sync');
+            return;
+        }
+        
+        // Check for new question sets (but only if we don't have any or it's been a while)
+        const lastQuestionSetCheck = localStorage.getItem('pscLastQuestionSetCheck') || 0;
+        const oneHourAgo = Date.now() - (60 * 60 * 1000); // Check every hour
+        
+        if (Object.keys(questionSets).length === 0 || lastQuestionSetCheck < oneHourAgo) {
+            console.log('Checking for updated question sets...');
+            checkForUpdatedQuestionSets();
+        }
+        
+        // If a user is logged in, sync their data
+        if (currentPlayerName) {
+            console.log('Syncing user data for:', currentPlayerName);
+            syncUserData(currentPlayerName);
+        }
+        
+        // Update today's leaderboard data
+        updateTodayLeaderboardData();
+    });
 }
 
 function checkForUpdatedQuestionSets() {
     if (!isFirebaseConnected) return;
     
-    // First, just check if there are any new sets by getting the keys
+    // Download ALL question sets to ensure uniformity across devices
     db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSetKeys = Object.keys(snapshot.val() || {});
-        const localSetKeys = Object.keys(questionSets);
+        const firebaseSets = snapshot.val() || {};
         
-        // Check if we have new sets in Firebase
-        const newSets = firebaseSetKeys.filter(key => !localSetKeys.includes(key));
+        // Check if we need to update any sets
+        let needsUpdate = false;
+        Object.keys(firebaseSets).forEach(setName => {
+            const localSet = questionSets[setName];
+            const firebaseSet = firebaseSets[setName];
+            
+            if (!localSet || !localSet.questions || localSet.questions.length === 0) {
+                // We don't have this set or it's empty, download it
+                questionSets[setName] = firebaseSet;
+                needsUpdate = true;
+            } else if (firebaseSet.lastModified > (localSet.lastModified || 0)) {
+                // Firebase has a newer version
+                questionSets[setName] = firebaseSet;
+                needsUpdate = true;
+            }
+        });
         
-        if (newSets.length > 0) {
-            console.log('Found new question sets:', newSets);
-            // Download only the new sets
-            downloadSpecificQuestionSets(newSets);
-        } else {
-            // Check if any existing sets have been modified
-            checkForModifiedSets(firebaseSetKeys, snapshot.val());
+        if (needsUpdate) {
+            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            loadQuestionSets();
+            updateSubjectSelect();
+            
+            if (currentPlayerName) {
+                showNotification('Question sets updated!');
+            }
         }
         
         localStorage.setItem('pscLastQuestionSetCheck', Date.now());
@@ -1504,7 +1649,6 @@ function checkForUpdatedQuestionSets() {
         console.log('Error checking for updated question sets:', error);
     });
 }
-
 function downloadSpecificQuestionSets(setNames) {
     if (!isFirebaseConnected) return;
     
@@ -3552,50 +3696,42 @@ function checkAdminAndLogin() {
         }
 
        function syncAllData() {
-    showNotification('Syncing essential data...');
+    showNotification('Syncing all data across devices...');
     
     if (isFirebaseConnected) {
-        // ONLY download player profiles and admin credentials (small data)
-        const playerPromise = db.ref('playerProfiles').once('value').then(snapshot => {
-            const firebaseProfiles = snapshot.val() || {};
-            playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            updatePlayerSelects();
-        });
-
-        const adminPromise = db.ref('adminCredentials').once('value').then(snapshot => {
-            const firebaseAdminCreds = snapshot.val();
-            if (firebaseAdminCreds) {
-                adminCredentials = firebaseAdminCreds;
-                localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-            }
-        });
-
-        // Download ONLY the question set NAMES (metadata), not the actual questions
-        const metadataPromise = db.ref('setMetadata').once('value').then(snapshot => {
-            const firebaseMetadata = snapshot.val() || {};
-            
-            // Update our local list of available sets
-            Object.keys(firebaseMetadata).forEach(setName => {
-                if (!questionSets[setName]) {
-                    // Only create empty placeholder - don't download questions yet
-                    questionSets[setName] = {
-                        questions: [], // EMPTY - we'll download later when needed
-                        uploadDate: firebaseMetadata[setName].uploadDate,
-                        category: firebaseMetadata[setName].category,
-                        subject: firebaseMetadata[setName].subject,
-                        type: 'questions'
-                    };
-                }
-            });
-            
+        // Download ALL question sets to ensure uniformity
+        const questionPromise = db.ref('questionSets').once('value').then(snapshot => {
+            const firebaseSets = snapshot.val() || {};
+            questionSets = firebaseSets;
             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
             loadQuestionSets();
             updateSubjectSelect();
         });
 
-        Promise.all([playerPromise, adminPromise, metadataPromise]).then(() => {
-            showNotification('Essential data synced! Questions will load when needed.');
+        // Download player profiles
+        const playerPromise = db.ref('playerProfiles').once('value').then(snapshot => {
+            const firebaseProfiles = snapshot.val() || {};
+            playerProfiles = firebaseProfiles;
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+            updatePlayerSelects();
+        });
+
+        // Download revision progress
+        const progressPromise = db.ref('revisionProgress').once('value').then(snapshot => {
+            const firebaseProgress = snapshot.val() || {};
+            revisionProgress = firebaseProgress;
+            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+        });
+
+        // Download daily scores
+        const scoresPromise = db.ref('dailyRevisionScores').once('value').then(snapshot => {
+            const firebaseScores = snapshot.val() || {};
+            dailyRevisionScores = firebaseScores;
+            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+        });
+
+        Promise.all([questionPromise, playerPromise, progressPromise, scoresPromise]).then(() => {
+            showNotification('All data synced across devices!');
             
             if (currentPlayerName) {
                 updateUIAfterLogin();
