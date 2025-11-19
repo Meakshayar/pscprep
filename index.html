@@ -2079,23 +2079,52 @@ function showAdminLoginModal() {
         
         // --- Player and Password Functions ---
         function handlePlayerSelection() {
-            const select = document.getElementById('playerSelect');
-            const name = select.value;
-            if (!name) return;
-            if (!playerProfiles[name]) { 
-                playerProfiles[name] = createNewProfile(); 
-            }
-            const profile = playerProfiles[name];
-            if (profile.password) { showPasswordPrompt(name, profile.password, () => loginPlayer(name)); } 
-            else {
-                showCreatePasswordPrompt(name, (newPassword) => {
-                    profile.password = newPassword;
-                    savePlayerProfiles();
-                    showNotification('Password created successfully!', 'success');
-                    loginPlayer(name);
-                });
-            }
-        }
+    const select = document.getElementById('playerSelect');
+    const name = select.value;
+    if (!name) return;
+    
+    if (!playerProfiles[name]) { 
+        playerProfiles[name] = createNewProfile(); 
+    }
+    
+    const profile = playerProfiles[name];
+    
+    if (profile.password) { 
+        showPasswordPrompt(name, profile.password, () => loginPlayer(name)); 
+    } else {
+        showCreatePasswordPrompt(name, (newPassword) => {
+            profile.password = newPassword;
+            savePlayerProfiles();
+            showNotification('Password created successfully!', 'success');
+            loginPlayer(name);
+        });
+    }
+}
+
+// ADD THIS NEW FUNCTION RIGHT AFTER THE PREVIOUS ONE
+function loginPlayer(playerName, autoLogin = false) {
+    currentPlayerName = playerName;
+    localStorage.setItem('pscLastPlayer', playerName);
+    
+    // Handle daily login logic (streaks, etc.)
+    handleDailyLogin();
+    
+    // Update UI
+    document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
+    loadPlayerProgress();
+    switchPracticeView('practiceSetupView');
+    updateAllBadges();
+    updateSubjectSelect();
+    
+    if (!autoLogin) {
+        showNotification(`Welcome back, ${currentPlayerName}!`);
+    }
+    
+    // Sync user data if Firebase is connected
+    if (isFirebaseConnected) {
+        syncUserData(currentPlayerName);
+    }
+}
 
         function createNewProfile() {
             return {
