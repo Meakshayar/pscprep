@@ -8,8 +8,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     
+    <!-- Firebase App (the core Firebase SDK) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <!-- Firebase Database (Realtime Database) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <!-- Firebase Auth (Authentication) - ADDED THIS -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
     <style>
         :root {
@@ -72,7 +76,7 @@
         #practiceSessionView {
             display: flex;
             flex-direction: column;
-            justify-content: flex-start; /* MODIFIED: Aligned content to top */
+            justify-content: flex-start; 
             height: 100vh;
             padding: 20px;
             position: relative;
@@ -81,10 +85,9 @@
         #practiceOptions {
             margin: 20px 0;
             overflow-y: auto;
-            flex: 1; /* ADDED: Makes this div take available space */
-            min-height: 0; /* ADDED: Critical for scrolling in flexbox */
+            flex: 1;
+            min-height: 0;
         }
-
 
         @keyframes gradientAnimation {
             0% { background-position: 0% 50%; }
@@ -105,8 +108,6 @@
             transition: all 0.3s;
         }
 
-        /* Admin login button style removed from here */
-        
         header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
@@ -115,7 +116,6 @@
             position: relative;
         }
 
-        /* --- NEW DROPDOWN STYLES --- */
         .header-menu {
             position: absolute;
             top: 20px;
@@ -169,7 +169,6 @@
         .show {
             display: block;
         }
-        /* --- END DROPDOWN STYLES --- */
 
         #playerPFP {
             width: 80px;
@@ -450,7 +449,6 @@
             z-index: 1001; pointer-events: none;
         }
         
-        /* --- NEW STATS MODAL STYLES --- */
         #statsModalContent {
             text-align: left;
         }
@@ -484,7 +482,6 @@
         }
         .stat-card .correct { color: var(--success-color); }
         .stat-card .wrong { color: var(--danger-color); }
-        /* --- END STATS MODAL STYLES --- */
 
 
         .dashboard-card {
@@ -496,7 +493,6 @@
             text-align: center;
         }
         
-        /* Quote styling */
         .quote-container {
             background: rgba(0,0,0,0.1);
             padding: 15px;
@@ -536,7 +532,6 @@
             transform: scale(1.1);
         }
 
-        /* --- CALENDAR STYLES (SHARED) --- */
         .calendar-container {
             overflow-x: auto;
             padding-bottom: 10px;
@@ -620,9 +615,7 @@
             color: white;
             font-weight: bold;
         }
-        /* --- END CALENDAR STYLES --- */
 
-        /* --- RESPONSIVE ADJUSTMENTS --- */
         @media screen and (max-width: 600px) {
             body { padding: 5px; }
             .container, #adminPanel { padding: 0; border-radius: 0; }
@@ -712,14 +705,12 @@
 
                     <div style="text-align: center; padding: 10px 0 20px 0; border-top: 1px solid #eee; margin-top: 20px;">
                         <button id="adminLoginBtn" onclick="handleAdminLogin()" class="btn-warning" style="background: #7f8c8d;">Admin Login</button>
-
-
                     </div>
 
-                    <!-- ADD THIS NEW BUTTON -->
-<div style="text-align: center; margin: 10px 0;">
-    <button onclick="syncAllDataFromFirebase()" class="btn-success">Refresh Data from Cloud</button>
-</div>
+                    <!-- Auto-sync is now enabled, but manual button remains for backup -->
+                    <div style="text-align: center; margin: 10px 0;">
+                        <button onclick="syncAllDataFromFirebase()" class="btn-success">Refresh Data from Cloud</button>
+                    </div>
                 </div>
                 
                 <div id="practiceSetupView" class="view-stage hidden">
@@ -1020,14 +1011,26 @@
     <div id="wrongAnswersModal" class="modal"><div class="modal-content large"><h2>Questions You Missed</h2><div id="wrongAnswersBody" class="modal-body"></div><button onclick="closeModal('wrongAnswersModal')" style="margin-top: 20px;">Close</button></div></div>
     <div id="avatarModal" class="modal"><div class="modal-content"><h3>Choose Your Avatar</h3><div id="modalAvatarSelection" class="avatar-selection"></div><button onclick="confirmAvatar()" class="btn-success">Confirm and Start</button></div></div>
     <div id="statsModal" class="modal"><div id="statsModalContent" class="modal-content"><h2>Player Statistics</h2><div class="stat-grid"><div class="stat-card"><h4>Title</h4><p id="statsTitle">_</p></div><div class="stat-card"><h4>Total XP</h4><p id="statsXP">_</p></div><div class="stat-card"><h4>Current Streak</h4><p id="statsStreak">_</p></div><div class="stat-card"><h4>Total Correct</h4><p id="statsCorrect" class="correct">_</p></div></div><button onclick="closeModal('statsModal')">Close</button></div></div>
-    <div id="adminAuthModal" class="modal"><div class="modal-content"><h3 id="adminModalTitle">Admin Login</h3><p id="adminModalPrompt"></p><div class="form-group"><input type="text" id="adminUsername" placeholder="Username"></div><div class="form-group"><input type="password" id="adminPassword" placeholder="Password"></div><div id="adminPasswordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div><button id="adminSubmitBtn"></button><button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button></div></div>
+    
+    <!-- Admin Auth Modal (Updated for Email/Pass) -->
+    <div id="adminAuthModal" class="modal">
+        <div class="modal-content">
+            <h3 id="adminModalTitle">Admin Login</h3>
+            <p id="adminModalPrompt"></p>
+            <div class="form-group"><input type="email" id="adminEmail" placeholder="Admin Email"></div>
+            <div class="form-group"><input type="password" id="adminPassword" placeholder="Password"></div>
+            <div id="adminPasswordConfirmGroup" class="hidden" style="margin-top:10px;"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div>
+            <button id="adminSubmitBtn"></button>
+            <button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button>
+        </div>
+    </div>
 
 
     <script>
         // --- CONSTANTS ---
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
-        const DESTRUCTIVE_ACTION_PASSWORD = "2525"; // Added as requested
+        const DESTRUCTIVE_ACTION_PASSWORD = "2525"; 
         
         // --- GAMIFICATION & LEVELING SYSTEM ---
         const LEVEL_CONFIG = [
@@ -1050,8 +1053,7 @@
         let audioCtx;
 
         // --- APP STATE ---
-        // --- 1. UPDATED CONFIGURATION ---
-        const firebaseConfig = {
+        let firebaseConfig = {
             apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs",
             authDomain: "pscprep-6bb66.firebaseapp.com",
             databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com",
@@ -1061,121 +1063,8 @@
             appId: "1:926517422096:web:ec706c3d125877c74d4295"
         };
 
-        // --- 2. NEW OPTIMIZED SYNC LOGIC ---
-        
-        function initializeFirebase() {
-            // Initialize Firebase with your hardcoded config
-            if (firebase.apps.length === 0) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            db = firebase.database();
-
-            updateFirebaseStatus('Connecting...', false);
-
-            // Connection Listener
-            db.ref('.info/connected').on('value', snapshot => {
-                if (snapshot.val() === true) {
-                    updateFirebaseStatus('Connected', true);
-                    isFirebaseConnected = true;
-                    console.log('Firebase connected.');
-                    
-                    // START THE SMART SYNC
-                    setupSmartSync(); 
-                } else {
-                    updateFirebaseStatus('Disconnected (Offline Mode)', false);
-                    isFirebaseConnected = false;
-                }
-            });
-        }
-
-        function setupSmartSync() {
-            if (!db) return;
-
-            // 1. Check for NEW Question Sets only (Bandwidth Saver)
-            checkForNewQuestionSets();
-
-            // 2. Sync ONLY the current player's profile (Tiny data)
-            if (currentPlayerName) {
-                db.ref(`playerProfiles/${currentPlayerName}`).once('value').then(snapshot => {
-                    const cloudProfile = snapshot.val();
-                    if (cloudProfile) {
-                        // Merge cloud data with local data
-                        playerProfiles[currentPlayerName] = { ...playerProfiles[currentPlayerName], ...cloudProfile };
-                        savePlayerProfiles(); // Save to local storage
-                        updateProgressUI();
-                    }
-                });
-            }
-
-            // 3. Load Leaderboard (Lightweight)
-            db.ref('dailyRevisionScores').on('value', snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    dailyRevisionScores = data;
-                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-                    if(document.getElementById('leaderboard').classList.contains('active')) {
-                        showLeaderboards();
-                    }
-                }
-            });
-        }
-
-        function checkForNewQuestionSets() {
-            // Get the timestamp of the last time we successfully synced
-            const lastSyncTime = localStorage.getItem('pscLastSyncTimestamp') || 0;
-            console.log("Checking for sets uploaded after:", new Date(parseInt(lastSyncTime)).toLocaleString());
-
-            // Query Firebase: "Give me sets where 'lastModified' is greater than my last sync"
-            db.ref('questionSets')
-                .orderByChild('lastModified')
-                .startAt(parseInt(lastSyncTime) + 1) // +1 to avoid duplicates
-                .once('value')
-                .then(snapshot => {
-                    const newSets = snapshot.val();
-                    if (newSets) {
-                        const count = Object.keys(newSets).length;
-                        console.log(`Found ${count} new/updated sets.`);
-                        
-                        // Merge new sets into local storage
-                        questionSets = { ...questionSets, ...newSets };
-                        saveQuestionSets(); // Updates Local Storage
-                        loadQuestionSets(); // Updates UI
-                        updateSubjectSelect();
-
-                        showNotification(`Downloaded ${count} new Question Sets!`, 'success');
-                    } else {
-                        console.log("Your Question Sets are up to date.");
-                    }
-                    // Update our local timestamp so we don't download these again next time
-                    localStorage.setItem('pscLastSyncTimestamp', Date.now());
-                });
-        }
-
-        function syncToFirebase() {
-            if (!isFirebaseConnected || !currentPlayerName) return;
-
-            // OPTIMIZATION: Only upload the specific user's data, not the whole DB
-            const updates = {};
-            
-            // 1. Update Player Profile (XP, Streak)
-            updates[`/playerProfiles/${currentPlayerName}`] = playerProfiles[currentPlayerName];
-            
-            // 2. Update Revision Progress (for this user only)
-            if(revisionProgress[currentPlayerName]) {
-                updates[`/revisionProgress/${currentPlayerName}`] = revisionProgress[currentPlayerName];
-            }
-
-            // 3. Update Daily Scores (Leaderboard)
-            updates['/dailyRevisionScores'] = dailyRevisionScores;
-
-            // Send specific updates
-            db.ref().update(updates).then(() => {
-                console.log("User progress synced to cloud.");
-            }).catch(err => {
-                console.error("Sync failed:", err);
-            });
-        }
         let db = null;
+        let auth = null; // Add auth variable
         let isFirebaseConnected = false;
         
         let questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
@@ -1184,9 +1073,10 @@
         let playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
         let dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
-        let adminCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials')) || null;
-
+        
+        // Admin state is now handled by Firebase Auth
         let isAdminLoggedIn = false;
+        let currentAdminUser = null;
         
         let currentSet = [], currentQuestionIndex = 0, score = 0, timer, timeElapsed = 0, currentPlayerName = '', currentAttempt = null, totalTimeLimit = 0, isRevisionMode = false, currentRevisionKey = null;
         let practiceInProgress = false;
@@ -1208,296 +1098,194 @@
         document.addEventListener('DOMContentLoaded', init);
 
         function init() {
-    initializeFirebase(); // This will connect and then call loadFromFirebase()
-    populateAvatars();
-    setDailyQuote();
-    
-    document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
-    document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
+            initializeFirebase(); 
+            populateAvatars();
+            setDailyQuote();
+            
+            document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
+            document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-    // Load local data immediately while Firebase connects
-    loadLocalDataImmediately();
-    
-    document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
-    
-    document.getElementById('backToSetListBtn').addEventListener('click', () => {
-        if (editingFromReport.active) {
-            returnToReportedQuestionsView();
-        } else {
-            document.getElementById('editQuestionsSection').classList.add('hidden');
-            document.getElementById('adminQuestionSets').classList.remove('hidden');
-            currentEditingSet = null;
-        }
-    });
-    
-    document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
-        document.getElementById('adminSystem').classList.add('hidden');
-        document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-        document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
-        renderReportedQuestions();
-    });
-    document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
-         document.getElementById('reportedQuestionsSection').classList.add('hidden');
-         document.getElementById('adminSystem').classList.remove('hidden');
-    });
-    
-     // Attendance calendar navigation
-    document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
-        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
-        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-    });
-    document.getElementById('nextAttendanceMonthBtn').addEventListener('click', () => {
-        currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
-        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-    });
-    
-     // Admin Attendance calendar navigation
-    document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
-        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
-        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
-        renderAdminAttendanceCalendar(selectedPlayer);
-    });
-    document.getElementById('adminNextAttendanceMonthBtn').addEventListener('click', () => {
-        currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() + 1);
-        const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
-        renderAdminAttendanceCalendar(selectedPlayer);
-    });
+            // Load local data immediately
+            loadLocalDataImmediately();
+            
+            document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
+            
+            // Event Listeners
+            document.getElementById('backToSetListBtn').addEventListener('click', () => {
+                if (editingFromReport.active) {
+                    returnToReportedQuestionsView();
+                } else {
+                    document.getElementById('editQuestionsSection').classList.add('hidden');
+                    document.getElementById('adminQuestionSets').classList.remove('hidden');
+                    currentEditingSet = null;
+                }
+            });
+            
+            document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
+                document.getElementById('adminSystem').classList.add('hidden');
+                document.getElementById('reportedQuestionsSection').classList.remove('hidden');
+                document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
+                renderReportedQuestions();
+            });
+            document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
+                 document.getElementById('reportedQuestionsSection').classList.add('hidden');
+                 document.getElementById('adminSystem').classList.remove('hidden');
+            });
+            
+             // Attendance calendar navigation
+            document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
+                currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
+                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+            });
+            document.getElementById('nextAttendanceMonthBtn').addEventListener('click', () => {
+                currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
+                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+            });
+            
+             // Admin Attendance calendar navigation
+            document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
+                currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
+                const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+                renderAdminAttendanceCalendar(selectedPlayer);
+            });
+            document.getElementById('adminNextAttendanceMonthBtn').addEventListener('click', () => {
+                currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() + 1);
+                const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
+                renderAdminAttendanceCalendar(selectedPlayer);
+            });
 
-    window.onclick = function(event) {
-        if (!event.target.matches('.menu-btn')) {
-            var dropdowns = document.getElementsByClassName("dropdown-content");
-            for (var i = 0; i < dropdowns.length; i++) {
-                var openDropdown = dropdowns[i];
-                if (openDropdown.classList.contains('show')) {
-                    openDropdown.classList.remove('show');
+            window.onclick = function(event) {
+                if (!event.target.matches('.menu-btn')) {
+                    var dropdowns = document.getElementsByClassName("dropdown-content");
+                    for (var i = 0; i < dropdowns.length; i++) {
+                        var openDropdown = dropdowns[i];
+                        if (openDropdown.classList.contains('show')) {
+                            openDropdown.classList.remove('show');
+                        }
+                    }
                 }
             }
         }
-    }
-}
-function syncAllDataFromFirebase() {
-    if (!isFirebaseConnected) {
-        showNotification('Firebase not connected', 'error');
-        return;
-    }
-    
-    showNotification('Syncing data from cloud...');
-    
-    // Sync question sets
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        questionSets = { ...questionSets, ...firebaseSets };
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-    });
 
-    // Sync player profiles
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        updatePlayerSelects();
-        showNotification('Data synced from cloud! Players and question sets updated.');
-    });
+        function initializeFirebase() {
+            if (firebase.apps.length === 0) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+            auth = firebase.auth(); // Initialize Auth
 
-    // Sync revision progress
-    db.ref('revisionProgress').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        revisionProgress = { ...revisionProgress, ...data };
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    });
-}
-// Add this new function to load local data immediately
-function loadLocalDataImmediately() {
-    // Load all data from localStorage
-    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
-    playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
-    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
-    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
-    
-    // Update UI with local data immediately
-    updatePlayerSelects();
-    loadQuestionSets();
-    updateSubjectSelect();
-    
-    console.log('Local data loaded. Players found:', getAllPlayerNames());
-    
-    // Don't auto-login here - wait for Firebase sync to complete
-    switchPracticeView('welcomeView');
-}
+            updateFirebaseStatus('Connecting...', false);
+
+            // Connection Listener
+            db.ref('.info/connected').on('value', snapshot => {
+                if (snapshot.val() === true) {
+                    updateFirebaseStatus('Connected', true);
+                    isFirebaseConnected = true;
+                    console.log('Firebase connected.');
+                    
+                    // === AUTOMATIC SYNC ON LOAD ===
+                    // This syncs all data (Profiles, Question Sets) automatically on connection
+                    syncGlobalDataOnLoad();
+                    
+                } else {
+                    updateFirebaseStatus('Disconnected (Offline Mode)', false);
+                    isFirebaseConnected = false;
+                }
+            });
+
+            // Listen for Auth changes (Admin login/logout)
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    currentAdminUser = user;
+                    enterAdminMode(user.email);
+                } else {
+                    currentAdminUser = null;
+                    if (isAdminLoggedIn) {
+                        adminLogoutUI();
+                    }
+                }
+            });
+        }
+
+        // --- NEW FUNCTION: Auto-sync on load ---
+        function syncGlobalDataOnLoad() {
+            if (!db) return;
+            console.log("Starting automatic cloud sync...");
+            updateFirebaseStatus('Syncing Data...', true);
+            
+            Promise.all([
+                db.ref('playerProfiles').once('value'),
+                db.ref('questionSets').once('value'),
+                db.ref('revisionProgress').once('value')
+            ]).then(([profilesSnap, setsSnap, progressSnap]) => {
+                const profiles = profilesSnap.val() || {};
+                const sets = setsSnap.val() || {};
+                const progress = progressSnap.val() || {};
+
+                // Merge Cloud data with Local data
+                playerProfiles = { ...playerProfiles, ...profiles };
+                questionSets = { ...questionSets, ...sets };
+                revisionProgress = { ...revisionProgress, ...progress };
+
+                // Save merged data to local storage
+                localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+
+                // Update UI
+                updatePlayerSelects();
+                loadQuestionSets();
+                updateSubjectSelect();
+                
+                // If user was previously selected, refresh their view
+                if(currentPlayerName) loadPlayerProgress();
+
+                updateFirebaseStatus('Connected & Synced', true);
+                showNotification('All data automatically synced from cloud!', 'success');
+            }).catch(err => {
+                console.error("Auto-sync failed:", err);
+                showNotification('Auto-sync failed. Check connection.', 'warning');
+            });
+        }
+
+        function syncAllDataFromFirebase() {
+            // Manual trigger for the auto-sync logic
+            syncGlobalDataOnLoad();
+        }
+
+        function loadLocalDataImmediately() {
+            // Load all data from localStorage
+            questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+            playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+            revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
+            practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
+            dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+            
+            updatePlayerSelects();
+            loadQuestionSets();
+            updateSubjectSelect();
+            
+            switchPracticeView('welcomeView');
+            checkAutoLogin();
+        }
 
 
         function checkForUpdates() {
-    showNotification('Checking for new question sets...');
-    checkForNewQuestionSets();
-}
+            showNotification('Checking for new question sets...');
+            // Reuse the global sync logic, it handles updates
+            syncGlobalDataOnLoad();
+        }
+
         function loadFromFirebase() {
-    if (!isFirebaseConnected) { 
-        showNotification('Firebase not connected', 'error'); 
-        return; 
-    }
-    
-    // We're now using the optimized approach above
-    // This function can be simplified or removed
-    showNotification('Using optimized data loading strategy');
-}
-
-function switchTab(tabName) {
-    document.body.classList.remove('practice-active');
-    document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
-    const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
-    if(mainTabButton) mainTabButton.classList.add('active');
-    document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
-    
-    document.getElementById(tabName).classList.add('active');
-
-    // FIXED: Better leaderboard listener management
-    if (dailyScoresListener) {
-        dailyScoresListener.off();
-        dailyScoresListener = null;
-        console.log('Leaderboard listener OFF');
-    }
-
-    if(tabName === 'leaderboard') {
-        showLeaderboards(); // Show with local data first
-        // Only listen when actually viewing leaderboard
-        if (db && isFirebaseConnected) {
-            dailyScoresListener = db.ref('dailyRevisionScores');
-            dailyScoresListener.on('value', snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    dailyRevisionScores = data;
-                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-                    showLeaderboards();
-                    console.log('Leaderboard scores updated.');
-                }
-            });
-        }
-    }
-
-    if(tabName === 'revision') renderRevisionPage();
-    if(tabName === 'backlog') renderBacklogPage();
-    if(tabName === 'attendance') {
-        currentAttendanceCalendarDate = new Date();
-        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-    }
-}
-
-// --- 3. UPDATED SAVE FUNCTION (ADDS TIMESTAMPS) ---
-
-        function saveQuestionSets() {
-            const timestamp = Date.now();
-            
-            // Ensure every set has a lastModified timestamp
-            Object.keys(questionSets).forEach(setName => {
-                // If we are editing it now, or if it never had one, update the time
-                if (!questionSets[setName].lastModified) {
-                    questionSets[setName].lastModified = timestamp;
-                }
-            });
-            
-            // If we are in Admin mode and currently editing/uploading, force update the specific set's timestamp
-            if (isAdminLoggedIn && currentEditingSet && questionSets[currentEditingSet]) {
-                 questionSets[currentEditingSet].lastModified = timestamp;
-            }
-
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            
-            if(isFirebaseConnected) {
-                // We assume if you are saving, you are the Admin uploading new data
-                db.ref('questionSets').set(questionSets).then(() => {
-                   console.log("Question Sets uploaded to cloud.");
-                });
-            }
-        }
-        
-        function setDailyQuote() {
-            const quoteEl = document.getElementById('motivationalQuote');
-            const quoteElLoggedIn = document.getElementById('motivationalQuoteLoggedIn');
-            const today = new Date().toISOString().split('T')[0];
-            const storedQuote = JSON.parse(localStorage.getItem('dailyQuote'));
-            let quoteToDisplay;
-
-            if (storedQuote && storedQuote.date === today) {
-                quoteToDisplay = storedQuote.quote;
-            } else {
-                quoteToDisplay = quotes[Math.floor(Math.random() * quotes.length)];
-                localStorage.setItem('dailyQuote', JSON.stringify({ quote: quoteToDisplay, date: today }));
-            }
-
-            if (quoteEl) quoteEl.textContent = quoteToDisplay;
-            if (quoteElLoggedIn) quoteElLoggedIn.textContent = quoteToDisplay;
+             syncAllDataFromFirebase();
         }
 
-        function toggleMenu() {
-            document.getElementById("myDropdown").classList.toggle("show");
-        }
-
-        function logout() {
-            currentPlayerName = '';
-            localStorage.removeItem('pscLastPlayer');
-            window.location.reload();
-        }
-
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-
-        // --- FIREBASE FUNCTIONS ---
-    
-    // Your NEW Firebase configuration
- 
-function setupOptimizedFirebaseListeners() {
-    if (!db) return;
-    
-    // Load question sets from Firebase and merge with local
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        // Merge Firebase sets with local, Firebase takes priority for conflicts
-        questionSets = { ...questionSets, ...firebaseSets };
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-        console.log('Question sets synced from Firebase');
-    });
-
-    // Load player profiles from Firebase and merge with local
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        // Merge strategy: Keep all players from both sources
-        // If same player exists in both, Firebase data takes priority
-        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        updatePlayerSelects();
-        console.log('Player profiles synced from Firebase');
-        
-        // Check auto-login after profiles are loaded
-        checkAutoLogin();
-    });
-
-    // Load other data from Firebase
-    db.ref('revisionProgress').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        revisionProgress = { ...revisionProgress, ...data };
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    });
-
-    // Real-time listener only for daily scores (leaderboard)
-    db.ref('dailyRevisionScores').on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            dailyRevisionScores = data;
-            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-            if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
-        }
-    });
-}        function updateFirebaseStatus(status, isConnected) {
+        function updateFirebaseStatus(status, isConnected) {
             const statusEl = document.getElementById('firebaseStatus');
             if (statusEl) {
                 statusEl.textContent = status;
             }
         }
-
         
         function saveFirebaseConfig() {
             try {
@@ -1523,81 +1311,22 @@ function setupOptimizedFirebaseListeners() {
               .catch(err => showNotification(`Connection test failed: ${err.message}`, 'error'));
         }
         
-      
-
-        function setupOptimizedFirebaseListeners() {
-    if (!db) return;
-    
-    // Load local data first
-    loadLocalData();
-    
-    // Only download NEW question sets (check for updates)
-    checkForNewQuestionSets();
-    
-    // Real-time listener only for daily scores (leaderboard)
-    setupLeaderboardListener();
-    
-    // Upload any pending user data
-    syncPendingUserData();
-}
-
-function loadLocalData() {
-    // Load all data from localStorage first
-    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
-    playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
-    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
-    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
-    
-    // Update UI with local data
-    loadQuestionSets();
-    updateSubjectSelect();
-    updatePlayerSelects();
-    if (currentPlayerName) loadPlayerProgress();
-    
-    // Check for auto-login
-    checkAutoLogin();
-}
-
-
-
-function setupLeaderboardListener() {
-    if (!db) return;
-    
-    // Only enable real-time listener for leaderboard when needed
-    if (dailyScoresListener) {
-        dailyScoresListener.off();
-    }
-    
-    // We'll set this up only when leaderboard tab is active (see modified switchTab function)
-}
-
-function syncPendingUserData() {
-    if (!currentPlayerName) return;
-    
-    // Sync user-specific data that's critical for revision tracking
-    const userDataToSync = {
-        playerProfiles: {
-            [currentPlayerName]: playerProfiles[currentPlayerName]
-        },
-        revisionProgress: {
-            [currentPlayerName]: revisionProgress[currentPlayerName] || {}
+        function syncToFirebase() {
+            if (!isFirebaseConnected) return;
+            const updates = {};
+            updates['/playerProfiles'] = playerProfiles;
+            updates['/questionSets'] = questionSets;
+            updates['/revisionProgress'] = revisionProgress;
+            
+            db.ref().update(updates).then(() => {
+                showNotification("All local data synced to cloud.");
+            }).catch(err => {
+                console.error("Sync failed:", err);
+            });
         }
-    };
-    
-    // Only sync if we have new data (you could add more sophisticated checks)
-    if (userDataToSync.playerProfiles[currentPlayerName]) {
-        db.ref('playerProfiles').update(userDataToSync.playerProfiles);
-    }
-    
-    if (userDataToSync.revisionProgress[currentPlayerName]) {
-        db.ref('revisionProgress').update(userDataToSync.revisionProgress);
-    }
-}
 
         function checkAutoLogin() {
             const lastPlayer = localStorage.getItem('pscLastPlayer');
-            // We use the *global* playerProfiles, which has just been updated
             if (lastPlayer && playerProfiles[lastPlayer]) {
                 loginPlayer(lastPlayer, true); 
             } else {
@@ -1607,7 +1336,7 @@ function syncPendingUserData() {
         
         // --- DATA MANAGEMENT ---
         function exportData() {
-            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
+            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1630,7 +1359,6 @@ function syncPendingUserData() {
                         if(data.playerProfiles) playerProfiles = data.playerProfiles;
                         if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
                         if(data.dailyRevisionScores) dailyRevisionScores = data.dailyRevisionScores;
-                        if(data.adminCredentials) adminCredentials = data.adminCredentials;
                         
                         localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                         localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
@@ -1638,7 +1366,6 @@ function syncPendingUserData() {
                         localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                         localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
                         localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-                        localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
                         
                         init();
                         showNotification('Data imported successfully!');
@@ -1651,7 +1378,7 @@ function syncPendingUserData() {
 
         function clearAllData() {
             promptForAdminPassword(() => {
-                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {}; adminCredentials = null;
+                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {};
                 localStorage.clear();
                 if (isFirebaseConnected) { db.ref().set(null); }
                 window.location.reload();
@@ -1812,45 +1539,42 @@ function syncPendingUserData() {
 
         // --- CORE APP FUNCTIONS ---
        function switchTab(tabName) {
-    document.body.classList.remove('practice-active');
-    document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
-    const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
-    if(mainTabButton) mainTabButton.classList.add('active');
-    document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
-    
-    document.getElementById(tabName).classList.add('active');
+            document.body.classList.remove('practice-active');
+            document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
+            const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
+            if(mainTabButton) mainTabButton.classList.add('active');
+            document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
 
-    // FIXED: Better leaderboard listener management
-    if (dailyScoresListener) {
-        dailyScoresListener.off();
-        dailyScoresListener = null;
-        console.log('Leaderboard listener OFF');
-    }
+            if (dailyScoresListener) {
+                dailyScoresListener.off();
+                dailyScoresListener = null;
+            }
 
-    if(tabName === 'leaderboard') {
-        showLeaderboards(); // Show with local data first
-        // Only listen when actually viewing leaderboard
-        if (db && isFirebaseConnected) {
-            dailyScoresListener = db.ref('dailyRevisionScores');
-            dailyScoresListener.on('value', snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    dailyRevisionScores = data;
-                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-                    showLeaderboards();
-                    console.log('Leaderboard scores updated.');
+            if(tabName === 'leaderboard') {
+                showLeaderboards(); 
+                if (db && isFirebaseConnected) {
+                    dailyScoresListener = db.ref('dailyRevisionScores');
+                    dailyScoresListener.on('value', snapshot => {
+                        const data = snapshot.val();
+                        if (data) {
+                            dailyRevisionScores = data;
+                            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                            showLeaderboards();
+                        }
+                    });
                 }
-            });
-        }
-    }
+            }
 
-    if(tabName === 'revision') renderRevisionPage();
-    if(tabName === 'backlog') renderBacklogPage();
-    if(tabName === 'attendance') {
-        currentAttendanceCalendarDate = new Date();
-        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-    }
-}
+            if(tabName === 'revision') renderRevisionPage();
+            if(tabName === 'backlog') renderBacklogPage();
+            if(tabName === 'attendance') {
+                currentAttendanceCalendarDate = new Date();
+                renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
+            }
+        }
+
         function switchAdminTab(tabName) {
             document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
@@ -1866,7 +1590,7 @@ function syncPendingUserData() {
             if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
             if (tabName === 'adminAttendance') {
                  currentAdminAttendanceDate = new Date();
-                updatePlayerSelects(); // Ensure dropdown is populated
+                updatePlayerSelects(); 
                 const firstPlayer = document.getElementById('attendancePlayerSelect').value;
                 renderAdminAttendanceCalendar(firstPlayer);
             }
@@ -1961,10 +1685,6 @@ function syncPendingUserData() {
             localStorage.setItem('pscLastPlayer', currentPlayerName);
             
             handleDailyLogin();
-
-            // --- ADD THIS NEW SECTION ---
-            // Stop listening to any old player's progress
-            // --- END OF NEW SECTION ---
 
             if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
@@ -2350,7 +2070,7 @@ function syncPendingUserData() {
                 </div>`;
             }).join('') || '<p>No question sets found.</p>';
             
-            showAddQuestionsSection(); // To populate bulk upload dropdown
+            showAddQuestionsSection(); 
         }
         
         function updateSubjectSelect() {
@@ -2390,7 +2110,6 @@ function syncPendingUserData() {
                 document.getElementById('playerToClearHistorySelect'), 
                 document.getElementById('passwordUserSelect'), 
                 document.getElementById('attendancePlayerSelect'),
-                document.getElementById('historyPlayerSelect'),
                 document.getElementById('backlogPlayerSelect')
             ];
             const players = getAllPlayerNames();
@@ -2404,9 +2123,9 @@ function syncPendingUserData() {
             });
         }
         
-  function getAllPlayerNames() {
-    return [...new Set(Object.keys(revisionProgress).filter(Boolean).concat(Object.keys(playerProfiles).filter(Boolean)))];
-}
+        function getAllPlayerNames() {
+            return [...new Set(Object.keys(revisionProgress).filter(Boolean).concat(Object.keys(playerProfiles).filter(Boolean)))];
+        }
 
         function saveQuestionSets(){
              localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
@@ -2444,7 +2163,6 @@ function syncPendingUserData() {
                 const category = document.getElementById('setCategory').value;
                 questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category, subject: subject };
             } else {
-                // Update subject if importing into existing set
                 questionSets[setName].subject = subject;
             }
 
@@ -2717,6 +2435,21 @@ function syncPendingUserData() {
             return { dueToday: dueTodayItems, backlog: backlogItems, all: fullBacklog };
         }
 
+        function renderRevisionItem(item, isBacklog) {
+            const key = `${item.setName}_RevDay${item.day}`;
+            let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? 'var(--danger-color)' : 'var(--primary-color)'};"><h4>${item.setName} - Revision Day ${item.day}</h4>`;
+            
+            const status = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][key];
+            const percentage = status ? status.percentage : 0;
+            const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
+            const buttonClass = status ? 'btn-warning' : 'btn-success';
+            itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
+                <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
+                ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
+            
+            itemHtml += `</div>`; return itemHtml;
+        }
+        
         function renderRevisionPage() {
             const dueTodayDiv = document.getElementById('dueTodayList');
             const userPrompt = document.getElementById('revisionUserPrompt');
@@ -2744,21 +2477,6 @@ function syncPendingUserData() {
             }
             const { all: fullBacklog } = getRevisionItems();
             backlogDiv.innerHTML = fullBacklog.length > 0 ? fullBacklog.map(item => renderRevisionItem(item, true)).join('') : '<p>Your backlog is clear. Keep it up!</p>';
-        }
-
-        function renderRevisionItem(item, isBacklog) {
-            const key = `${item.setName}_RevDay${item.day}`;
-            let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? 'var(--danger-color)' : 'var(--primary-color)'};"><h4>${item.setName} - Revision Day ${item.day}</h4>`;
-            
-            const status = revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][key];
-            const percentage = status ? status.percentage : 0;
-            const buttonText = status ? `Retry (${percentage}%)` : 'Start Revision';
-            const buttonClass = status ? 'btn-warning' : 'btn-success';
-            itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p>
-                <button onclick="startRevisionPractice('${item.setName}', '${key}')" class="${buttonClass}">${buttonText}</button>
-                ${status ? `<p style="font-size: 12px; margin-top: 5px;">Last Score: ${percentage}% on ${new Date(status.date).toLocaleDateString()}</p>` : ''}`;
-            
-            itemHtml += `</div>`; return itemHtml;
         }
 
         function updateAllBadges() {
@@ -2958,71 +2676,129 @@ function syncPendingUserData() {
             openModal('wrongAnswersModal');
         }
         
-        // --- ADMIN FUNCTIONS ---
+        // --- ADMIN FUNCTIONS (Updated for Firebase Auth) ---
         function handleAdminLogin() {
-            if (!adminCredentials) {
-                // First-time setup
-                document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-                document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-                document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-                document.getElementById('adminSubmitBtn').onclick = createAdmin;
-            } else {
-                // Regular login
-                document.getElementById('adminModalTitle').textContent = "Admin Login";
-                document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Login";
-                document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+            if (!auth) {
+                showNotification("Firebase Auth not initialized", "error");
+                return;
             }
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminPassword').value = '';
-            document.getElementById('adminPasswordConfirm').value = '';
-            openModal('adminAuthModal');
+            
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                enterAdminMode(currentUser.email);
+            } else {
+                // Show Modal
+                document.getElementById('adminModalTitle').textContent = "Admin Login";
+                document.getElementById('adminModalPrompt').textContent = "Enter your Admin Email and Password.";
+                
+                // Hide confirm password by default (assuming login)
+                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+                
+                const submitBtn = document.getElementById('adminSubmitBtn');
+                submitBtn.textContent = "Login";
+                submitBtn.onclick = loginAdmin;
+                
+                // Add a small link/button to toggle "Create Account" for first-time setup
+                // NOTE: For simplicity, I'm adding a 'Create Admin' toggle logic if you fail login or want to sign up
+                // But usually, you hide signup. Let's keep it simple: Login checks auth.
+                // If you want to create an admin, you can implement a toggle.
+                // For now, let's add a way to trigger creation if needed, or just use Console.
+                // We'll stick to Login.
+                
+                // Simple hack: if they type "create" in email, we switch mode? No, let's add a button.
+                if (!document.getElementById('toggleAuthModeBtn')) {
+                     const toggleBtn = document.createElement('button');
+                     toggleBtn.id = 'toggleAuthModeBtn';
+                     toggleBtn.textContent = "Create New Admin Account";
+                     toggleBtn.className = "btn-warning";
+                     toggleBtn.style.marginTop = "10px";
+                     toggleBtn.style.width = "100%";
+                     toggleBtn.onclick = toggleAdminAuthMode;
+                     document.querySelector('#adminAuthModal .modal-content').appendChild(toggleBtn);
+                }
+                
+                document.getElementById('adminEmail').value = '';
+                document.getElementById('adminPassword').value = '';
+                
+                openModal('adminAuthModal');
+            }
+        }
+
+        function toggleAdminAuthMode() {
+            const confirmGroup = document.getElementById('adminPasswordConfirmGroup');
+            const submitBtn = document.getElementById('adminSubmitBtn');
+            const toggleBtn = document.getElementById('toggleAuthModeBtn');
+            
+            if (confirmGroup.classList.contains('hidden')) {
+                // Switch to Create Mode
+                confirmGroup.classList.remove('hidden');
+                submitBtn.textContent = "Create Admin";
+                submitBtn.onclick = createAdmin;
+                toggleBtn.textContent = "Back to Login";
+            } else {
+                // Switch to Login Mode
+                confirmGroup.classList.add('hidden');
+                submitBtn.textContent = "Login";
+                submitBtn.onclick = loginAdmin;
+                toggleBtn.textContent = "Create New Admin Account";
+            }
         }
 
         function createAdmin() {
-            const username = document.getElementById('adminUsername').value.trim();
+            const email = document.getElementById('adminEmail').value.trim();
             const password = document.getElementById('adminPassword').value;
             const confirmPass = document.getElementById('adminPasswordConfirm').value;
-            if (!username || !password) { showNotification('Username and password cannot be empty.', 'error'); return; }
+            
+            if (!email || !password) { showNotification('Email and password required.', 'error'); return; }
             if (password !== confirmPass) { showNotification('Passwords do not match.', 'error'); return; }
 
-            adminCredentials = { username, password };
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-            if (isFirebaseConnected) db.ref('adminCredentials').set(adminCredentials);
-            
-            closeModal('adminAuthModal');
-            showNotification('Admin account created successfully!', 'success');
-            enterAdminMode(username);
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showNotification('Admin account created!', 'success');
+                    closeModal('adminAuthModal');
+                    // Auth state change will handle entering admin mode
+                })
+                .catch((error) => {
+                    showNotification(error.message, 'error');
+                });
         }
 
         function loginAdmin() {
-            const username = document.getElementById('adminUsername').value;
+            const email = document.getElementById('adminEmail').value.trim();
             const password = document.getElementById('adminPassword').value;
-            if (adminCredentials && username === adminCredentials.username && password === adminCredentials.password) {
-                closeModal('adminAuthModal');
-                enterAdminMode(username);
-            } else {
-                showNotification('Invalid admin credentials.', 'error');
-            }
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showNotification('Logged in as Admin', 'success');
+                    closeModal('adminAuthModal');
+                    // Auth state change will handle entering admin mode
+                })
+                .catch((error) => {
+                    showNotification("Login Failed: " + error.message, 'error');
+                });
         }
 
-        function enterAdminMode(username) {
+        function enterAdminMode(email) {
             isAdminLoggedIn = true;
             document.querySelector('.container').classList.add('hidden');
-            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.remove('hidden');
-            document.getElementById('adminWelcome').textContent = `Welcome, ${username}!`;
+            document.getElementById('adminWelcome').textContent = `Welcome, ${email}!`;
             updatePlayerSelects();
             switchAdminTab('adminQuestionSets');
         }
 
         function adminLogout() {
+            auth.signOut().then(() => {
+                showNotification('Admin Logged Out');
+                adminLogoutUI();
+            });
+        }
+        
+        function adminLogoutUI() {
             isAdminLoggedIn = false;
             document.querySelector('.container').classList.remove('hidden');
-            // document.getElementById('adminLoginBtn').classList.remove('hidden'); // Button is no longer fixed
             document.getElementById('adminPanel').classList.add('hidden');
+            currentAdminUser = null;
         }
 
         
@@ -3059,15 +2835,11 @@ function syncPendingUserData() {
 
         // --- UI & UTILITY FUNCTIONS ---
         
-        /**
-         * Prompts for the destructive action password before executing a callback.
-         * @param {function} onSuccess - The function to call if the password is correct.
-         */
         function promptForAdminPassword(onSuccess) {
             const pass = prompt("This is a destructive action. Please enter the admin password (2525) to confirm:");
             if (pass === DESTRUCTIVE_ACTION_PASSWORD) {
                 onSuccess();
-            } else if (pass !== null) { // Don't show error if they hit "Cancel"
+            } else if (pass !== null) { 
                 showNotification('Incorrect admin password. Action cancelled.', 'error');
             }
         }
@@ -3212,31 +2984,27 @@ function syncPendingUserData() {
             renderReportedQuestions();
         }
 
-        // === NEW EXPORT FUNCTION ===
-function exportQuestionSet(setName) {
-    const set = questionSets[setName];
-    if (!set || !set.questions || set.questions.length === 0) {
-        showNotification('No questions found in this set.', 'error');
-        return;
-    }
+        function exportQuestionSet(setName) {
+            const set = questionSets[setName];
+            if (!set || !set.questions || set.questions.length === 0) {
+                showNotification('No questions found in this set.', 'error');
+                return;
+            }
 
-    // Format: question|option|option|option|option|rightanswercode
-    const formattedQuestions = set.questions.map(q => {
-        const questionText = q.question.replace(/\n/g, ' ').trim();
-        const options = q.options.map(opt => opt.replace(/\n/g, ' ').trim());
-        const correctAnswer = q.correctAnswer.toUpperCase();
-        
-        return `${questionText}|${options[0]}|${options[1]}|${options[2]}|${options[3]}|${correctAnswer}`;
-    }).join('\n');
+            const formattedQuestions = set.questions.map(q => {
+                const questionText = q.question.replace(/\n/g, ' ').trim();
+                const options = q.options.map(opt => opt.replace(/\n/g, ' ').trim());
+                const correctAnswer = q.correctAnswer.toUpperCase();
+                
+                return `${questionText}|${options[0]}|${options[1]}|${options[2]}|${options[3]}|${correctAnswer}`;
+            }).join('\n');
 
-    // Copy to clipboard
-    navigator.clipboard.writeText(formattedQuestions).then(() => {
-        showNotification(`Copied ${set.questions.length} questions to clipboard!`, 'success');
-    }).catch(err => {
-        // If clipboard fails, show the text in an alert
-        alert(`Export for ${setName}:\n\n${formattedQuestions}\n\nPlease copy this text manually.`);
-    });
-}
+            navigator.clipboard.writeText(formattedQuestions).then(() => {
+                showNotification(`Copied ${set.questions.length} questions to clipboard!`, 'success');
+            }).catch(err => {
+                alert(`Export for ${setName}:\n\n${formattedQuestions}\n\nPlease copy this text manually.`);
+            });
+        }
     </script>
 </body>
 </html>
