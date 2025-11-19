@@ -690,6 +690,7 @@
             <button onclick="switchTab('backlog')">Backlog</button>
             <button onclick="switchTab('leaderboard')">Leaderboard</button>
             <button onclick="switchTab('attendance')">Attendance</button>
+            <button onclick="switchTab('reportedQuestions')">Reported Questions</button>
         </nav>
         
         <main>
@@ -847,11 +848,12 @@
         </header>
 
         <nav id="admin-tab-nav">
-            <button onclick="switchAdminTab('adminQuestionSets')" class="active">Question Sets</button>
-            <button onclick="switchAdminTab('adminBacklogManager')">Manage Backlogs</button>
-            <button onclick="switchAdminTab('adminAttendance')">Attendance Register</button>
-            <button onclick="switchAdminTab('adminSystem')">System</button>
-        </nav>
+    <button onclick="switchAdminTab('adminQuestionSets')" class="active">Question Sets</button>
+    <button onclick="switchAdminTab('adminBacklogManager')">Manage Backlogs</button>
+    <button onclick="switchAdminTab('adminAttendance')">Attendance Register</button>
+    <button onclick="switchAdminTab('reportedQuestions')">Reported Questions</button>
+    <button onclick="switchAdminTab('adminSystem')">System</button>
+</nav>
 
         <main>
             <div id="adminQuestionSets" class="tab-content active">
@@ -893,7 +895,7 @@
                 </div>
             </div>
             
-
+            
             <div id="adminBacklogManager" class="tab-content">
                 <h2>Manage Player Backlogs</h2>
                  <div class="form-group">
@@ -923,6 +925,12 @@
                     <div id="adminAttendanceCalendarBody" class="calendar-grid"></div>
                 </div>
             </div>
+
+            <div id="reportedQuestions" class="tab-content">
+    <h2>Reported Questions</h2>
+    <p>Questions that have been reported by users for review and correction.</p>
+    <div id="reportedQuestionsList" style="margin-top: 20px;"></div>
+</div>
 
             <div id="adminSystem" class="tab-content">
                 <h2>System Management</h2>
@@ -966,8 +974,7 @@
                 <button onclick="resetAllXP()" class="btn-danger">Clear All Player XP & Streaks</button>
                 <button onclick="resetRevisionProgress()" class="btn-danger">Clear All Revision Progress</button>
                  <hr style="margin: 20px 0;">
-                <h3>Reported Questions</h3>
-                <button id="showReportedQuestionsBtn">View Reported Questions</button>
+                
             </div>
             
             <div id="editQuestionsSection" class="hidden" style="margin-top: 20px;">
@@ -1006,11 +1013,7 @@
                     <button onclick="deleteCurrentEditedQuestion()" class="btn-danger" style="margin-top: 10px;">Delete This Question</button>
                 </div>
             </div>
-            <div id="reportedQuestionsSection" class="hidden" style="margin-top: 20px;">
-                <button id="backToAdminSystemBtn">&larr; Back to System</button>
-                <h2 style="margin-top: 15px;">Reported Questions for Review</h2>
-                <div id="reportedQuestionsList"></div>
-            </div>
+            
         </main>
     </div>
 
@@ -1218,6 +1221,11 @@
     // Load local data immediately while Firebase connects
     loadLocalDataImmediately();
     
+    // Automatically sync data from cloud on startup (same as clicking the button)
+    setTimeout(() => {
+        syncAllDataFromFirebase();
+    }, 1000); // Small delay to ensure Firebase is connected
+    
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
     document.getElementById('backToSetListBtn').addEventListener('click', () => {
@@ -1228,17 +1236,6 @@
             document.getElementById('adminQuestionSets').classList.remove('hidden');
             currentEditingSet = null;
         }
-    });
-    
-    document.getElementById('showReportedQuestionsBtn').addEventListener('click', () => {
-        document.getElementById('adminSystem').classList.add('hidden');
-        document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-        document.getElementById('adminPanel').querySelector('main').appendChild(document.getElementById('reportedQuestionsSection'));
-        renderReportedQuestions();
-    });
-    document.getElementById('backToAdminSystemBtn').addEventListener('click', () => {
-         document.getElementById('reportedQuestionsSection').classList.add('hidden');
-         document.getElementById('adminSystem').classList.remove('hidden');
     });
     
      // Attendance calendar navigation
@@ -1852,30 +1849,30 @@ function syncPendingUserData() {
     }
 }
         function switchAdminTab(tabName) {
-            document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
-            document.querySelectorAll('#adminPanel > main > .tab-content').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
+    document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
+    document.querySelectorAll('#adminPanel > main > .tab-content').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
 
-            if (tabName === 'adminQuestionSets') {
-                document.getElementById('editQuestionsSection').classList.add('hidden');
-                document.getElementById('reportedQuestionsSection').classList.add('hidden');
-                loadQuestionSets();
-            }
-            if (tabName === 'adminPlayerHistory') renderAdminPlayerHistory();
-            if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
-            if (tabName === 'adminAttendance') {
-                 currentAdminAttendanceDate = new Date();
-                updatePlayerSelects(); // Ensure dropdown is populated
-                const firstPlayer = document.getElementById('attendancePlayerSelect').value;
-                renderAdminAttendanceCalendar(firstPlayer);
-            }
-             if (tabName === 'adminSystem') {
-                document.getElementById('editQuestionsSection').classList.add('hidden');
-                document.getElementById('reportedQuestionsSection').classList.add('hidden');
-                updatePlayerSelects();
-            }
-        }
+    if (tabName === 'adminQuestionSets') {
+        document.getElementById('editQuestionsSection').classList.add('hidden');
+        loadQuestionSets();
+    }
+    if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
+    if (tabName === 'adminAttendance') {
+         currentAdminAttendanceDate = new Date();
+        updatePlayerSelects(); // Ensure dropdown is populated
+        const firstPlayer = document.getElementById('attendancePlayerSelect').value;
+        renderAdminAttendanceCalendar(firstPlayer);
+    }
+    if (tabName === 'reportedQuestions') {
+        renderReportedQuestions();
+    }
+    if (tabName === 'adminSystem') {
+        document.getElementById('editQuestionsSection').classList.add('hidden');
+        updatePlayerSelects();
+    }
+}
         
         function switchPracticeView(viewId) {
             document.querySelectorAll('#practice .view-stage').forEach(view => view.classList.add('hidden'));
@@ -2770,7 +2767,15 @@ function syncPendingUserData() {
 
             const backlogButton = document.querySelector('nav button[onclick="switchTab(\'backlog\')"]');
             updateBadgeOnButton(backlogButton, fullBacklog.length);
+                const reportedButton = document.querySelector('nav button[onclick="switchTab(\'reportedQuestions\')"]');
+    updateBadgeOnButton(reportedButton, reportedQuestions.length);
         }
+        function updateAdminBadges() {
+    if (!isAdminLoggedIn) return;
+    
+    const reportedButton = document.querySelector('#admin-tab-nav button[onclick="switchAdminTab(\'reportedQuestions\')"]');
+    updateBadgeOnButton(reportedButton, reportedQuestions.length);
+}
 
         function updateBadgeOnButton(button, count) {
             if (!button) return;
@@ -2960,53 +2965,125 @@ function syncPendingUserData() {
         
         // --- ADMIN FUNCTIONS ---
         function handleAdminLogin() {
-            if (!adminCredentials) {
-                // First-time setup
-                document.getElementById('adminModalTitle').textContent = "Create Admin Account";
-                document.getElementById('adminModalPrompt').textContent = "This is a one-time setup for the admin account.";
-                document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Create Admin";
-                document.getElementById('adminSubmitBtn').onclick = createAdmin;
+    // Check if admin credentials exist in Firebase
+    if (isFirebaseConnected) {
+        db.ref('adminCredentials').once('value').then(snapshot => {
+            const credentials = snapshot.val();
+            if (credentials) {
+                // Credentials exist - show login
+                showAdminLoginModal();
             } else {
-                // Regular login
-                document.getElementById('adminModalTitle').textContent = "Admin Login";
-                document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
-                document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
-                document.getElementById('adminSubmitBtn').textContent = "Login";
-                document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+                // No credentials yet - show setup
+                showAdminSetupModal();
             }
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminPassword').value = '';
-            document.getElementById('adminPasswordConfirm').value = '';
-            openModal('adminAuthModal');
+        }).catch(error => {
+            // If Firebase fails, show setup as fallback
+            showAdminSetupModal();
+        });
+    } else {
+        // If offline, check local storage as backup
+        const localCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials'));
+        if (localCredentials) {
+            showAdminLoginModal();
+        } else {
+            showAdminSetupModal();
         }
+    }
+}
+
+function showAdminLoginModal() {
+    document.getElementById('adminModalTitle').textContent = "Admin Login";
+    document.getElementById('adminModalPrompt').textContent = "Please enter your admin credentials.";
+    document.getElementById('adminPasswordConfirmGroup').classList.add('hidden');
+    document.getElementById('adminSubmitBtn').textContent = "Login";
+    document.getElementById('adminSubmitBtn').onclick = loginAdmin;
+    document.getElementById('adminUsername').value = '';
+    document.getElementById('adminPassword').value = '';
+    openModal('adminAuthModal');
+}
+
+function showAdminSetupModal() {
+    document.getElementById('adminModalTitle').textContent = "Setup Admin Account";
+    document.getElementById('adminModalPrompt').textContent = "No admin account found. Please create one.";
+    document.getElementById('adminPasswordConfirmGroup').classList.remove('hidden');
+    document.getElementById('adminSubmitBtn').textContent = "Create Admin";
+    document.getElementById('adminSubmitBtn').onclick = createAdmin;
+    document.getElementById('adminUsername').value = '';
+    document.getElementById('adminPassword').value = '';
+    document.getElementById('adminPasswordConfirm').value = '';
+    openModal('adminAuthModal');
+}
 
         function createAdmin() {
-            const username = document.getElementById('adminUsername').value.trim();
-            const password = document.getElementById('adminPassword').value;
-            const confirmPass = document.getElementById('adminPasswordConfirm').value;
-            if (!username || !password) { showNotification('Username and password cannot be empty.', 'error'); return; }
-            if (password !== confirmPass) { showNotification('Passwords do not match.', 'error'); return; }
+    const username = document.getElementById('adminUsername').value.trim();
+    const password = document.getElementById('adminPassword').value;
+    const confirmPass = document.getElementById('adminPasswordConfirm').value;
+    
+    if (!username || !password) { 
+        showNotification('Username and password cannot be empty.', 'error'); 
+        return; 
+    }
+    if (password !== confirmPass) { 
+        showNotification('Passwords do not match.', 'error'); 
+        return; 
+    }
 
-            adminCredentials = { username, password };
-            localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
-            if (isFirebaseConnected) db.ref('adminCredentials').set(adminCredentials);
-            
+    const newCredentials = { username, password };
+    
+    // Save to Firebase (primary) and localStorage (backup)
+    if (isFirebaseConnected) {
+        db.ref('adminCredentials').set(newCredentials).then(() => {
+            localStorage.setItem('pscAdminCredentials', JSON.stringify(newCredentials));
             closeModal('adminAuthModal');
             showNotification('Admin account created successfully!', 'success');
             enterAdminMode(username);
-        }
+        }).catch(error => {
+            showNotification('Failed to create admin account. Please try again.', 'error');
+        });
+    } else {
+        // Fallback to localStorage only
+        localStorage.setItem('pscAdminCredentials', JSON.stringify(newCredentials));
+        closeModal('adminAuthModal');
+        showNotification('Admin account created (offline mode)!', 'success');
+        enterAdminMode(username);
+    }
+}
 
         function loginAdmin() {
-            const username = document.getElementById('adminUsername').value;
-            const password = document.getElementById('adminPassword').value;
-            if (adminCredentials && username === adminCredentials.username && password === adminCredentials.password) {
-                closeModal('adminAuthModal');
-                enterAdminMode(username);
-            } else {
-                showNotification('Invalid admin credentials.', 'error');
-            }
+    const username = document.getElementById('adminUsername').value;
+    const password = document.getElementById('adminPassword').value;
+    
+    // Check credentials from Firebase first, then localStorage as fallback
+    const checkCredentials = (credentials) => {
+        if (credentials && username === credentials.username && password === credentials.password) {
+            closeModal('adminAuthModal');
+            enterAdminMode(username);
+        } else {
+            showNotification('Invalid admin credentials.', 'error');
         }
+    };
+
+    if (isFirebaseConnected) {
+        db.ref('adminCredentials').once('value').then(snapshot => {
+            const credentials = snapshot.val();
+            if (credentials) {
+                checkCredentials(credentials);
+            } else {
+                // Fallback to localStorage
+                const localCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials'));
+                checkCredentials(localCredentials);
+            }
+        }).catch(error => {
+            // Fallback to localStorage if Firebase fails
+            const localCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials'));
+            checkCredentials(localCredentials);
+        });
+    } else {
+        // Offline mode - use localStorage
+        const localCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials'));
+        checkCredentials(localCredentials);
+    }
+}
 
         function enterAdminMode(username) {
             isAdminLoggedIn = true;
@@ -3164,15 +3241,16 @@ function syncPendingUserData() {
 
         // --- REPORTING FUNCTIONS ---
         function reportCurrentQuestion() {
-            const question = currentSet[currentQuestionIndex];
-            const isAlreadyReported = reportedQuestions.some(r => r.setName === currentAttempt.setName && r.question.question === question.question);
-            if (isAlreadyReported) { showNotification('This question has already been reported.', 'warning'); return; }
-            reportedQuestions.push({ reportId: `report-${Date.now()}`, setName: currentAttempt.setName, question: JSON.parse(JSON.stringify(question)), reportedAt: new Date().toISOString(), reportedBy: currentPlayerName });
-            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-            if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
-            showNotification('Question reported for admin review.', 'success');
-            document.getElementById('reportQuestionBtn').classList.add('hidden');
-        }
+    const question = currentSet[currentQuestionIndex];
+    const isAlreadyReported = reportedQuestions.some(r => r.setName === currentAttempt.setName && r.question.question === question.question);
+    if (isAlreadyReported) { showNotification('This question has already been reported.', 'warning'); return; }
+    reportedQuestions.push({ reportId: `report-${Date.now()}`, setName: currentAttempt.setName, question: JSON.parse(JSON.stringify(question)), reportedAt: new Date().toISOString(), reportedBy: currentPlayerName });
+    localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+    if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
+    showNotification('Question reported for admin review.', 'success');
+    document.getElementById('reportQuestionBtn').classList.add('hidden');
+    updateAdminBadges(); // Add this line
+}
 
         function renderReportedQuestions() {
             const listDiv = document.getElementById('reportedQuestionsList');
@@ -3184,14 +3262,16 @@ function syncPendingUserData() {
                     <p style="font-size: 12px; color: #555;">Reported by ${report.reportedBy} on ${new Date(report.reportedAt).toLocaleDateString()}</p>
                     <div style="margin-top: 10px;"><button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review & Edit</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss Report</button></div></div>`;
             }).join('');
+             // Update the admin badge
+    updateAdminBadges();
         }
 
         function dismissReport(reportId, silent = false) {
             reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
             localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
             if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
-            renderReportedQuestions();
-            if (!silent) showNotification('Report dismissed.', 'success');
+             updateAdminBadges(); // Add this line
+    if (!silent) showNotification('Report dismissed.', 'success');
         }
 
         function editReportedQuestion(reportId) {
