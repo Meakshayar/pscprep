@@ -1503,8 +1503,8 @@ function hideCreatePlayerForm() {
     document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-    // Load local data immediately while Firebase connects
-    loadLocalDataImmediately();
+    // Load question sets only while Firebase connects
+loadLocalDataImmediately();
     
     // Automatically sync data from cloud on startup (same as clicking the button)
     setTimeout(() => {
@@ -1592,24 +1592,24 @@ function syncAllDataFromFirebase() {
 }
 // Add this new function to load local data immediately
 function loadLocalDataImmediately() {
-    // Load all data from localStorage
+    // Load ONLY question sets from localStorage for offline functionality
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
-    playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
-    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
-    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
     
-    // Update UI with local data immediately
-    updatePlayerSelects();
+    // DO NOT load player profiles from localStorage - only use Firebase
+    playerProfiles = {};
+    revisionProgress = {};
+    practiceHistory = {};
+    dailyRevisionScores = {};
+    
+    // Update UI with question sets only
     loadQuestionSets();
     updateSubjectSelect();
     
-    console.log('Local data loaded. Players found:', getAllPlayerNames());
+    console.log('Local question sets loaded. Waiting for Firebase player profiles...');
     
-    // Don't auto-login here - wait for Firebase sync to complete
+    // Show login gateway immediately
     switchPracticeView('loginGatewayView');
 }
-
 
         function checkForUpdates() {
     showNotification('Checking for new question sets...');
@@ -1824,23 +1824,25 @@ function setupOptimizedFirebaseListeners() {
 }
 
 function loadLocalData() {
-    // Load all data from localStorage first
+    // Load question sets from localStorage first
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
-    playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
-    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
-    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+    
+    // DO NOT load player profiles from localStorage - wait for Firebase
+    playerProfiles = {};
+    revisionProgress = {};
+    practiceHistory = {};
+    dailyRevisionScores = {};
     
     // Update UI with local data
     loadQuestionSets();
     updateSubjectSelect();
-    updatePlayerSelects();
-    if (currentPlayerName) loadPlayerProgress();
     
-    // Check for auto-login
+    // Player profiles will be loaded from Firebase separately
+    console.log('Waiting for Firebase player profiles...');
+    
+    // Check for auto-login after Firebase loads
     checkAutoLogin();
 }
-
 
 
 function setupLeaderboardListener() {
@@ -2689,8 +2691,22 @@ function syncPendingUserData() {
             });
         }
         
-  function getAllPlayerNames() {
-    return [...new Set(Object.keys(revisionProgress).filter(Boolean).concat(Object.keys(playerProfiles).filter(Boolean)))];
+ function getAllPlayerNames() {
+    // Only return players from Firebase - clear any local storage players
+    const firebasePlayers = Object.keys(playerProfiles).filter(Boolean);
+    
+    // Clear any players that might be in localStorage but not in Firebase
+    const localPlayers = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    Object.keys(localPlayers).forEach(playerName => {
+        if (!playerProfiles[playerName]) {
+            // This player exists in localStorage but not in Firebase, remove them
+            delete localPlayers[playerName];
+            localStorage.removeItem(`pscPlayerPFP_${playerName}`);
+        }
+    });
+    localStorage.setItem('pscPlayerProfiles', JSON.stringify(localPlayers));
+    
+    return firebasePlayers;
 }
 
         function saveQuestionSets(){
