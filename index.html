@@ -1304,6 +1304,20 @@
 
 
     <script>
+        function clearLocalStorageProfiles() {
+    // Clear player profiles from localStorage
+    localStorage.removeItem('pscPlayerProfiles');
+    
+    // Also clear any related player data
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach(key => {
+        if (key.startsWith('pscPlayerPFP_')) {
+            localStorage.removeItem(key);
+        }
+    });
+    
+    console.log('Cleared all local storage player profiles');
+}
         // --- CONSTANTS ---
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
@@ -1352,29 +1366,29 @@ function hideCreatePlayerForm() {
         // --- 2. NEW OPTIMIZED SYNC LOGIC ---
         
         function initializeFirebase() {
-            // Initialize Firebase with your hardcoded config
-            if (firebase.apps.length === 0) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            db = firebase.database();
+    // Initialize Firebase with your hardcoded config
+    if (firebase.apps.length === 0) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.database();
 
-            updateFirebaseStatus('Connecting...', false);
+    updateFirebaseStatus('Connecting...', false);
 
-            // Connection Listener
-            db.ref('.info/connected').on('value', snapshot => {
-                if (snapshot.val() === true) {
-                    updateFirebaseStatus('Connected', true);
-                    isFirebaseConnected = true;
-                    console.log('Firebase connected.');
-                    
-                    // START THE SMART SYNC
-                    setupSmartSync(); 
-                } else {
-                    updateFirebaseStatus('Disconnected (Offline Mode)', false);
-                    isFirebaseConnected = false;
-                }
-            });
+    // Connection Listener
+    db.ref('.info/connected').on('value', snapshot => {
+        if (snapshot.val() === true) {
+            updateFirebaseStatus('Connected', true);
+            isFirebaseConnected = true;
+            console.log('Firebase connected.');
+            
+            // START THE SMART SYNC
+            setupOptimizedFirebaseListeners(); 
+        } else {
+            updateFirebaseStatus('Disconnected (Offline Mode)', false);
+            isFirebaseConnected = false;
         }
+    });
+}
 
         function setupSmartSync() {
             if (!db) return;
@@ -1495,7 +1509,13 @@ function hideCreatePlayerForm() {
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 
-        function init() {
+       function init() {
+    // CLEAR ALL PLAYER DATA FROM LOCALSTORAGE ON STARTUP
+    // Don't load player data from localStorage on startup
+playerProfiles = {};
+revisionProgress = {};
+practiceHistory = {};
+dailyRevisionScores = {};    
     initializeFirebase(); // This will connect and then call loadFromFirebase()
     populateAvatars();
     setDailyQuote();
@@ -1503,8 +1523,13 @@ function hideCreatePlayerForm() {
     document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-    // Load question sets only while Firebase connects
-loadLocalDataImmediately();
+    // Load question sets only while Firebase connects - NO PLAYER DATA
+    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+    loadQuestionSets();
+    updateSubjectSelect();
+    
+    // Show login gateway immediately (no players loaded yet)
+    switchPracticeView('loginGatewayView');
     
     // Automatically sync data from cloud on startup (same as clicking the button)
     setTimeout(() => {
@@ -1557,6 +1582,34 @@ loadLocalDataImmediately();
         }
     }
 }
+
+// ADD THIS MISSING FUNCTION
+function savePlayerDataToLocalStorage() {
+    if (!currentPlayerName) return;
+    
+    // Save player profiles to localStorage
+    localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+    
+    // Save revision progress for this player
+    if (revisionProgress[currentPlayerName]) {
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+    }
+    
+    // Save practice history for this player
+    const playerHistory = {};
+    Object.keys(practiceHistory).forEach(key => {
+        if (practiceHistory[key].playerName === currentPlayerName) {
+            playerHistory[key] = practiceHistory[key];
+        }
+    });
+    localStorage.setItem('pscPracticeHistory', JSON.stringify(playerHistory));
+    
+    // Save daily scores
+    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+    
+    console.log('Player data saved to localStorage after login');
+}
+
 function syncAllDataFromFirebase() {
     if (!isFirebaseConnected) {
         showNotification('Firebase not connected', 'error');
@@ -1595,7 +1648,7 @@ function loadLocalDataImmediately() {
     // Load ONLY question sets from localStorage for offline functionality
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     
-    // DO NOT load player profiles from localStorage - only use Firebase
+    // Player profiles are now ONLY from Firebase (localStorage was cleared)
     playerProfiles = {};
     revisionProgress = {};
     practiceHistory = {};
@@ -1743,19 +1796,17 @@ function setupOptimizedFirebaseListeners() {
         console.log('Question sets synced from Firebase');
     });
 
-    // Load player profiles from Firebase and merge with local
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        // Merge strategy: Keep all players from both sources
-        // If same player exists in both, Firebase data takes priority
-        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        updatePlayerSelects();
-        console.log('Player profiles synced from Firebase');
-        
-        // Check auto-login after profiles are loaded
-        checkAutoLogin();
-    });
+    // Load player profiles from Firebase ONLY - don't save to localStorage yet
+db.ref('playerProfiles').once('value').then(snapshot => {
+    const firebaseProfiles = snapshot.val() || {};
+    // REPLACE local playerProfiles with Firebase data only
+    playerProfiles = firebaseProfiles;
+    updatePlayerSelects();
+    console.log('Player profiles loaded from Firebase ONLY');
+    
+    // Check auto-login after profiles are loaded
+    checkAutoLogin();
+});
 
     // Load other data from Firebase
     db.ref('revisionProgress').once('value').then(snapshot => {
@@ -1773,13 +1824,7 @@ function setupOptimizedFirebaseListeners() {
             if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
         }
     });
-}        function updateFirebaseStatus(status, isConnected) {
-            const statusEl = document.getElementById('firebaseStatus');
-            if (statusEl) {
-                statusEl.textContent = status;
-            }
-        }
-
+}
         
         function saveFirebaseConfig() {
             try {
@@ -1827,21 +1872,11 @@ function loadLocalData() {
     // Load question sets from localStorage first
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     
-    // DO NOT load player profiles from localStorage - wait for Firebase
-    playerProfiles = {};
-    revisionProgress = {};
-    practiceHistory = {};
-    dailyRevisionScores = {};
-    
     // Update UI with local data
     loadQuestionSets();
     updateSubjectSelect();
     
-    // Player profiles will be loaded from Firebase separately
     console.log('Waiting for Firebase player profiles...');
-    
-    // Check for auto-login after Firebase loads
-    checkAutoLogin();
 }
 
 
@@ -1880,14 +1915,14 @@ function syncPendingUserData() {
 }
 
         function checkAutoLogin() {
-            const lastPlayer = localStorage.getItem('pscLastPlayer');
-            // We use the *global* playerProfiles, which has just been updated
-            if (lastPlayer && playerProfiles[lastPlayer]) {
-                loginPlayer(lastPlayer, true); 
-            } else {
-                switchPracticeView('loginGatewayView');
-            }
-        }
+    const lastPlayer = localStorage.getItem('pscLastPlayer');
+    // Check if we have this player in the Firebase-loaded profiles
+    if (lastPlayer && playerProfiles[lastPlayer]) {
+        loginPlayer(lastPlayer, true); 
+    } else {
+        switchPracticeView('loginGatewayView');
+    }
+}
         
         // --- DATA MANAGEMENT ---
         function exportData() {
@@ -2145,6 +2180,10 @@ function syncPendingUserData() {
         document.getElementById('editQuestionsSection').classList.add('hidden');
         loadQuestionSets();
     }
+    if (tabName === 'reportedQuestions') {
+    document.getElementById('editQuestionsSection').classList.add('hidden');
+    renderReportedQuestions();
+}
     if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
     if (tabName === 'adminAttendance') {
          currentAdminAttendanceDate = new Date();
@@ -2153,8 +2192,9 @@ function syncPendingUserData() {
         renderAdminAttendanceCalendar(firstPlayer);
     }
     if (tabName === 'reportedQuestions') {
-        renderReportedQuestions();
-    }
+    renderReportedQuestions();
+    // No need to update badges here since they're updated in real-time now
+}
     if (tabName === 'adminSystem') {
         document.getElementById('editQuestionsSection').classList.add('hidden');
         updatePlayerSelects();
@@ -2243,6 +2283,13 @@ function syncPendingUserData() {
         function loginPlayer(name, isAutoLogin = false) {
             currentPlayerName = name;
             localStorage.setItem('pscLastPlayer', currentPlayerName);
+            // ADD THIS LINE: Save player data to localStorage only after login
+    savePlayerDataToLocalStorage();
+    
+    localStorage.setItem('pscLastPlayer', currentPlayerName);
+    
+    handleDailyLogin();
+    // ... rest of the function remains the same
             
             handleDailyLogin();
 
@@ -2530,6 +2577,7 @@ function syncPendingUserData() {
                 }
             }
             savePlayerProfiles();
+            savePlayerDataToLocalStorage()
             updateProgressUI();
         }
 
@@ -2580,6 +2628,7 @@ function syncPendingUserData() {
             
             savePlayerProfiles();
             return totalXpGained;
+            savePlayerDataToLocalStorage()
         }
 
         function getLevelForXP(xp) {
@@ -2691,22 +2740,9 @@ function syncPendingUserData() {
             });
         }
         
- function getAllPlayerNames() {
-    // Only return players from Firebase - clear any local storage players
-    const firebasePlayers = Object.keys(playerProfiles).filter(Boolean);
-    
-    // Clear any players that might be in localStorage but not in Firebase
-    const localPlayers = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-    Object.keys(localPlayers).forEach(playerName => {
-        if (!playerProfiles[playerName]) {
-            // This player exists in localStorage but not in Firebase, remove them
-            delete localPlayers[playerName];
-            localStorage.removeItem(`pscPlayerPFP_${playerName}`);
-        }
-    });
-    localStorage.setItem('pscPlayerProfiles', JSON.stringify(localPlayers));
-    
-    return firebasePlayers;
+function getAllPlayerNames() {
+    // Only return players from Firebase - ignore localStorage completely
+    return Object.keys(playerProfiles).filter(Boolean);
 }
 
         function saveQuestionSets(){
@@ -3389,15 +3425,18 @@ function showAdminSetupModal() {
     }
 }
 
-        function enterAdminMode(username) {
-            isAdminLoggedIn = true;
-            document.querySelector('.container').classList.add('hidden');
-            // document.getElementById('adminLoginBtn').classList.add('hidden'); // Button is no longer fixed
-            document.getElementById('adminPanel').classList.remove('hidden');
-            document.getElementById('adminWelcome').textContent = `Welcome, ${username}!`;
-            updatePlayerSelects();
-            switchAdminTab('adminQuestionSets');
-        }
+                function enterAdminMode(username) {
+    isAdminLoggedIn = true;
+    document.querySelector('.container').classList.add('hidden');
+    document.getElementById('adminPanel').classList.remove('hidden');
+    document.getElementById('adminWelcome').textContent = `Welcome, ${username}!`;
+    updatePlayerSelects();
+    
+    // UPDATE: Update badges when admin logs in
+    updateAdminBadges();
+    
+    switchAdminTab('adminQuestionSets');
+}
 
         function adminLogout() {
             isAdminLoggedIn = false;
@@ -3552,7 +3591,9 @@ function showAdminSetupModal() {
     localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
     if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
     showNotification('Question reported for admin review.', 'success');
-    updateAdminBadges(); // Add this line
+    
+    // UPDATE: Always update admin badges when a question is reported
+    updateAdminBadges();
 }
 
         function renderReportedQuestions() {
@@ -3565,36 +3606,44 @@ function showAdminSetupModal() {
                     <p style="font-size: 12px; color: #555;">Reported by ${report.reportedBy} on ${new Date(report.reportedAt).toLocaleDateString()}</p>
                     <div style="margin-top: 10px;"><button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review & Edit</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss Report</button></div></div>`;
             }).join('');
-             // Update the admin badge
-    updateAdminBadges();
+             
         }
 
         function dismissReport(reportId, silent = false) {
-            reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
-            localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-            if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
-             updateAdminBadges(); // Add this line
+    reportedQuestions = reportedQuestions.filter(r => r.reportId !== reportId);
+    localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+    if (isFirebaseConnected) db.ref('reportedQuestions').set(reportedQuestions);
+    
+    // UPDATE: Always update admin badges when a report is dismissed
+    updateAdminBadges();
+    
     if (!silent) showNotification('Report dismissed.', 'success');
-        }
+}
 
         function editReportedQuestion(reportId) {
-            const report = reportedQuestions.find(r => r.reportId === reportId);
-            if (!report) return;
-            const qIndex = (questionSets[report.setName]?.questions || []).findIndex(q => q.question === report.question.question);
-            if (qIndex === -1) { showNotification('Original question not found. It may have been edited or deleted.', 'error'); dismissReport(reportId); return; }
-            editingFromReport = { active: true, reportId: report.reportId };
-            document.getElementById('reportedQuestionsSection').classList.add('hidden');
-            editQuestionSet(report.setName);
-            setTimeout(() => editSpecificQuestion(report.setName, qIndex), 100);
-        }
-        
-        function returnToReportedQuestionsView() {
-            editingFromReport = { active: false, reportId: null };
-            document.getElementById('editQuestionsSection').classList.add('hidden');
-            document.getElementById('reportedQuestionsSection').classList.remove('hidden');
-            renderReportedQuestions();
-        }
-
+    const report = reportedQuestions.find(r => r.reportId === reportId);
+    if (!report) return;
+    const qIndex = (questionSets[report.setName]?.questions || []).findIndex(q => q.question === report.question.question);
+    if (qIndex === -1) { 
+        showNotification('Original question not found. It may have been edited or deleted.', 'error'); 
+        dismissReport(reportId); 
+        return; 
+    }
+    editingFromReport = { active: true, reportId: report.reportId };
+    
+    // Switch to the question sets tab instead of trying to hide non-existent section
+    switchAdminTab('adminQuestionSets');
+    editQuestionSet(report.setName);
+    setTimeout(() => editSpecificQuestion(report.setName, qIndex), 100);
+}
+       function returnToReportedQuestionsView() {
+    editingFromReport = { active: false, reportId: null };
+    document.getElementById('editQuestionsSection').classList.add('hidden');
+    
+    // Switch back to reported questions tab
+    switchAdminTab('reportedQuestions');
+    renderReportedQuestions();
+}
         // === NEW EXPORT FUNCTION ===
 function exportQuestionSet(setName) {
     const set = questionSets[setName];
@@ -3619,6 +3668,14 @@ function exportQuestionSet(setName) {
         // If clipboard fails, show the text in an alert
         alert(`Export for ${setName}:\n\n${formattedQuestions}\n\nPlease copy this text manually.`);
     });
+}
+
+function updateFirebaseStatus(status, isConnected) {
+    const statusEl = document.getElementById('firebaseStatus');
+    if (statusEl) {
+        statusEl.textContent = status;
+        statusEl.style.color = isConnected ? 'green' : 'red';
+    }
 }
     </script>
 </body>
