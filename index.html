@@ -1342,6 +1342,7 @@
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
         const revisionIntervals = [1, 3, 7, 14, 30, 60, 90];
         const DESTRUCTIVE_ACTION_PASSWORD = "2525"; // Added as requested
+        const QUESTION_SETS_VERSION = '1.0'; // Change this when you delete question sets
         
         // --- GAMIFICATION & LEVELING SYSTEM ---
         const LEVEL_CONFIG = [
@@ -1353,6 +1354,71 @@
             { minXp: 9000, title: "Platinum 💠", nextLevelXp: 12000 },
             { minXp: 12000, title: "Diamond 💎", nextLevelXp: Infinity }
         ];
+        // --- QUESTION SET VERSION CONTROL ---
+function checkQuestionSetsVersion() {
+    const localVersion = localStorage.getItem('pscQuestionSetsVersion');
+    if (localVersion !== QUESTION_SETS_VERSION) {
+        console.log('Question sets version outdated, clearing cache');
+        localStorage.removeItem('pscQuestionSets');
+        localStorage.setItem('pscQuestionSetsVersion', QUESTION_SETS_VERSION);
+        return true; // Version was outdated, cache cleared
+    }
+    return false; // Version is current
+}
+
+function syncQuestionSetsFromFirebase() {
+    if (!isFirebaseConnected) {
+        showNotification('Not connected to cloud', 'warning');
+        return;
+    }
+    
+    showNotification('Downloading latest question sets...');
+    
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        questionSets = firebaseSets;
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        
+        loadQuestionSets();
+        updateSubjectSelect();
+        
+        showNotification('Question sets updated from cloud!', 'success');
+    }).catch(error => {
+        console.error('Failed to sync question sets:', error);
+        showNotification('Failed to update question sets', 'error');
+    });
+}
+
+function forceRefreshQuestionSets() {
+    if (!isFirebaseConnected) {
+        showNotification('Not connected to cloud', 'error');
+        return;
+    }
+    
+    const confirmed = confirm('This will refresh ALL question sets from the cloud. This may take a moment. Continue?');
+    if (!confirmed) return;
+    
+    showNotification('Refreshing all question sets from cloud...');
+    
+    // Clear local question sets first
+    questionSets = {};
+    localStorage.removeItem('pscQuestionSets');
+    
+    // Then reload from Firebase
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        questionSets = firebaseSets;
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        
+        loadQuestionSets();
+        updateSubjectSelect();
+        
+        showNotification('All question sets refreshed from cloud!', 'success');
+    }).catch(error => {
+        showNotification('Failed to refresh question sets', 'error');
+        console.error('Refresh error:', error);
+    });
+}
 function showCreatePlayerForm() {
     document.getElementById('createPlayerForm').classList.remove('hidden');
     document.getElementById('newPlayerName').focus();
@@ -1528,8 +1594,7 @@ function hideCreatePlayerForm() {
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
-
-       function init() {
+function init() {
     // CLEAR ALL PLAYER DATA FROM LOCALSTORAGE ON STARTUP
     // Don't load player data from localStorage on startup
 playerProfiles = {};
@@ -1543,6 +1608,9 @@ dailyRevisionScores = {};
     document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
+    // Check if question sets need refresh due to version change
+    const needsRefresh = checkQuestionSetsVersion();
+    
     // Load question sets only while Firebase connects - NO PLAYER DATA
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     loadQuestionSets();
@@ -1554,6 +1622,10 @@ dailyRevisionScores = {};
     // Automatically sync data from cloud on startup (same as clicking the button)
     setTimeout(() => {
         syncAllDataFromFirebase();
+        // If version was outdated, force question set refresh
+        if (needsRefresh && isFirebaseConnected) {
+            setTimeout(() => syncQuestionSetsFromFirebase(), 2000);
+        }
     }, 1000); // Small delay to ensure Firebase is connected
     
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
@@ -1759,6 +1831,7 @@ function switchTab(tabName) {
             }
 
             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            localStorage.setItem('pscQuestionSetsVersion', QUESTION_SETS_VERSION);
             
             if(isFirebaseConnected) {
                 // We assume if you are saving, you are the Admin uploading new data
