@@ -24,6 +24,7 @@
     content: "";
 }
 
+
         nav.hidden {
     display: none !important;
 }
@@ -2526,9 +2527,12 @@ if (category === 'math') {
             document.getElementById('endPracticeBtn').disabled = false;
 
             
-           const question = currentSet[currentQuestionIndex];
-let questionHTML = `${currentQuestionIndex + 1}. ${question.question}`;
-
+          const question = currentSet[currentQuestionIndex];
+    
+    // REMOVE THE WORD "statement" - ADD THIS LINE:
+    let cleanedQuestion = question.question.replace(/statement/g, '');
+    
+    let questionHTML = `${currentQuestionIndex + 1}. ${cleanedQuestion}`;
 // If it's a statement-wise question, format it better
 if (question.type === 'statement') {
     questionHTML = `<div class="statement-question">${questionHTML.replace(/(\d\.)/g, '<br>$1')}</div>`;
