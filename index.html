@@ -12,6 +12,17 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
+        /* Statement-wise question formatting */
+.statement-question {
+    line-height: 1.6;
+    text-align: left;
+}
+
+.statement-question br {
+    display: block;
+    margin-bottom: 8px;
+    content: "";
+}
 
         nav.hidden {
     display: none !important;
@@ -1139,10 +1150,18 @@
                     <h3>Bulk Import Questions</h3>
                     <div class="form-group">
                         <label>Set Category (for timer):</label>
-                        <select id="setCategory">
-                            <option value="gk">GK (10s Practice / 10s Revision)</option>
-                            <option value="math">Math (45s Practice / 45s Revision)</option>
-                        </select>
+                        <select id="setCategory" onchange="toggleCustomTimeSettings()">
+    <option value="gk">GK (10s Practice / 10s Revision)</option>
+    <option value="math">Math (45s Practice / 45s Revision)</option>
+    <option value="custom">Custom Time (Set below)</option>
+</select>
+<div id="customTimeSettings" class="form-group" style="display: none;">
+    <label>Practice Time per Question (seconds):</label>
+    <input type="number" id="customPracticeTime" min="5" max="300" value="30" style="margin-bottom: 10px;">
+    
+    <label>Revision Time per Question (seconds):</label>
+    <input type="number" id="customRevisionTime" min="5" max="300" value="30">
+</div>
                     </div>
                     <div class="form-group">
                         <label>Set Upload Date:</label>
@@ -1161,8 +1180,9 @@
                         <input type="text" id="bulkSetName" placeholder="Enter name for the new question set" />
                     </div>
                     <div class="form-group">
-                        <label>Paste questions (Format: Question | Opt1 | Opt2 | Opt3 | Opt4 | CorrectLetter):</label>
-                        <textarea id="bulkQuestions" rows="6"></textarea>
+                        <label>Paste questions (Format):<br>
+1. Regular: Question | Opt1 | Opt2 | Opt3 | Opt4 | CorrectLetter<br>
+2. Statement Type: Question with numbered statements 1. First statement 2. Second statement 3. Third statement 4. Fourth statement | Option A | Option B | Option C | Option D | CorrectLetter</label><textarea id="bulkQuestions" rows="6"></textarea>
                     </div>
                     <button onclick="importBulkQuestions()">Import Questions</button>
                 </div>
@@ -2358,8 +2378,16 @@ function syncPendingUserData() {
             }
             
             const set = questionSets[setName];
-            const category = set.category || 'gk';
-            let timePerQuestion = category === 'math' ? 45 : 10;
+const category = set.category || 'gk';
+let timePerQuestion;
+
+if (category === 'math') {
+    timePerQuestion = 45;
+} else if (category === 'custom' && set.customPracticeTime) {
+    timePerQuestion = set.customPracticeTime;
+} else {
+    timePerQuestion = 10; // Default GK time
+}
 
             currentQuestionIndex = 0; score = 0; timeElapsed = 0;
             totalTimeLimit = currentSet.length * timePerQuestion; 
@@ -2381,6 +2409,17 @@ function syncPendingUserData() {
             }, 1000);
             showNextQuestion();
         }
+
+        function toggleCustomTimeSettings() {
+    const categorySelect = document.getElementById('setCategory');
+    const customTimeDiv = document.getElementById('customTimeSettings');
+    
+    if (categorySelect.value === 'custom') {
+        customTimeDiv.style.display = 'block';
+    } else {
+        customTimeDiv.style.display = 'none';
+    }
+}
         
         function showNextQuestion() {
             if (currentQuestionIndex >= currentSet.length) {
@@ -2392,8 +2431,19 @@ function syncPendingUserData() {
             document.getElementById('endPracticeBtn').disabled = false;
 
             
-            const question = currentSet[currentQuestionIndex];
-            document.getElementById('practiceQuestion').textContent = `${currentQuestionIndex + 1}. ${question.question}`;
+           const question = currentSet[currentQuestionIndex];
+let questionHTML = `${currentQuestionIndex + 1}. ${question.question}`;
+
+// If it's a statement-wise question, format it better
+if (question.type === 'statement') {
+    questionHTML = `<div class="statement-question">${questionHTML.replace(/(\d\.)/g, '<br>$1')}</div>`;
+} else {
+    questionHTML = `<div>${questionHTML}</div>`;
+}
+
+document.getElementById('practiceQuestion').innerHTML = questionHTML;
+
+document.getElementById('practiceQuestion').innerHTML = questionHTML;
             const optionsDiv = document.getElementById('practiceOptions');
             optionsDiv.innerHTML = '';
             question.options.forEach((option, index) => {
@@ -2779,19 +2829,42 @@ function getAllPlayerNames() {
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
                 const category = document.getElementById('setCategory').value;
-                questionSets[setName] = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category, subject: subject };
+                const setData = { 
+    questions: [], 
+    uploadDate: uploadDate || new Date().toISOString().split('T')[0], 
+    type: 'questions', 
+    category: category, 
+    subject: subject 
+};
+
+// Add custom time settings if category is custom
+if (category === 'custom') {
+    setData.customPracticeTime = parseInt(document.getElementById('customPracticeTime').value) || 30;
+    setData.customRevisionTime = parseInt(document.getElementById('customRevisionTime').value) || 30;
+}
+
+questionSets[setName] = setData;
             } else {
                 // Update subject if importing into existing set
                 questionSets[setName].subject = subject;
             }
 
             bulkText.split('\n').forEach(line => {
-                const parts = line.split('|').map(p => p.trim());
-                if(parts.length === 6) {
-                    questionSets[setName].questions.push({ question: parts[0], options: parts.slice(1, 5), correctAnswer: parts[5].toUpperCase() });
-                    imported++;
-                }
-            });
+    const parts = line.split('|').map(p => p.trim());
+    if(parts.length === 6) {
+        // Check if this is a statement-wise question (contains numbered statements)
+        const questionText = parts[0];
+        const hasNumberedStatements = /\d\.\s/.test(questionText);
+        
+        questionSets[setName].questions.push({ 
+            question: questionText, 
+            options: parts.slice(1, 5), 
+            correctAnswer: parts[5].toUpperCase(),
+            type: hasNumberedStatements ? 'statement' : 'regular' // Add type field
+        });
+        imported++;
+    }
+});
             saveQuestionSets();
             showNotification(`${imported} questions imported to "${setName}" under subject "${subject}"`);
             loadQuestionSets(); 
@@ -2909,9 +2982,26 @@ function getAllPlayerNames() {
             const question = questionSets[setName].questions[qIndex];
             document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
             document.getElementById('editQuestionText').value = question.question;
-            document.getElementById('editQuestionOptions').value = question.options.join('\n');
-            document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-            
+document.getElementById('editQuestionOptions').value = question.options.join('\n');
+document.getElementById('editCorrectAnswer').value = question.correctAnswer;
+
+// Add type selection
+const typeSelect = document.getElementById('editQuestionType') || (() => {
+    // Create type selector if it doesn't exist
+    const formGroup = document.createElement('div');
+    formGroup.className = 'form-group';
+    formGroup.innerHTML = `
+        <label>Question Type:</label>
+        <select id="editQuestionType">
+            <option value="regular">Regular Question</option>
+            <option value="statement">Statement-wise Question</option>
+        </select>
+    `;
+    document.getElementById('editQuestionText').parentNode.insertBefore(formGroup, document.getElementById('editQuestionText').nextSibling);
+    return document.getElementById('editQuestionType');
+})();
+
+typeSelect.value = question.type || 'regular';
             document.getElementById('questionsToEditList').classList.add('hidden');
             document.getElementById('questionEditForm').classList.remove('hidden');
         }
@@ -2924,7 +3014,13 @@ function getAllPlayerNames() {
             if (!newQText || !newOptsText) { showNotification('Question text and options are required.', 'error'); return; }
             const newOptions = newOptsText.split('\n').map(o => o.trim()).filter(Boolean);
             if(newOptions.length !== 4) { showNotification('Please provide exactly 4 options.', 'error'); return; }
-            questionSets[setName].questions[qIndex] = { question: newQText, options: newOptions, correctAnswer: newCorrectAnswer };
+const questionType = document.getElementById('editQuestionType') ? document.getElementById('editQuestionType').value : 'regular';
+questionSets[setName].questions[qIndex] = { 
+    question: newQText, 
+    options: newOptions, 
+    correctAnswer: newCorrectAnswer,
+    type: questionType
+};
             saveQuestionSets();
             showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
             if (editingFromReport.active) {
@@ -3652,14 +3748,13 @@ function exportQuestionSet(setName) {
         return;
     }
 
-    // Format: question|option|option|option|option|rightanswercode
     const formattedQuestions = set.questions.map(q => {
-        const questionText = q.question.replace(/\n/g, ' ').trim();
-        const options = q.options.map(opt => opt.replace(/\n/g, ' ').trim());
-        const correctAnswer = q.correctAnswer.toUpperCase();
-        
-        return `${questionText}|${options[0]}|${options[1]}|${options[2]}|${options[3]}|${correctAnswer}`;
-    }).join('\n');
+    const questionText = q.question.replace(/\n/g, ' ').trim();
+    const options = q.options.map(opt => opt.replace(/\n/g, ' ').trim());
+    const correctAnswer = q.correctAnswer.toUpperCase();
+    
+    return `${questionText}|${options[0]}|${options[1]}|${options[2]}|${options[3]}|${correctAnswer}`;
+}).join('\n');
 
     // Copy to clipboard
     navigator.clipboard.writeText(formattedQuestions).then(() => {
