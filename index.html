@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSC Exam Prep </title>
+    <title>PSC Exam Prep - Gamified</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -122,7 +122,7 @@
         header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
-            padding: 20px 30px;
+            padding: 5px 10px;
             text-align: center;
             position: relative;
         }
@@ -951,8 +951,8 @@
     <div id="loginGatewayView" class="view-stage">
     <div class="login-container">
 
-        <div class="quote-container" style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); margin: 20px 0; border-radius: var(--border-radius);">
-            <p id="motivationalQuote" style="color: white; text-align: center; font-style: italic; margin: 0; padding: 15px;"></p>
+        <div class="quote-container" style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); margin: 5px 0; border-radius: var(--border-radius);">
+            <p id="motivationalQuote" style="color: white; text-align: center; font-style: italic; margin: 0; padding: 5px;"></p>
         </div>
 
         <div class="login-form">
@@ -1000,7 +1000,7 @@
     <!-- PRACTICE SETUP (SAME AS BEFORE) -->
     <div id="practiceSetupView" class="view-stage hidden">
         <h2 id="setupWelcome">Welcome, Player!</h2>
-        <div class="quote-container" style="background: #f8f9fa; border-left-color: var(--primary-color); margin: 15px 0;">
+        <div class="quote-container" style="background: #f8f9fa; border-left-color: var(--primary-color); margin: 5px 0;">
             <p id="motivationalQuoteLoggedIn" style="color: var(--dark-color); text-shadow: none;"></p>
         </div>
         <hr style="margin: 20px 0;">
@@ -1612,7 +1612,7 @@ function savePlayerDataToLocalStorage() {
 
 function syncAllDataFromFirebase() {
     if (!isFirebaseConnected) {
-        showNotification('Please refresh data from cloud', 'error');
+        showNotification('Firebase not connected', 'error');
         return;
     }
     
@@ -1670,7 +1670,7 @@ function loadLocalDataImmediately() {
 }
         function loadFromFirebase() {
     if (!isFirebaseConnected) { 
-        showNotification('Please refresh data from cloud', 'error'); 
+        showNotification('Firebase not connected', 'error'); 
         return; 
     }
     
@@ -3680,6 +3680,3 @@ function updateFirebaseStatus(status, isConnected) {
     </script>
 </body>
 </html>
-
-
-
