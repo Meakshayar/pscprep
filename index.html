@@ -809,59 +809,81 @@
     .tab-content { padding: 15px; }
 
     /* SPECIAL STYLES FOR VERY SMALL SCREENS (like 540px width) */
-    @media screen and (max-width: 540px) {
-        body.practice-active #practiceSessionView {
-            padding: 10px;
-            padding-top: 50px;
-            justify-content: flex-start;
-        }
-        
-        #practiceQuestion {
-            font-size: 1em;
-            margin-bottom: 10px;
-            line-height: 1.3;
-            padding: 8px;
-        }
-        
-        .option {
-            font-size: 12px;
-            padding: 8px 10px;
-            margin: 5px 0;
-            line-height: 1.2;
-            min-height: auto;
-        }
-        
-        #practiceOptions {
-            margin: 5px 0;
-            max-height: calc(100vh - 200px);
-            overflow-y: auto;
-        }
-        
-        #practiceScore {
-            font-size: 18px;
-            padding: 10px;
-            margin: 10px 0;
-        }
-        
-        .timer {
-            top: 10px;
-            right: 10px;
-            font-size: 1em;
-            padding: 6px 10px;
-        }
-        
-        #practiceSessionView button {
-            padding: 8px 12px;
-            font-size: 12px;
-            margin: 3px;
-        }
-        
-        #nextQuestionContainer {
-            margin-top: 10px;
-        }
+    /* SPECIAL STYLES FOR VERY SMALL SCREENS (like 540px width) */
+@media screen and (max-width: 540px) {
+    body.practice-active #practiceSessionView {
+        padding: 10px;
+        padding-top: 50px;
+        justify-content: flex-start;
     }
+    
+    #practiceQuestion {
+        font-size: 1em;
+        margin-bottom: 10px;
+        line-height: 1.3;
+        padding: 8px;
+    }
+    
+    /* FIX: Preserve statement question formatting on mobile */
+    .statement-question {
+        line-height: 1.4;
+        text-align: left;
+    }
+    
+    .statement-question br {
+        display: block;
+        margin-bottom: 6px;
+        content: "";
+    }
+    
+    .option {
+        font-size: 12px;
+        padding: 8px 10px;
+        margin: 5px 0;
+        line-height: 1.2;
+        min-height: auto;
+    }
+    
+    #practiceOptions {
+        margin: 5px 0;
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+    
+    #practiceScore {
+        font-size: 18px;
+        padding: 10px;
+        margin: 10px 0;
+    }
+    
+    .timer {
+        top: 10px;
+        right: 10px;
+        font-size: 1em;
+        padding: 6px 10px;
+    }
+    
+    #practiceSessionView button {
+        padding: 8px 12px;
+        font-size: 12px;
+        margin: 3px;
+    }
+    
+    #nextQuestionContainer {
+        margin-top: 10px;
+    }
+}
 
     /* Regular small screens (601px - 540px) */
+    /* FIX: Ensure statement questions display properly on all mobile sizes */
+.statement-question {
+    line-height: 1.5;
+}
+
+.statement-question br {
+    display: block;
+    margin-bottom: 6px;
+}
     #practiceQuestion {
         font-size: 1.1em;
         margin-bottom: 15px;
