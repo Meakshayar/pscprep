@@ -1612,7 +1612,7 @@ function savePlayerDataToLocalStorage() {
 
 function syncAllDataFromFirebase() {
     if (!isFirebaseConnected) {
-        showNotification('Firebase not connected', 'error');
+        showNotification('Please refresh data from cloud', 'error');
         return;
     }
     
@@ -1670,7 +1670,7 @@ function loadLocalDataImmediately() {
 }
         function loadFromFirebase() {
     if (!isFirebaseConnected) { 
-        showNotification('Firebase not connected', 'error'); 
+        showNotification('Please refresh data from cloud', 'error'); 
         return; 
     }
     
@@ -3680,3 +3680,4 @@ function updateFirebaseStatus(status, isConnected) {
     </script>
 </body>
 </html>
+
