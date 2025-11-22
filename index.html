@@ -12,16 +12,120 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
-        /* Statement-wise question formatting */
+       /* Statement-wise question formatting - FIXED FOR MOBILE */
 .statement-question {
     line-height: 1.6;
     text-align: left;
+    white-space: pre-line; /* This preserves line breaks */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .statement-question br {
     display: block;
     margin-bottom: 8px;
     content: "";
+}
+
+/* Make statement questions more readable */
+.statement-question strong {
+    color: #2c3e50;
+    display: block;
+    margin-bottom: 10px;
+}
+
+/* Better spacing for statement questions */
+.statement-question br + br {
+    margin-bottom: 12px;
+    display: block;
+    content: "";
+}
+/* MOBILE FIXES FOR STATEMENT QUESTIONS */
+@media screen and (max-width: 600px) {
+    .statement-question {
+        line-height: 1.5;
+        font-size: 14px;
+        padding: 0 5px;
+    }
+    
+    .statement-question br {
+        margin-bottom: 6px;
+    }
+}
+
+/* SPECIAL STYLES FOR VERY SMALL SCREENS (like 540px width) */
+@media screen and (max-width: 540px) {
+    .statement-question {
+        line-height: 1.4;
+        font-size: 13px;
+        padding: 0 3px;
+    }
+    
+    .statement-question br {
+        margin-bottom: 4px;
+    }
+    
+    body.practice-active #practiceQuestion {
+        font-size: 1em;
+        margin-bottom: 10px;
+        line-height: 1.3;
+        padding: 8px;
+        max-height: 30vh; /* Limit height and allow scrolling */
+        overflow-y: auto;
+    }
+}
+
+/* Ensure statement questions work well in practice session */
+#practiceQuestion .statement-question {
+    text-align: left;
+    display: block;
+    width: 100%;
+}
+
+/* Fix for practice session on all mobile sizes */
+@media screen and (max-width: 768px) {
+    #practiceQuestion {
+        max-height: 40vh;
+        overflow-y: auto;
+        padding: 10px 5px;
+    }
+    
+    #practiceQuestion .statement-question {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+}
+
+/* Improved mobile scrolling for practice session */
+@media screen and (max-width: 768px) {
+    body.practice-active #practiceSessionView {
+        padding: 10px;
+        padding-top: 50px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    body.practice-active #practiceQuestion {
+        flex-shrink: 0;
+        min-height: 80px;
+        max-height: 35vh;
+    }
+    
+    body.practice-active #practiceOptions {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        max-height: 45vh;
+    }
+    
+    body.practice-active .score {
+        flex-shrink: 0;
+    }
+    
+    body.practice-active #nextQuestionContainer {
+        flex-shrink: 0;
+    }
 }
 
 
@@ -910,38 +1014,91 @@
     }
 }
 
-/* Laptop screen optimization - no scrolling */
-@media screen and (min-width: 1024px) and (min-height: 768px) {
+/* Laptop screen optimization - SIDE-BY-SIDE LAYOUT (FIXED BUTTONS) */
+@media screen and (min-width: 1024px) {
     body.practice-active #practiceSessionView {
         padding: 20px;
-        padding-top: 60px;
+        padding-top: 60px; /* Space for timer */
         height: 100vh;
-        overflow: hidden;
+        overflow-y: auto; /* Allow scrolling if screen is very short */
+        display: grid;
+        grid-template-columns: 60% 38%;
+        /* Rows: 1. Main Content, 2. Score, 3. Buttons (auto-stacking) */
+        grid-template-rows: 1fr auto min-content; 
+        column-gap: 2%;
+        align-content: start;
     }
     
+    /* Left Side: The Question Statement */
     body.practice-active #practiceQuestion {
+        grid-column: 1;
+        grid-row: 1;
         font-size: 1.2em;
-        margin-bottom: 15px;
-        line-height: 1.4;
-        max-height: 20vh;
+        line-height: 1.6;
+        margin-bottom: 0;
+        /* REDUCED HEIGHT to 60vh to make room for buttons */
+        height: 60vh; 
+        max-height: 60vh;
         overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: var(--border-radius);
+        border: 1px solid #e9ecef;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
     }
     
+    /* Right Side: The Options */
     body.practice-active #practiceOptions {
-        max-height: 50vh;
+        grid-column: 2;
+        grid-row: 1;
+        /* REDUCED HEIGHT to 60vh */
+        height: 60vh;
+        max-height: 60vh;
         overflow-y: auto;
-        margin: 10px 0;
-        flex: 1;
-        min-height: 0;
+        margin: 0;
+        padding: 5px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
     }
     
-    body.practice-active .score {
-        margin: 10px 0;
-        padding: 10px;
-        font-size: 1.1em;
+    /* Style the individual options */
+    body.practice-active .option {
+        font-size: 15px;
+        padding: 10px 15px;
+        margin: 5px 0;
+        width: 100%;
+        box-sizing: border-box;
     }
-}
-    </style>
+
+    /* Score Section */
+    body.practice-active #practiceScore {
+        grid-column: 1 / -1; /* Span full width */
+        grid-row: 2;
+        margin: 5px 0;
+        padding: 5px;
+        font-size: 1.2em;
+        height: auto;
+    }
+    
+    /* BUTTONS: Target all bottom containers (Skip, End, Next, Report).
+       We REMOVED 'grid-row: 3' so they stack naturally at the bottom 
+       instead of overlapping.
+    */
+    body.practice-active #practiceSessionView > div:not(#practiceQuestion):not(#practiceOptions):not(#practiceScore):not(.timer) {
+        grid-column: 1 / -1; /* Span full width */
+        margin-top: 5px;
+        padding-bottom: 5px;
+        position: relative;
+        display: block; /* Ensure they are visible blocks */
+    }
+    
+    /* Ensure statement line breaks work nicely */
+    .statement-question {
+        white-space: pre-wrap;
+        text-align: justify;
+    }
+}    </style>
 </head>
 <body>
     <canvas id="confetti-canvas"></canvas>
@@ -1192,7 +1349,8 @@
                     </div>
                      <div class="form-group">
                         <label>Subject (e.g., History, Math, GK):</label>
-                        <input type="text" id="setSubject" placeholder="Enter Subject for this set">
+                        <input type="text" id="setSubject" list="existingSubjectsList" placeholder="Type new or select existing Subject">
+<datalist id="existingSubjectsList"></datalist>
                     </div>
                     <div class="form-group">
                         <label>Select Target Set:</label>
@@ -1618,12 +1776,9 @@ function hideCreatePlayerForm() {
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 function init() {
-    // CLEAR ALL PLAYER DATA FROM LOCALSTORAGE ON STARTUP
-    // Don't load player data from localStorage on startup
-playerProfiles = {};
-revisionProgress = {};
-practiceHistory = {};
-dailyRevisionScores = {};    
+    // DON'T clear player data on startup - this is what's causing the logout on refresh
+    // Instead, only load question sets and initialize Firebase
+    
     initializeFirebase(); // This will connect and then call loadFromFirebase()
     populateAvatars();
     setDailyQuote();
@@ -1634,15 +1789,20 @@ dailyRevisionScores = {};
     // Check if question sets need refresh due to version change
     const needsRefresh = checkQuestionSetsVersion();
     
-    // Load question sets only while Firebase connects - NO PLAYER DATA
+    // Load question sets
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     loadQuestionSets();
     updateSubjectSelect();
     
-    // Show login gateway immediately (no players loaded yet)
-    switchPracticeView('loginGatewayView');
+    // Check for auto-login first (before showing login gateway)
+    checkAutoLogin();
     
-    // Automatically sync data from cloud on startup (same as clicking the button)
+    // If no auto-login, show login gateway
+    if (!currentPlayerName) {
+        switchPracticeView('loginGatewayView');
+    }
+    
+    // Automatically sync data from cloud on startup
     setTimeout(() => {
         syncAllDataFromFirebase();
         // If version was outdated, force question set refresh
@@ -1697,7 +1857,6 @@ dailyRevisionScores = {};
         }
     }
 }
-
 // ADD THIS MISSING FUNCTION
 function savePlayerDataToLocalStorage() {
     if (!currentPlayerName) return;
@@ -1971,19 +2130,50 @@ db.ref('playerProfiles').once('value').then(snapshot => {
         function setupOptimizedFirebaseListeners() {
     if (!db) return;
     
-    // Load local data first
-    loadLocalData();
-    
-    // Only download NEW question sets (check for updates)
-    checkForNewQuestionSets();
-    
-    // Real-time listener only for daily scores (leaderboard)
-    setupLeaderboardListener();
-    
-    // Upload any pending user data
-    syncPendingUserData();
-}
+    // Load question sets from Firebase and merge with local
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        // Merge Firebase sets with local, Firebase takes priority for conflicts
+        questionSets = { ...questionSets, ...firebaseSets };
+        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        loadQuestionSets();
+        updateSubjectSelect();
+        console.log('Question sets synced from Firebase');
+    });
 
+    // Load player profiles from Firebase - but don't overwrite existing local data
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        // Merge Firebase profiles with existing local profiles
+        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+        
+        // Save merged profiles to localStorage for persistence
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        
+        updatePlayerSelects();
+        console.log('Player profiles loaded and merged from Firebase');
+        
+        // Check auto-login after profiles are loaded
+        checkAutoLogin();
+    });
+
+    // Load other data from Firebase
+    db.ref('revisionProgress').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        revisionProgress = { ...revisionProgress, ...data };
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+    });
+
+    // Real-time listener only for daily scores (leaderboard)
+    db.ref('dailyRevisionScores').on('value', snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            dailyRevisionScores = data;
+            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+            if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
+        }
+    });
+}
 function loadLocalData() {
     // Load question sets from localStorage first
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
@@ -2030,16 +2220,30 @@ function syncPendingUserData() {
     }
 }
 
-        function checkAutoLogin() {
+       function checkAutoLogin() {
     const lastPlayer = localStorage.getItem('pscLastPlayer');
-    // Check if we have this player in the Firebase-loaded profiles
+    
+    // Check if we have this player in the loaded profiles
     if (lastPlayer && playerProfiles[lastPlayer]) {
-        loginPlayer(lastPlayer, true); 
+        // Auto-login the player
+        currentPlayerName = lastPlayer;
+        
+        // Load player progress and update UI
+        handleDailyLogin();
+        showNotification(`Welcome back, ${currentPlayerName}!`, 'success');
+        
+        // SHOW THE NAV TABS AFTER LOGIN
+        document.getElementById('tab-nav').classList.remove('hidden');
+        document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
+        loadPlayerProgress();
+        switchPracticeView('practiceSetupView');
+        updateAllBadges();
+        updateSubjectSelect();
     } else {
+        // No auto-login possible, show login gateway
         switchPracticeView('loginGatewayView');
     }
-}
-        
+}    
         // --- DATA MANAGEMENT ---
         function exportData() {
             const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
@@ -2517,7 +2721,7 @@ if (category === 'math') {
     }
 }
         
-        function showNextQuestion() {
+                   function showNextQuestion() {
             if (currentQuestionIndex >= currentSet.length) {
                 endPractice();
                 return;
@@ -2526,23 +2730,24 @@ if (category === 'math') {
             document.getElementById('skipQuestionBtn').disabled = false;
             document.getElementById('endPracticeBtn').disabled = false;
 
+            const question = currentSet[currentQuestionIndex];
+    
+            // FIXED: Proper handling of statement questions
+            let questionHTML = '';
             
-          const question = currentSet[currentQuestionIndex];
-    
-    // REMOVE THE WORD "statement" - ADD THIS LINE:
-    let cleanedQuestion = question.question.replace(/statement/g, '');
-    
-    let questionHTML = `${currentQuestionIndex + 1}. ${cleanedQuestion}`;
-// If it's a statement-wise question, format it better
-if (question.type === 'statement') {
-    questionHTML = `<div class="statement-question">${questionHTML.replace(/(\d\.)/g, '<br>$1')}</div>`;
-} else {
-    questionHTML = `<div>${questionHTML}</div>`;
-}
+            if (question.type === 'statement') {
+                // Remove the word "statement" and format properly
+                let cleanedQuestion = question.question.replace(/statement/g, '');
+                // Add proper line breaks for each numbered point
+                cleanedQuestion = cleanedQuestion.replace(/(\d\.)/g, '<br><br>$1');
+                questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
+            } else {
+                // Regular questions
+                questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${question.question}</strong></div>`;
+            }
 
-document.getElementById('practiceQuestion').innerHTML = questionHTML;
-
-document.getElementById('practiceQuestion').innerHTML = questionHTML;
+            document.getElementById('practiceQuestion').innerHTML = questionHTML;
+            
             const optionsDiv = document.getElementById('practiceOptions');
             optionsDiv.innerHTML = '';
             question.options.forEach((option, index) => {
@@ -2836,6 +3041,21 @@ document.getElementById('practiceQuestion').innerHTML = questionHTML;
             }).join('') || '<p>No question sets found.</p>';
             
             showAddQuestionsSection(); // To populate bulk upload dropdown
+            // --- NEW CODE: Populate Subject Suggestions ---
+    const subjectList = document.getElementById('existingSubjectsList');
+    if (subjectList) {
+        subjectList.innerHTML = ''; // Clear previous list
+        // Get all unique subjects currently in the system
+        const existingSubjects = [...new Set(Object.values(questionSets).map(s => s.subject || ''))].filter(Boolean).sort();
+        
+        // Add them to the dropdown list
+        existingSubjects.forEach(subj => {
+            const option = document.createElement('option');
+            option.value = subj;
+            subjectList.appendChild(option);
+        });
+    }
+    // --- END NEW CODE ---
         }
         
         function updateSubjectSelect() {
@@ -3477,7 +3697,7 @@ questionSets[setName].questions[qIndex] = {
             openModal('statsModal');
         }
 
-        function showWrongAnswersPopup(wrongAnswers) {
+                function showWrongAnswersPopup(wrongAnswers) {
             const body = document.getElementById('wrongAnswersBody');
             body.innerHTML = wrongAnswers.map((ans, index) => {
                 const qOptions = ans.questionOptions || [];
@@ -3488,9 +3708,18 @@ questionSets[setName].questions[qIndex] = {
                     const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
                     yourAnswerText = qOptions[selectedIndex] || 'N/A';
                 }
+                
+                // FIXED: Format statement questions properly in missed questions display
+                let questionText = ans.questionText;
+                if (questionText.includes('statement') && questionText.includes('1.')) {
+                    // Remove the word "statement" and format with proper line breaks
+                    questionText = questionText.replace(/statement/g, '');
+                    questionText = questionText.replace(/(\d\.)/g, '<br><br>$1');
+                }
+                
                 return `
                     <div class="question-set" style="margin-top:15px; border-left: 4px solid var(--danger-color);">
-                        <p><strong>${index + 1}. ${ans.questionText}</strong></p>
+                        <div class="statement-question"><strong>${index + 1}. ${questionText}</strong></div>
                         <p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${yourAnswerText}</p>
                         <p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>
                     </div>`;
