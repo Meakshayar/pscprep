@@ -1469,7 +1469,7 @@
                     <h4>Editing Question <span id="currentQuestionIndexDisplay"></span></h4>
                     <div class="form-group">
                         <label>Question Text:</label>
-                        <textarea id="editQuestionText" rows="8" style="white-space: pre-wrap; font-family: inherit;"></textarea>
+                        <textarea id="editQuestionText" rows="3"></textarea>
                     </div>
                     <div class="form-group">
                         <label>Options (one per line):</label>
@@ -1743,7 +1743,7 @@ function hideCreatePlayerForm() {
         let isFirebaseConnected = false;
         
         let questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
-        let practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
+        let practiceHistory = {}; // Practice history is now local-only, not saved to Firebase
         let revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {}; 
         let playerProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
@@ -2241,7 +2241,8 @@ function syncPendingUserData() {
 }    
         // --- DATA MANAGEMENT ---
         function exportData() {
-            const data = { questionSets, practiceHistory, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
+            const data = { questionSets, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
+// Note: practiceHistory removed from export
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2259,8 +2260,7 @@ function syncPendingUserData() {
                     try {
                         const data = JSON.parse(event.target.result);
                         if(data.questionSets) questionSets = data.questionSets;
-                        if(data.practiceHistory) practiceHistory = data.practiceHistory;
-                        if(data.revisionProgress) revisionProgress = data.revisionProgress;
+                        // Remove this line completely - we don't import practice history anymore                        if(data.revisionProgress) revisionProgress = data.revisionProgress;
                         if(data.playerProfiles) playerProfiles = data.playerProfiles;
                         if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
                         if(data.dailyRevisionScores) dailyRevisionScores = data.dailyRevisionScores;
@@ -2287,7 +2287,14 @@ function syncPendingUserData() {
             promptForAdminPassword(() => {
                 questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {}; adminCredentials = null;
                 localStorage.clear();
-                if (isFirebaseConnected) { db.ref().set(null); }
+                if (isFirebaseConnected) { 
+    db.ref('questionSets').remove();
+    db.ref('playerProfiles').remove();
+    db.ref('revisionProgress').remove();
+    db.ref('reportedQuestions').remove();
+    db.ref('dailyRevisionScores').remove();
+    db.ref('adminCredentials').remove();
+}
                 window.location.reload();
             });
         }
@@ -2323,7 +2330,6 @@ function syncPendingUserData() {
 
                 // 6. Sync with Firebase
                 if (isFirebaseConnected) {
-                    historyKeysToDelete.forEach(key => db.ref(`practiceHistory/${key}`).remove());
                     db.ref(`revisionProgress/${playerToRemove}`).remove();
                     db.ref(`playerProfiles/${playerToRemove}`).remove();
                     db.ref('dailyRevisionScores').set(dailyRevisionScores);
@@ -2345,7 +2351,7 @@ function syncPendingUserData() {
                 
                 keysToDelete.forEach(key => {
                     delete practiceHistory[key];
-                    if (isFirebaseConnected) db.ref(`practiceHistory/${key}`).remove();
+                    
                 });
                 
                 localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
@@ -2740,19 +2746,20 @@ const category = set.category || 'gk';
 
             const question = currentSet[currentQuestionIndex];
     
-            // FIXED: Proper handling of ALL questions with numbered points
-let questionHTML = '';
+            // FIXED: Proper handling of statement questions
+            let questionHTML = '';
+            
+            if (question.type === 'statement') {
+                // Remove the word "statement" and format properly
+                let cleanedQuestion = question.question.replace(/statement/g, '');
+                // Add proper line breaks for each numbered point
+                cleanedQuestion = cleanedQuestion.replace(/(\d\.)/g, '<br><br>$1');
+                questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
+            } else {
+                // Regular questions
+                questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${question.question}</strong></div>`;
+            }
 
-// Format ALL questions with proper line breaks for numbered points
-let formattedQuestion = question.question;
-// Add line breaks before each numbered point (1., 2., 3., 4.)
-formattedQuestion = formattedQuestion.replace(/(\d\.)/g, '<br><br>$1');
-
-if (question.type === 'statement') {
-    questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${formattedQuestion}</strong></div>`;
-} else {
-    questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${formattedQuestion}</strong></div>`;
-}
             document.getElementById('practiceQuestion').innerHTML = questionHTML;
             
             const optionsDiv = document.getElementById('practiceOptions');
@@ -2869,7 +2876,6 @@ if (question.type === 'statement') {
             const attemptId = `attempt-${Date.now()}`;
             practiceHistory[attemptId] = currentAttempt;
             localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-            if (isFirebaseConnected) db.ref(`practiceHistory/${attemptId}`).set(currentAttempt);
             
             if (isRevisionMode) {
                 const success = percentage >= MIN_SCORE_FOR_REVISION_SUCCESS;
@@ -3221,11 +3227,10 @@ function getAllPlayerNames() {
                 });
             });
             saveQuestionSets();
-            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+            
             localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
             if (isFirebaseConnected) { 
-                db.ref('questionSets').set(questionSets); 
-                db.ref('practiceHistory').set(practiceHistory); 
+                db.ref('questionSets').set(questionSets);  
                 db.ref('revisionProgress').set(revisionProgress); 
             }
             showNotification(`Set renamed from "${oldName}" to "${newName}".`, 'success');
@@ -3302,15 +3307,19 @@ function getAllPlayerNames() {
     const question = questionSets[setName].questions[qIndex];
     document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
     
-    // FORMAT THE QUESTION TEXT WITH PROPER LINE BREAKS
-    let formattedQuestion = question.question;
-    // Add line breaks before each numbered point (1., 2., 3., 4.)
-    formattedQuestion = formattedQuestion.replace(/(\d\.)/g, '\n\n$1');
-    // Clean up any double line breaks
-    formattedQuestion = formattedQuestion.replace(/\n\n\n/g, '\n\n');
+    // FIX: Replace this line to preserve line breaks
+    document.getElementById('editQuestionText').value = question.question;
     
-    document.getElementById('editQuestionText').value = formattedQuestion;
-    document.getElementById('editQuestionOptions').value = question.options.join('\n');
+    // With this line instead:
+   // Fix for textarea - add actual line breaks for numbered questions
+let questionText = question.question;
+// Add line breaks for numbered points
+questionText = questionText
+    .replace(/1\./g, '\n1.')
+    .replace(/2\./g, '\n\n2.')
+    .replace(/3\./g, '\n\n3.')
+    .replace(/4\./g, '\n\n4.');
+document.getElementById('editQuestionText').value = questionText; document.getElementById('editQuestionOptions').value = question.options.join('\n');
     document.getElementById('editCorrectAnswer').value = question.correctAnswer;
 
     // Add type selection
@@ -3333,6 +3342,33 @@ function getAllPlayerNames() {
     document.getElementById('questionsToEditList').classList.add('hidden');
     document.getElementById('questionEditForm').classList.remove('hidden');
 }
+        function saveEditedQuestion() {
+            const setName = currentEditingSet; const qIndex = currentEditingIndex;
+            const newQText = document.getElementById('editQuestionText').value.trim();
+            const newOptsText = document.getElementById('editQuestionOptions').value.trim();
+            const newCorrectAnswer = document.getElementById('editCorrectAnswer').value;
+            if (!newQText || !newOptsText) { showNotification('Question text and options are required.', 'error'); return; }
+            const newOptions = newOptsText.split('\n').map(o => o.trim()).filter(Boolean);
+            if(newOptions.length !== 4) { showNotification('Please provide exactly 4 options.', 'error'); return; }
+const questionType = document.getElementById('editQuestionType') ? document.getElementById('editQuestionType').value : 'regular';
+questionSets[setName].questions[qIndex] = { 
+    question: newQText, 
+    options: newOptions, 
+    correctAnswer: newCorrectAnswer,
+    type: questionType
+};
+            saveQuestionSets();
+            showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
+            if (editingFromReport.active) {
+                dismissReport(editingFromReport.reportId, true);
+                returnToReportedQuestionsView();
+            } else {
+                const nextQuestionIndex = qIndex + 1;
+                const totalQuestionsInSet = questionSets[setName].questions.length;
+                if (nextQuestionIndex < totalQuestionsInSet) { editSpecificQuestion(setName, nextQuestionIndex); } 
+                else { showNotification(`Finished editing all questions in ${setName}.`, 'success'); cancelQuestionEdit(); }
+            }
+        }
 
         function cancelQuestionEdit() {
             if (editingFromReport.active) { returnToReportedQuestionsView(); } 
@@ -3678,7 +3714,7 @@ function getAllPlayerNames() {
             openModal('statsModal');
         }
 
-         function showWrongAnswersPopup(wrongAnswers) {
+               function showWrongAnswersPopup(wrongAnswers) {
     const body = document.getElementById('wrongAnswersBody');
     body.innerHTML = wrongAnswers.map((ans, index) => {
         const qOptions = ans.questionOptions || [];
@@ -3690,17 +3726,22 @@ function getAllPlayerNames() {
             yourAnswerText = qOptions[selectedIndex] || 'N/A';
         }
         
-        // FIXED: Format ALL questions with proper line breaks for numbered points
+        // SIMPLE FIX: Add line breaks for ALL numbered questions
         let questionText = ans.questionText;
+        
         // Add line breaks before each numbered point (1., 2., 3., 4.)
-        questionText = questionText.replace(/(\d\.)/g, '<br><br>$1');
+        questionText = questionText
+            .replace(/1\./g, '<br>1.')
+            .replace(/2\./g, '<br><br>2.')
+            .replace(/3\./g, '<br><br>3.')
+            .replace(/4\./g, '<br><br>4.');
         
         return `
-                    <div class="question-set" style="margin-top:15px; border-left: 4px solid var(--danger-color);">
-                        <div class="statement-question"><strong>${index + 1}. ${questionText}</strong></div>
-                        <p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${yourAnswerText}</p>
-                        <p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>
-                    </div>`;
+            <div class="question-set" style="margin-top:15px; border-left: 4px solid var(--danger-color);">
+                <div class="statement-question"><strong>${index + 1}. ${questionText}</strong></div>
+                <p class="wrong-answer">Your Answer: ${ans.selectedAnswer}. ${yourAnswerText}</p>
+                <p class="correct-answer">Correct Answer: ${ans.correctAnswer}. ${correctText}</p>
+            </div>`;
     }).join('');
     openModal('wrongAnswersModal');
 }
