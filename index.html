@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
-       /* Statement-wise question formatting - FIXED FOR MOBILE */
+      /* Statement-wise question formatting - FIXED FOR MOBILE */
 .statement-question {
     line-height: 1.6;
     text-align: left;
@@ -23,7 +23,14 @@
 
 .statement-question br {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 4px; /* REDUCED from 8px */
+    content: "";
+}
+
+/* Better spacing for statement questions */
+.statement-question br + br {
+    margin-bottom: 6px; /* REDUCED from 12px */
+    display: block;
     content: "";
 }
 
@@ -32,13 +39,6 @@
     color: #2c3e50;
     display: block;
     margin-bottom: 10px;
-}
-
-/* Better spacing for statement questions */
-.statement-question br + br {
-    margin-bottom: 12px;
-    display: block;
-    content: "";
 }
 /* MOBILE FIXES FOR STATEMENT QUESTIONS */
 @media screen and (max-width: 600px) {
@@ -2735,43 +2735,50 @@ const category = set.category || 'gk';
         }
 
         
-                   function showNextQuestion() {
-            if (currentQuestionIndex >= currentSet.length) {
-                endPractice();
-                return;
-            }
-            document.getElementById('nextQuestionContainer').classList.add('hidden');
-            document.getElementById('skipQuestionBtn').disabled = false;
-            document.getElementById('endPracticeBtn').disabled = false;
+                  function showNextQuestion() {
+    if (currentQuestionIndex >= currentSet.length) {
+        endPractice();
+        return;
+    }
+    document.getElementById('nextQuestionContainer').classList.add('hidden');
+    document.getElementById('skipQuestionBtn').disabled = false;
+    document.getElementById('endPracticeBtn').disabled = false;
 
-            const question = currentSet[currentQuestionIndex];
+    const question = currentSet[currentQuestionIndex];
     
-            // FIXED: Proper handling of statement questions
-            let questionHTML = '';
-            
-            if (question.type === 'statement') {
-                // Remove the word "statement" and format properly
-                let cleanedQuestion = question.question.replace(/statement/g, '');
-                // Add proper line breaks for each numbered point
-                cleanedQuestion = cleanedQuestion.replace(/(\d\.)/g, '<br><br>$1');
-                questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
-            } else {
-                // Regular questions
-                questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${question.question}</strong></div>`;
-            }
+    // FIXED: Proper line breaks for statement questions
+    let questionHTML = '';
+    
+    if (question.type === 'statement') {
+        // Clean up but keep single line breaks between numbered points
+        let cleanedQuestion = question.question
+            .replace(/\n\s*\n/g, '\n') // Remove multiple line breaks, keep single
+            .replace(/\s+/g, ' ')      // Remove extra spaces within lines
+            .trim();
+        
+        // Ensure proper single line breaks between numbered points
+        cleanedQuestion = cleanedQuestion
+            .replace(/(\d\.)/g, '\n$1') // Add line break before each number
+            .trim();
+        
+        questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
+    } else {
+        // Regular questions
+        questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${question.question}</strong></div>`;
+    }
 
-            document.getElementById('practiceQuestion').innerHTML = questionHTML;
-            
-            const optionsDiv = document.getElementById('practiceOptions');
-            optionsDiv.innerHTML = '';
-            question.options.forEach((option, index) => {
-                const optionDiv = document.createElement('div');
-                optionDiv.className = 'option';
-                optionDiv.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
-                optionDiv.onclick = () => selectAnswer(index);
-                optionsDiv.appendChild(optionDiv);
-            });
-        }
+    document.getElementById('practiceQuestion').innerHTML = questionHTML;
+    
+    const optionsDiv = document.getElementById('practiceOptions');
+    optionsDiv.innerHTML = '';
+    question.options.forEach((option, index) => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'option';
+        optionDiv.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+        optionDiv.onclick = () => selectAnswer(index);
+        optionsDiv.appendChild(optionDiv);
+    });
+}
         
         function selectAnswer(selectedIndex) {
             document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
@@ -3303,28 +3310,30 @@ function getAllPlayerNames() {
         }
 
         function editSpecificQuestion(setName, qIndex) {
-    currentEditingIndex = qIndex; currentEditingSet = setName;
+    currentEditingIndex = qIndex; 
+    currentEditingSet = setName;
     const question = questionSets[setName].questions[qIndex];
     document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
     
-    // FIX: Replace this line to preserve line breaks
-    document.getElementById('editQuestionText').value = question.question;
+    // FIXED: Keep line breaks for editing but clean up extra ones
+    let questionText = question.question
+        .replace(/\n\s*\n/g, '\n\n') // Keep double line breaks as single
+        .replace(/\s+/g, ' ')        // Remove extra spaces within lines
+        .trim();
     
-    // With this line instead:
-   // Fix for textarea - add actual line breaks for numbered questions
-let questionText = question.question;
-// Add line breaks for numbered points
-questionText = questionText
-    .replace(/1\./g, '\n1.')
-    .replace(/2\./g, '\n\n2.')
-    .replace(/3\./g, '\n\n3.')
-    .replace(/4\./g, '\n\n4.');
-document.getElementById('editQuestionText').value = questionText; document.getElementById('editQuestionOptions').value = question.options.join('\n');
+    // Ensure proper formatting for statement questions in editor
+    if (question.type === 'statement') {
+        questionText = questionText
+            .replace(/(\d\.)/g, '\n\n$1') // Double line breaks before numbers for editing
+            .trim();
+    }
+    
+    document.getElementById('editQuestionText').value = questionText;
+    document.getElementById('editQuestionOptions').value = question.options.join('\n');
     document.getElementById('editCorrectAnswer').value = question.correctAnswer;
 
-    // Add type selection
+    // Add type selection if it doesn't exist
     const typeSelect = document.getElementById('editQuestionType') || (() => {
-        // Create type selector if it doesn't exist
         const formGroup = document.createElement('div');
         formGroup.className = 'form-group';
         formGroup.innerHTML = `
@@ -3343,32 +3352,58 @@ document.getElementById('editQuestionText').value = questionText; document.getEl
     document.getElementById('questionEditForm').classList.remove('hidden');
 }
         function saveEditedQuestion() {
-            const setName = currentEditingSet; const qIndex = currentEditingIndex;
-            const newQText = document.getElementById('editQuestionText').value.trim();
-            const newOptsText = document.getElementById('editQuestionOptions').value.trim();
-            const newCorrectAnswer = document.getElementById('editCorrectAnswer').value;
-            if (!newQText || !newOptsText) { showNotification('Question text and options are required.', 'error'); return; }
-            const newOptions = newOptsText.split('\n').map(o => o.trim()).filter(Boolean);
-            if(newOptions.length !== 4) { showNotification('Please provide exactly 4 options.', 'error'); return; }
-const questionType = document.getElementById('editQuestionType') ? document.getElementById('editQuestionType').value : 'regular';
-questionSets[setName].questions[qIndex] = { 
-    question: newQText, 
-    options: newOptions, 
-    correctAnswer: newCorrectAnswer,
-    type: questionType
-};
-            saveQuestionSets();
-            showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
-            if (editingFromReport.active) {
-                dismissReport(editingFromReport.reportId, true);
-                returnToReportedQuestionsView();
-            } else {
-                const nextQuestionIndex = qIndex + 1;
-                const totalQuestionsInSet = questionSets[setName].questions.length;
-                if (nextQuestionIndex < totalQuestionsInSet) { editSpecificQuestion(setName, nextQuestionIndex); } 
-                else { showNotification(`Finished editing all questions in ${setName}.`, 'success'); cancelQuestionEdit(); }
-            }
+    const setName = currentEditingSet; 
+    const qIndex = currentEditingIndex;
+    const newQText = document.getElementById('editQuestionText').value.trim();
+    const newOptsText = document.getElementById('editQuestionOptions').value.trim();
+    const newCorrectAnswer = document.getElementById('editCorrectAnswer').value;
+    const questionType = document.getElementById('editQuestionType') ? document.getElementById('editQuestionType').value : 'regular';
+    
+    if (!newQText || !newOptsText) { 
+        showNotification('Question text and options are required.', 'error'); 
+        return; 
+    }
+    
+    const newOptions = newOptsText.split('\n').map(o => o.trim()).filter(Boolean);
+    if(newOptions.length !== 4) { 
+        showNotification('Please provide exactly 4 options.', 'error'); 
+        return; 
+    }
+    
+    // For statement questions, ensure proper single line breaks
+    let finalQuestionText = newQText;
+    if (questionType === 'statement') {
+        // Clean up but keep single line breaks between numbered points
+        finalQuestionText = finalQuestionText
+            .replace(/\n\s*\n/g, '\n') // Remove multiple line breaks, keep single
+            .replace(/\s+/g, ' ')      // Remove extra spaces within lines
+            .trim();
+    }
+    
+    questionSets[setName].questions[qIndex] = { 
+        question: finalQuestionText, 
+        options: newOptions, 
+        correctAnswer: newCorrectAnswer,
+        type: questionType
+    };
+    
+    saveQuestionSets();
+    showNotification(`Question ${qIndex + 1} in ${setName} updated!`);
+    
+    if (editingFromReport.active) {
+        dismissReport(editingFromReport.reportId, true);
+        returnToReportedQuestionsView();
+    } else {
+        const nextQuestionIndex = qIndex + 1;
+        const totalQuestionsInSet = questionSets[setName].questions.length;
+        if (nextQuestionIndex < totalQuestionsInSet) { 
+            editSpecificQuestion(setName, nextQuestionIndex); 
+        } else { 
+            showNotification(`Finished editing all questions in ${setName}.`, 'success'); 
+            cancelQuestionEdit(); 
         }
+    }
+}
 
         function cancelQuestionEdit() {
             if (editingFromReport.active) { returnToReportedQuestionsView(); } 
