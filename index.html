@@ -1771,43 +1771,29 @@ function hideCreatePlayerForm() {
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 function init() {
-    // DON'T clear player data on startup - this is what's causing the logout on refresh
-    // Instead, only load question sets and initialize Firebase
+    // 1. CLEAR local profiles immediately so ghost users don't show up
+    playerProfiles = {}; 
     
-    initializeFirebase(); // This will connect and then call loadFromFirebase()
+    // 2. Load Question Sets from LocalStorage (for offline use)
+    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+    
+    // 3. Initialize Firebase - This will fetch the REAL profile list
+    initializeFirebase(); 
+    
     populateAvatars();
     setDailyQuote();
     
     document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-    // Check if question sets need refresh due to version change
-    const needsRefresh = checkQuestionSetsVersion();
-    
-    // Load question sets
-    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+    // Update UI with local question sets initially
     loadQuestionSets();
     updateSubjectSelect();
     
-    // Check for auto-login first (before showing login gateway)
-    checkAutoLogin();
-    
-    // If no auto-login, show login gateway
-    if (!currentPlayerName) {
-        switchPracticeView('loginGatewayView');
-    }
-    
-    // Automatically sync data from cloud on startup
-    setTimeout(() => {
-        syncAllDataFromFirebase();
-        // If version was outdated, force question set refresh
-        if (needsRefresh && isFirebaseConnected) {
-            setTimeout(() => syncQuestionSetsFromFirebase(), 2000);
-        }
-    }, 1000); // Small delay to ensure Firebase is connected
-    
+    // Listen for file uploads
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
+    // Event Listeners
     document.getElementById('backToSetListBtn').addEventListener('click', () => {
         if (editingFromReport.active) {
             returnToReportedQuestionsView();
@@ -1818,7 +1804,7 @@ function init() {
         }
     });
     
-     // Attendance calendar navigation
+    // Calendar Navigation
     document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
         currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
         renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
@@ -1827,8 +1813,6 @@ function init() {
         currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() + 1);
         renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
     });
-    
-     // Admin Attendance calendar navigation
     document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
         currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
         const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
@@ -1851,8 +1835,7 @@ function init() {
             }
         }
     }
-}
-// ADD THIS MISSING FUNCTION
+}// ADD THIS MISSING FUNCTION
 function savePlayerDataToLocalStorage() {
     if (!currentPlayerName) return;
     
@@ -1981,7 +1964,12 @@ function switchTab(tabName) {
         }
     }
 
-    if(tabName === 'revision') renderRevisionPage();
+    if(tabName === 'revision') {
+        // Sync before showing revision to ensure no deleted sets are shown
+        validateAndSyncQuestionSets(() => {
+            renderRevisionPage();
+        });
+    }
     if(tabName === 'backlog') renderBacklogPage();
     if(tabName === 'attendance') {
         currentAttendanceCalendarDate = new Date();
@@ -2055,37 +2043,37 @@ function switchTab(tabName) {
 function setupOptimizedFirebaseListeners() {
     if (!db) return;
     
-    // Load question sets from Firebase and merge with local
+    // 1. Load Question Sets (Sync logic handled elsewhere now)
     db.ref('questionSets').once('value').then(snapshot => {
         const firebaseSets = snapshot.val() || {};
-        // Merge Firebase sets with local, Firebase takes priority for conflicts
         questionSets = { ...questionSets, ...firebaseSets };
         localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
         loadQuestionSets();
         updateSubjectSelect();
-        console.log('Question sets synced from Firebase');
     });
 
-    // Load player profiles from Firebase ONLY - don't save to localStorage yet
-db.ref('playerProfiles').once('value').then(snapshot => {
-    const firebaseProfiles = snapshot.val() || {};
-    // REPLACE local playerProfiles with Firebase data only
-    playerProfiles = firebaseProfiles;
-    updatePlayerSelects();
-    console.log('Player profiles loaded from Firebase ONLY');
-    
-    // Check auto-login after profiles are loaded
-    checkAutoLogin();
-});
+    // 2. Load Player Profiles - STRICTLY FROM FIREBASE
+    db.ref('playerProfiles').on('value', snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        
+        // COMPLETELY REPLACE local profiles with Firebase data
+        // This ensures deleted users disappear immediately
+        playerProfiles = firebaseProfiles;
+        
+        // Update the dropdowns
+        updatePlayerSelects();
+        
+        // Check for auto-login
+        checkAutoLogin();
+    });
 
-    // Load other data from Firebase
+    // 3. Load other data
     db.ref('revisionProgress').once('value').then(snapshot => {
         const data = snapshot.val() || {};
         revisionProgress = { ...revisionProgress, ...data };
         localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
     });
 
-    // Real-time listener only for daily scores (leaderboard)
     db.ref('dailyRevisionScores').on('value', snapshot => {
         const data = snapshot.val();
         if (data) {
@@ -2094,8 +2082,7 @@ db.ref('playerProfiles').once('value').then(snapshot => {
             if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
         }
     });
-}
-        
+}        
         function saveFirebaseConfig() {
             try {
                 const config = JSON.parse(document.getElementById('firebaseConfig').value);
@@ -2122,53 +2109,7 @@ db.ref('playerProfiles').once('value').then(snapshot => {
         
       
 
-        function setupOptimizedFirebaseListeners() {
-    if (!db) return;
-    
-    // Load question sets from Firebase and merge with local
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        // Merge Firebase sets with local, Firebase takes priority for conflicts
-        questionSets = { ...questionSets, ...firebaseSets };
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-        console.log('Question sets synced from Firebase');
-    });
-
-    // Load player profiles from Firebase - but don't overwrite existing local data
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        // Merge Firebase profiles with existing local profiles
-        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
         
-        // Save merged profiles to localStorage for persistence
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        
-        updatePlayerSelects();
-        console.log('Player profiles loaded and merged from Firebase');
-        
-        // Check auto-login after profiles are loaded
-        checkAutoLogin();
-    });
-
-    // Load other data from Firebase
-    db.ref('revisionProgress').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        revisionProgress = { ...revisionProgress, ...data };
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    });
-
-    // Real-time listener only for daily scores (leaderboard)
-    db.ref('dailyRevisionScores').on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            dailyRevisionScores = data;
-            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-            if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
-        }
-    });
-}
 function loadLocalData() {
     // Load question sets from localStorage first
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
@@ -3078,13 +3019,27 @@ const category = set.category || 'gk';
     // --- END NEW CODE ---
         }
         
-        function updateSubjectSelect() {
-            const subjectSelect = document.getElementById('subjectSelect');
-            if (!subjectSelect) return;
-            const subjects = [...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))].sort();
-            subjectSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
-            updatePracticeSetSelect("");
+       function updateSubjectSelect() {
+    // Trigger the sync check lightly here
+    validateAndSyncQuestionSets(() => {
+        const subjectSelect = document.getElementById('subjectSelect');
+        if (!subjectSelect) return;
+        
+        // Re-calculate subjects after sync
+        const subjects = [...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))].sort();
+        
+        // Save current selection to restore after rebuild
+        const currentSelection = subjectSelect.value;
+        
+        subjectSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+        
+        if(subjects.includes(currentSelection)) {
+            subjectSelect.value = currentSelection;
         }
+        
+        updatePracticeSetSelect(subjectSelect.value);
+    });
+}
         
         function updatePracticeSetSelect(subject) {
             const practiceSetSelect = document.getElementById('practiceSetSelect');
@@ -4154,8 +4109,52 @@ function updateFirebaseStatus(status, isConnected) {
         statusEl.style.color = isConnected ? 'green' : 'red';
     }
 }
+
+// NEW SMART SYNC FUNCTION
+function validateAndSyncQuestionSets(callback) {
+    if (!isFirebaseConnected) {
+        if(callback) callback();
+        return;
+    }
+
+    // Download the authoritative list from Firebase
+    db.ref('questionSets').once('value').then(snapshot => {
+        const cloudSets = snapshot.val() || {};
+        const cloudKeys = Object.keys(cloudSets);
+        const localKeys = Object.keys(questionSets);
+        
+        let hasChanges = false;
+
+        // 1. Remove sets from Local that don't exist in Cloud (Deleted or Renamed)
+        localKeys.forEach(localKey => {
+            if (!cloudKeys.includes(localKey)) {
+                delete questionSets[localKey];
+                hasChanges = true;
+                console.log(`Removed obsolete set: ${localKey}`);
+            }
+        });
+
+        // 2. Add/Update sets from Cloud
+        cloudKeys.forEach(cloudKey => {
+            // If we don't have it, OR if the cloud version is newer (optional check, here we just overwrite to be safe)
+            if (!questionSets[cloudKey] || JSON.stringify(questionSets[cloudKey]) !== JSON.stringify(cloudSets[cloudKey])) {
+                questionSets[cloudKey] = cloudSets[cloudKey];
+                hasChanges = true;
+            }
+        });
+
+        if (hasChanges) {
+            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+            loadQuestionSets(); // Refreshes Admin List
+            showNotification('Question Sets synced with server.');
+        }
+        
+        if (callback) callback();
+    }).catch(err => {
+        console.error("Sync Check Failed", err);
+        if(callback) callback();
+    });
+}
     </script>
 </body>
 </html>
-
-
