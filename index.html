@@ -1623,8 +1623,7 @@ function hideCreatePlayerForm() {
 
         // --- 2. NEW OPTIMIZED SYNC LOGIC ---
         
-       function initializeFirebase() {
-    // Initialize Firebase with your hardcoded config
+      function initializeFirebase() {
     if (firebase.apps.length === 0) {
         firebase.initializeApp(firebaseConfig);
     }
@@ -1639,11 +1638,18 @@ function hideCreatePlayerForm() {
             isFirebaseConnected = true;
             console.log('Firebase connected.');
             
-            // START THE SMART SYNC (using the single optimized function)
-            setupOptimizedFirebaseListeners(); 
+            // FIX: Load player profiles for login screen FIRST
+            loadPlayerProfilesForLogin();
+            
+            // THEN setup optimized sync for other data
+            setTimeout(setupOptimizedFirebaseSync, 500);
         } else {
             updateFirebaseStatus('Disconnected (Offline Mode)', false);
             isFirebaseConnected = false;
+            
+            // Offline fallback - use local profiles
+            updatePlayerSelects();
+            checkAutoLogin();
         }
     });
 }
@@ -3424,7 +3430,143 @@ function getAllPlayerNames() {
             }).join('') || '<tr><td colspan="3">No revision scores for today yet.</td></tr>';
         }
 
+// OPTIMIZED: Sync only what's needed
+function setupOptimizedFirebaseSync() {
+    if (!isFirebaseConnected) return;
+    
+    // 1. Only sync question set METADATA first
+    syncQuestionSetMetadata();
+    
+    // 2. Only sync current player's data
+    if (currentPlayerName) {
+        syncCurrentPlayerData();
+    }
+    
+    // 3. Leaderboard listener ONLY when needed
+    setupLazyLeaderboardListener();
+}
 
+// OPTIMIZED: Sync only set names and metadata, not full questions
+function syncQuestionSetMetadata() {
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        
+        // Store only what we need for UI
+        const setMetadata = {};
+        Object.keys(firebaseSets).forEach(setName => {
+            setMetadata[setName] = {
+                subject: firebaseSets[setName].subject,
+                category: firebaseSets[setName].category,
+                questionCount: (firebaseSets[setName].questions || []).length,
+                lastModified: firebaseSets[setName].lastModified
+            };
+        });
+        
+        localStorage.setItem('pscSetMetadata', JSON.stringify(setMetadata));
+        updateSubjectSelect(); // Update UI with metadata only
+    });
+}
+
+// OPTIMIZED: Download specific set only when selected
+function loadQuestionSetOnDemand(setName) {
+    // Check if we already have this set locally
+    if (questionSets[setName] && questionSets[setName].questions) {
+        return Promise.resolve(questionSets[setName]);
+    }
+    
+    // Download only this specific set
+    return db.ref(`questionSets/${setName}`).once('value').then(snapshot => {
+        const setData = snapshot.val();
+        if (setData) {
+            questionSets[setName] = setData;
+            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+        }
+        return setData;
+    });
+}
+
+// OPTIMIZED: Sync only current player's data
+function syncCurrentPlayerData() {
+    if (!currentPlayerName) return;
+    
+    const updates = {};
+    
+    // Only get this player's profile
+    db.ref(`playerProfiles/${currentPlayerName}`).once('value').then(snapshot => {
+        const profile = snapshot.val();
+        if (profile) {
+            playerProfiles[currentPlayerName] = profile;
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        }
+    });
+    
+    // Only get this player's revision progress
+    db.ref(`revisionProgress/${currentPlayerName}`).once('value').then(snapshot => {
+        const progress = snapshot.val();
+        if (progress) {
+            if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
+            revisionProgress[currentPlayerName] = { ...revisionProgress[currentPlayerName], ...progress };
+            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+        }
+    });
+}
+
+// OPTIMIZED: Lazy leaderboard loading
+function setupLazyLeaderboardListener() {
+    // Remove any existing listener
+    if (dailyScoresListener) {
+        dailyScoresListener.off();
+        dailyScoresListener = null;
+    }
+    
+    // Only setup listener when actually viewing leaderboard
+    const observer = new MutationObserver(() => {
+        if (document.getElementById('leaderboard')?.classList.contains('active')) {
+            // Leaderboard is visible, setup listener
+            dailyScoresListener = db.ref('dailyRevisionScores').limitToLast(7); // Only last 7 days
+            dailyScoresListener.on('value', snapshot => {
+                const data = snapshot.val() || {};
+                dailyRevisionScores = data;
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
+                showLeaderboards();
+            });
+        } else {
+            // Leaderboard not visible, remove listener
+            if (dailyScoresListener) {
+                dailyScoresListener.off();
+                dailyScoresListener = null;
+            }
+        }
+    });
+    
+    observer.observe(document.body, { 
+        attributes: true, 
+        attributeFilter: ['class'],
+        subtree: true 
+    });
+}
+
+// OPTIMIZED: Update your Firebase initialization
+function initializeFirebaseOptimized() {
+    if (firebase.apps.length === 0) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.database();
+    
+    // Enable offline persistence
+    db.ref('.info/connected').on('value', snapshot => {
+        if (snapshot.val() === true) {
+            updateFirebaseStatus('Connected', true);
+            isFirebaseConnected = true;
+            
+            // Use optimized sync instead of heavy listeners
+            setupOptimizedFirebaseSync();
+        } else {
+            updateFirebaseStatus('Disconnected (Offline Mode)', false);
+            isFirebaseConnected = false;
+        }
+    });
+}
 
        
         // --- REVISION FUNCTIONS ---
@@ -4114,48 +4256,49 @@ function updateFirebaseStatus(status, isConnected) {
 function syncQuestionSetsIntelligently() {
     if (!isFirebaseConnected) return;
     
-    // Quick check for question set updates without downloading everything
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        
-        let needsUpdate = false;
-        
-        // Check for deleted sets
-        Object.keys(questionSets).forEach(localSetName => {
-            if (!firebaseSets[localSetName]) {
-                // Set was deleted in Firebase, remove from local
-                delete questionSets[localSetName];
-                needsUpdate = true;
-                console.log(`Removed deleted set: ${localSetName}`);
-            }
-        });
-        
-        // Check for renamed sets or new sets
-        Object.keys(firebaseSets).forEach(fbSetName => {
-            const localSet = questionSets[fbSetName];
-            const fbSet = firebaseSets[fbSetName];
-            
-            if (!localSet) {
-                // New set found, download it
-                questionSets[fbSetName] = fbSet;
-                needsUpdate = true;
-                console.log(`Added new set: ${fbSetName}`);
-            } else if (localSet.lastModified !== fbSet.lastModified) {
-                // Set was modified, update it
-                questionSets[fbSetName] = fbSet;
-                needsUpdate = true;
-                console.log(`Updated modified set: ${fbSetName}`);
-            }
-        });
-        
-        if (needsUpdate) {
-            saveQuestionSets();
-            loadQuestionSets();
-            updateSubjectSelect();
-            showNotification('Question sets updated from cloud', 'success');
+    // Only sync metadata, not full question sets
+    syncQuestionSetMetadata();
+    
+    // If user selects a set, load it on demand
+    document.getElementById('practiceSetSelect').addEventListener('change', function() {
+        const selectedSet = this.value;
+        if (selectedSet && (!questionSets[selectedSet] || !questionSets[selectedSet].questions)) {
+            loadQuestionSetOnDemand(selectedSet).then(() => {
+                showNotification(`Loaded ${selectedSet} from cloud`);
+            });
         }
+    });
+}
+
+// ADD THIS FUNCTION: Load player profiles for login screen only
+function loadPlayerProfilesForLogin() {
+    if (!isFirebaseConnected) {
+        // Offline mode - use local profiles
+        updatePlayerSelects();
+        return;
+    }
+    
+    showNotification('Loading user profiles...');
+    
+    // Download ONLY player profile NAMES for login screen
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        
+        // Merge with local profiles (keep local as backup)
+        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
+        
+        // Update login dropdown
+        updatePlayerSelects();
+        
+        // Check auto-login after profiles are loaded
+        checkAutoLogin();
+        
+        showNotification('Profiles loaded successfully!', 'success');
     }).catch(error => {
-        console.error('Error syncing question sets:', error);
+        console.error('Error loading profiles:', error);
+        // Fallback to local profiles
+        updatePlayerSelects();
+        checkAutoLogin();
     });
 }
     </script>
