@@ -1182,10 +1182,6 @@
         <div class="admin-section">
             <button onclick="handleAdminLogin()" class="btn-admin">Admin Login</button>
         </div>
-
-        <div class="sync-section">
-            <button onclick="syncAllDataFromFirebase()" class="btn-sync">Refresh Data from Cloud</button>
-        </div>
     </div>
 </div>
     <!-- PRACTICE SETUP (SAME AS BEFORE) -->
@@ -1627,7 +1623,7 @@ function hideCreatePlayerForm() {
 
         // --- 2. NEW OPTIMIZED SYNC LOGIC ---
         
-        function initializeFirebase() {
+       function initializeFirebase() {
     // Initialize Firebase with your hardcoded config
     if (firebase.apps.length === 0) {
         firebase.initializeApp(firebaseConfig);
@@ -1643,7 +1639,7 @@ function hideCreatePlayerForm() {
             isFirebaseConnected = true;
             console.log('Firebase connected.');
             
-            // START THE SMART SYNC
+            // START THE SMART SYNC (using the single optimized function)
             setupOptimizedFirebaseListeners(); 
         } else {
             updateFirebaseStatus('Disconnected (Offline Mode)', false);
@@ -1771,10 +1767,8 @@ function hideCreatePlayerForm() {
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 function init() {
-    // DON'T clear player data on startup - this is what's causing the logout on refresh
-    // Instead, only load question sets and initialize Firebase
-    
-    initializeFirebase(); // This will connect and then call loadFromFirebase()
+    // DON'T clear player data on startup
+    initializeFirebase(); // This will connect and then call setupOptimizedFirebaseListeners()
     populateAvatars();
     setDailyQuote();
     
@@ -1784,27 +1778,13 @@ function init() {
     // Check if question sets need refresh due to version change
     const needsRefresh = checkQuestionSetsVersion();
     
-    // Load question sets
+    // Load question sets from localStorage for immediate display
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     loadQuestionSets();
     updateSubjectSelect();
     
-    // Check for auto-login first (before showing login gateway)
-    checkAutoLogin();
-    
-    // If no auto-login, show login gateway
-    if (!currentPlayerName) {
-        switchPracticeView('loginGatewayView');
-    }
-    
-    // Automatically sync data from cloud on startup
-    setTimeout(() => {
-        syncAllDataFromFirebase();
-        // If version was outdated, force question set refresh
-        if (needsRefresh && isFirebaseConnected) {
-            setTimeout(() => syncQuestionSetsFromFirebase(), 2000);
-        }
-    }, 1000); // Small delay to ensure Firebase is connected
+    // Show login gateway immediately - user profiles will be synced via Firebase
+    switchPracticeView('loginGatewayView');
     
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
@@ -1818,7 +1798,7 @@ function init() {
         }
     });
     
-     // Attendance calendar navigation
+    // Attendance calendar navigation
     document.getElementById('prevAttendanceMonthBtn').addEventListener('click', () => {
         currentAttendanceCalendarDate.setMonth(currentAttendanceCalendarDate.getMonth() - 1);
         renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
@@ -1828,7 +1808,7 @@ function init() {
         renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
     });
     
-     // Admin Attendance calendar navigation
+    // Admin Attendance calendar navigation
     document.getElementById('adminPrevAttendanceMonthBtn').addEventListener('click', () => {
         currentAdminAttendanceDate.setMonth(currentAdminAttendanceDate.getMonth() - 1);
         const selectedPlayer = document.getElementById('attendancePlayerSelect').value;
@@ -2052,49 +2032,7 @@ function switchTab(tabName) {
     
     // Your NEW Firebase configuration
  
-function setupOptimizedFirebaseListeners() {
-    if (!db) return;
-    
-    // Load question sets from Firebase and merge with local
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        // Merge Firebase sets with local, Firebase takes priority for conflicts
-        questionSets = { ...questionSets, ...firebaseSets };
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-        console.log('Question sets synced from Firebase');
-    });
 
-    // Load player profiles from Firebase ONLY - don't save to localStorage yet
-db.ref('playerProfiles').once('value').then(snapshot => {
-    const firebaseProfiles = snapshot.val() || {};
-    // REPLACE local playerProfiles with Firebase data only
-    playerProfiles = firebaseProfiles;
-    updatePlayerSelects();
-    console.log('Player profiles loaded from Firebase ONLY');
-    
-    // Check auto-login after profiles are loaded
-    checkAutoLogin();
-});
-
-    // Load other data from Firebase
-    db.ref('revisionProgress').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        revisionProgress = { ...revisionProgress, ...data };
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    });
-
-    // Real-time listener only for daily scores (leaderboard)
-    db.ref('dailyRevisionScores').on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            dailyRevisionScores = data;
-            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-            if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
-        }
-    });
-}
         
         function saveFirebaseConfig() {
             try {
@@ -2125,40 +2063,9 @@ db.ref('playerProfiles').once('value').then(snapshot => {
         function setupOptimizedFirebaseListeners() {
     if (!db) return;
     
-    // Load question sets from Firebase and merge with local
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        // Merge Firebase sets with local, Firebase takes priority for conflicts
-        questionSets = { ...questionSets, ...firebaseSets };
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-        console.log('Question sets synced from Firebase');
-    });
-
-    // Load player profiles from Firebase - but don't overwrite existing local data
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        // Merge Firebase profiles with existing local profiles
-        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-        
-        // Save merged profiles to localStorage for persistence
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        
-        updatePlayerSelects();
-        console.log('Player profiles loaded and merged from Firebase');
-        
-        // Check auto-login after profiles are loaded
-        checkAutoLogin();
-    });
-
-    // Load other data from Firebase
-    db.ref('revisionProgress').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        revisionProgress = { ...revisionProgress, ...data };
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    });
-
+    // Force sync user profiles immediately for login screen
+    syncUserProfilesForLogin();
+    
     // Real-time listener only for daily scores (leaderboard)
     db.ref('dailyRevisionScores').on('value', snapshot => {
         const data = snapshot.val();
@@ -2180,6 +2087,29 @@ function loadLocalData() {
     console.log('Waiting for Firebase player profiles...');
 }
 
+function syncUserProfilesForLogin() {
+    if (!isFirebaseConnected) return;
+    
+    // Always load fresh user profiles from Firebase for login screen
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        
+        // REPLACE local playerProfiles with Firebase data only
+        playerProfiles = firebaseProfiles;
+        
+        // Update login dropdown immediately
+        updatePlayerSelects();
+        console.log('User profiles synced from Firebase for login screen');
+        
+        // Check auto-login after profiles are loaded
+        checkAutoLogin();
+        
+        // Then do intelligent question set sync in background
+        setTimeout(syncQuestionSetsIntelligently, 500);
+    }).catch(error => {
+        console.error('Error syncing user profiles:', error);
+    });
+}
 
 function setupLeaderboardListener() {
     if (!db) return;
@@ -2918,42 +2848,51 @@ const category = set.category || 'gk';
         }
 
         function handleDailyLogin() {
-            if (!currentPlayerName) return;
-            const profile = playerProfiles[currentPlayerName];
-            const today = getTodayDateString();
-            const lastDate = profile.lastActiveDate;
+    if (!currentPlayerName) return;
+    const profile = playerProfiles[currentPlayerName];
+    const today = getTodayDateString();
+    const lastDate = profile.lastActiveDate;
 
-            if (lastDate && /\d{4}-\d{2}-\d{2}/.test(lastDate) && lastDate < today) {
-                const last = new Date(lastDate);
-                const now = new Date(today);
-                const diffTime = now - last;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                if (diffDays > 1) { 
-                    if (profile.currentStreak > 0) {
-                        showNotification(`Streak broken! You missed ${diffDays - 1} day(s).`, 'warning');
-                        profile.currentStreak = 0;
-                        profile.consecutiveMissedDays = diffDays -1;
-                    } else {
-                        profile.consecutiveMissedDays += diffDays -1;
-                    }
+    // Check if we already processed today's attendance
+    if (lastDate === today) {
+        return; // Already processed today, no need to check again
+    }
 
-                    let totalDeduction = 0;
-                     for(let i=0; i < diffDays - 1; i++){
-                        const dayPenalty = Math.min(50, 2**((profile.consecutiveMissedDays - (diffDays-1) + i)));
-                        totalDeduction += dayPenalty;
-                    }
-                    
-                    if(totalDeduction > 0){
-                        profile.totalXP = Math.max(0, profile.totalXP - totalDeduction);
-                        showNotification(`-${totalDeduction} XP for extended absence.`, 'error');
-                    }
-                }
+    if (lastDate && /\d{4}-\d{2}-\d{2}/.test(lastDate) && lastDate < today) {
+        const last = new Date(lastDate);
+        const now = new Date(today);
+        const diffTime = now - last;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 1) { 
+            if (profile.currentStreak > 0) {
+                showNotification(`Streak broken! You missed ${diffDays - 1} day(s).`, 'warning');
+                profile.currentStreak = 0;
+                profile.consecutiveMissedDays = diffDays - 1;
+            } else {
+                profile.consecutiveMissedDays += diffDays - 1;
             }
-            savePlayerProfiles();
-            savePlayerDataToLocalStorage()
-            updateProgressUI();
+
+            let totalDeduction = 0;
+            for(let i = 0; i < diffDays - 1; i++) {
+                const dayPenalty = Math.min(50, 2**((profile.consecutiveMissedDays - (diffDays - 1) + i)));
+                totalDeduction += dayPenalty;
+            }
+            
+            if(totalDeduction > 0) {
+                profile.totalXP = Math.max(0, profile.totalXP - totalDeduction);
+                showNotification(`-${totalDeduction} XP for extended absence.`, 'error');
+            }
         }
+    }
+    
+    // Mark today as processed (this prevents multiple deductions on refresh)
+    profile.lastActiveDate = today;
+    
+    savePlayerProfiles();
+    savePlayerDataToLocalStorage();
+    updateProgressUI();
+}
 
         function calculateAndApplyXP(correctAnswers) {
             if (!currentPlayerName) return 0;
@@ -3079,6 +3018,12 @@ const category = set.category || 'gk';
         }
         
         function updateSubjectSelect() {
+            // Sync question sets when subject dropdown is opened
+    if (isFirebaseConnected) {
+        setTimeout(syncQuestionSetsIntelligently, 100);
+    }
+    
+    
             const subjectSelect = document.getElementById('subjectSelect');
             if (!subjectSelect) return;
             const subjects = [...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))].sort();
@@ -3109,25 +3054,31 @@ const category = set.category || 'gk';
         }
 
         function updatePlayerSelects() {
-            const selects = [
-                document.getElementById('playerSelect'), 
-                document.getElementById('playerToRemoveSelect'), 
-                document.getElementById('playerToClearHistorySelect'), 
-                document.getElementById('passwordUserSelect'), 
-                document.getElementById('attendancePlayerSelect'),
-                document.getElementById('historyPlayerSelect'),
-                document.getElementById('backlogPlayerSelect')
-            ];
-            const players = getAllPlayerNames();
-            selects.forEach(s => {
-                if (!s) return;
-                const currentVal = s.value;
-                s.innerHTML = `<option value="">Select a player</option>` + [...players].sort().map(p => `<option value="${p}">${p}</option>`).join('');
-                if (players.includes(currentVal)) {
-                    s.value = currentVal;
-                }
-            });
+    const selects = [
+        document.getElementById('playerSelect'), 
+        document.getElementById('playerToRemoveSelect'), 
+        document.getElementById('playerToClearHistorySelect'), 
+        document.getElementById('passwordUserSelect'), 
+        document.getElementById('attendancePlayerSelect'),
+        document.getElementById('historyPlayerSelect'),
+        document.getElementById('backlogPlayerSelect')
+    ];
+    
+    const players = Object.keys(playerProfiles).filter(Boolean);
+    
+    selects.forEach(s => {
+        if (!s) return;
+        const currentVal = s.value;
+        
+        // For ALL dropdowns, only show players from Firebase
+        s.innerHTML = `<option value="">${s.id === 'playerSelect' ? '-- Choose your profile --' : 'Select a player'}</option>` + 
+            players.sort().map(p => `<option value="${p}">${p}</option>`).join('');
+        
+        if (players.includes(currentVal)) {
+            s.value = currentVal;
         }
+    });
+}
         
 function getAllPlayerNames() {
     // Only return players from Firebase - ignore localStorage completely
@@ -3522,6 +3473,11 @@ function getAllPlayerNames() {
         }
 
         function renderRevisionPage() {
+            // Sync question sets when revision tab is opened
+    if (isFirebaseConnected && currentPlayerName) {
+        setTimeout(syncQuestionSetsIntelligently, 100);
+    }
+
             const dueTodayDiv = document.getElementById('dueTodayList');
             const userPrompt = document.getElementById('revisionUserPrompt');
             updateAllBadges();
@@ -4153,6 +4109,54 @@ function updateFirebaseStatus(status, isConnected) {
         statusEl.textContent = status;
         statusEl.style.color = isConnected ? 'green' : 'red';
     }
+}
+
+function syncQuestionSetsIntelligently() {
+    if (!isFirebaseConnected) return;
+    
+    // Quick check for question set updates without downloading everything
+    db.ref('questionSets').once('value').then(snapshot => {
+        const firebaseSets = snapshot.val() || {};
+        
+        let needsUpdate = false;
+        
+        // Check for deleted sets
+        Object.keys(questionSets).forEach(localSetName => {
+            if (!firebaseSets[localSetName]) {
+                // Set was deleted in Firebase, remove from local
+                delete questionSets[localSetName];
+                needsUpdate = true;
+                console.log(`Removed deleted set: ${localSetName}`);
+            }
+        });
+        
+        // Check for renamed sets or new sets
+        Object.keys(firebaseSets).forEach(fbSetName => {
+            const localSet = questionSets[fbSetName];
+            const fbSet = firebaseSets[fbSetName];
+            
+            if (!localSet) {
+                // New set found, download it
+                questionSets[fbSetName] = fbSet;
+                needsUpdate = true;
+                console.log(`Added new set: ${fbSetName}`);
+            } else if (localSet.lastModified !== fbSet.lastModified) {
+                // Set was modified, update it
+                questionSets[fbSetName] = fbSet;
+                needsUpdate = true;
+                console.log(`Updated modified set: ${fbSetName}`);
+            }
+        });
+        
+        if (needsUpdate) {
+            saveQuestionSets();
+            loadQuestionSets();
+            updateSubjectSelect();
+            showNotification('Question sets updated from cloud', 'success');
+        }
+    }).catch(error => {
+        console.error('Error syncing question sets:', error);
+    });
 }
     </script>
 </body>
