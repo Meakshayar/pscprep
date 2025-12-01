@@ -1678,6 +1678,12 @@ function hideCreatePlayerForm() {
         ];
         let audioCtx;
 
+          // --- UTILITY FUNCTIONS ---
+        function getTodayDateString() {
+            const now = new Date();
+            return now.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+        }
+
         // --- APP STATE ---
         // --- 1. UPDATED CONFIGURATION ---
         const firebaseConfig = {
@@ -1979,12 +1985,45 @@ function setupPlayerProgressListener() {
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 function init() {
-    // 1. Load LOCAL data first (for offline use)
+    // 1. Check for auto-login IMMEDIATELY (before loading anything else)
+    const lastPlayer = localStorage.getItem('pscLastPlayer');
+    const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    
+    if (lastPlayer && localProfiles[lastPlayer]) {
+        // IMMEDIATE auto-login using localStorage data
+        currentPlayerName = lastPlayer;
+        playerProfiles[currentPlayerName] = localProfiles[lastPlayer];
+        
+        console.log(`Auto-logged in as: ${currentPlayerName} (using localStorage)`);
+    }
+    
+    // 2. Load LOCAL data (for offline use)
     loadLocalDataImmediately();
     
-    // 2. Initialize Firebase - This will fetch player profiles from cloud
+    // 3. Initialize Firebase (will update data in background)
     initializeFirebase();
     
+    // 4. If auto-logged in, update UI immediately
+    if (currentPlayerName) {
+        // Update UI right away
+        document.getElementById('tab-nav').classList.remove('hidden');
+        document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
+        loadPlayerProgress();
+        switchPracticeView('practiceSetupView');
+        updateAllBadges();
+        updateSubjectSelect();
+        
+        // Handle daily streak updates
+        setTimeout(() => {
+            handleDailyLogin();
+            showNotification(`Welcome back, ${currentPlayerName}!`, 'success');
+        }, 500);
+    } else {
+        // Show login screen if no auto-login
+        switchPracticeView('loginGatewayView');
+    }
+    
+    // Continue with other initializations
     populateAvatars();
     setDailyQuote();
     
@@ -1994,7 +2033,7 @@ function init() {
     // Listen for file uploads
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
-    // Event Listeners
+    // Event Listeners (keep all existing code below this line)
     document.getElementById('backToSetListBtn').addEventListener('click', () => {
         if (editingFromReport.active) {
             returnToReportedQuestionsView();
@@ -2288,35 +2327,6 @@ function syncPendingUserData() {
     }
 }
 
-       function checkAutoLogin() {
-    const lastPlayer = localStorage.getItem('pscLastPlayer');
-    
-    // Wait a moment to ensure player profiles are loaded
-    setTimeout(() => {
-        // Check if we have this player in the loaded profiles
-        if (lastPlayer && playerProfiles[lastPlayer]) {
-            console.log(`Auto-login found: ${lastPlayer}`);
-            // Auto-login the player
-            currentPlayerName = lastPlayer;
-            
-            // Load player progress and update UI
-            handleDailyLogin();
-            showNotification(`Welcome back, ${currentPlayerName}!`, 'success');
-            
-            // SHOW THE NAV TABS AFTER LOGIN
-            document.getElementById('tab-nav').classList.remove('hidden');
-            document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-            loadPlayerProgress();
-            switchPracticeView('practiceSetupView');
-            updateAllBadges();
-            updateSubjectSelect();
-        } else {
-            // No auto-login possible, show login gateway
-            console.log('No auto-login found or player not in profiles');
-            switchPracticeView('loginGatewayView');
-        }
-    }, 1000); // Wait 1 second for Firebase to load
-}
         // --- DATA MANAGEMENT ---
         function exportData() {
             const data = { questionSets, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
@@ -3083,7 +3093,7 @@ function showAnswer() {
 
        
 
-        function endPractice() {
+       function endPractice() {
     if (!practiceInProgress || !currentAttempt) {
         practiceInProgress = false;
         clearInterval(timer);
@@ -3122,7 +3132,29 @@ function showAnswer() {
             return;
         }
         
-        // All questions viewed - ask if they want to do practice now
+        // MARK REVISION AS COMPLETED - DO THIS IMMEDIATELY
+        if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
+        revisionProgress[currentPlayerName][currentRevisionKey] = { 
+            percentage: 100, 
+            date: new Date().toISOString(), 
+            success: true,
+            revisionCompleted: true
+        };
+        
+        // SAVE IMMEDIATELY to localStorage
+        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+        
+        // Sync to Firebase if connected
+        if (isFirebaseConnected) {
+            db.ref(`revisionProgress/${currentPlayerName}/${currentRevisionKey}`).set({
+                percentage: 100, 
+                date: new Date().toISOString(), 
+                success: true,
+                revisionCompleted: true
+            });
+        }
+        
+        // Now ask if they want to do practice
         setTimeout(() => {
             const proceedToPractice = confirm(`🎉 Revision Completed!\n\nYou've reviewed all ${totalQuestions} questions.\n\nWould you like to do a practice exam with the same set now?\n\n(Click OK for practice, Cancel to finish)`);
             
@@ -3146,20 +3178,7 @@ function showAnswer() {
                     }, 300);
                 }, 500);
             } else {
-                // Mark revision as complete
-                if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
-                revisionProgress[currentPlayerName][currentRevisionKey] = { 
-                    percentage: 100, 
-                    date: new Date().toISOString(), 
-                    success: true,
-                    revisionCompleted: true
-                };
-                
-                // Save and update UI
-                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
-                
-                // Show simple completion message
+                // Show completion message
                 document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
                 document.getElementById('modalScore').textContent = `You reviewed all ${totalQuestions} questions.`;
                 document.getElementById('modalTime').textContent = `Time spent: ${formatTime(timeElapsed)}`;
@@ -3212,11 +3231,6 @@ function showAnswer() {
     switchPracticeView('practiceSetupView'); 
     isRevisionMode = false; currentRevisionKey = null; currentSet = [];
     updateRevisionModeCSS(); // ADD THIS LINE
-}
-        // --- XP, STREAK, and LEVELING LOGIC ---
-       function getTodayDateString() {
-    const now = new Date();
-    return now.toISOString().split('T')[0]; // Returns YYYY-MM-DD
 }
 
         function handleDailyLogin() {
