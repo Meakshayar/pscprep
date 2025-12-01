@@ -1692,7 +1692,7 @@ function hideCreatePlayerForm() {
 
         // --- 2. NEW OPTIMIZED SYNC LOGIC ---
         
-        function initializeFirebase() {
+       function initializeFirebase() {
     // Initialize Firebase with your hardcoded config
     if (firebase.apps.length === 0) {
         firebase.initializeApp(firebaseConfig);
@@ -1708,8 +1708,8 @@ function hideCreatePlayerForm() {
             isFirebaseConnected = true;
             console.log('Firebase connected.');
             
-            // START THE SMART SYNC
-            setupOptimizedFirebaseListeners(); 
+            // START SMART SYNC - Check for daily updates
+            setupSmartDailySync();
         } else {
             updateFirebaseStatus('Disconnected (Offline Mode)', false);
             isFirebaseConnected = false;
@@ -1717,6 +1717,161 @@ function hideCreatePlayerForm() {
     });
 }
 
+// --- NEW: SMART DAILY SYNC SYSTEM ---
+// --- NEW: SMART DAILY SYNC SYSTEM ---
+function setupSmartDailySync() {
+    if (!db) return;
+    
+    // Get today's date as a string (YYYY-MM-DD)
+    const today = getTodayDateString();
+    
+    // Check if we already synced today
+    const lastSyncDate = localStorage.getItem('pscLastSyncDate');
+    
+    if (lastSyncDate !== today) {
+        console.log(`Daily sync needed. Last sync: ${lastSyncDate || 'Never'}, Today: ${today}`);
+        performSmartSync();
+    } else {
+        console.log('Already synced today, using cached data.');
+        loadCachedData();
+    }
+    
+    // Set up listener for player progress updates only (small data)
+    setupPlayerProgressListener();
+}function loadPlayerProfilesFromFirebase() {
+    if (!db || !isFirebaseConnected) {
+        console.log('Firebase not connected, checking localStorage for player profiles');
+        
+        // Try to load from localStorage as fallback
+        const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+        if (Object.keys(localProfiles).length > 0) {
+            playerProfiles = localProfiles;
+            updatePlayerSelects();
+            checkAutoLogin();
+        }
+        return;
+    }
+    
+    console.log('Loading player profiles from Firebase...');
+    
+    // Load ALL player profiles from Firebase
+    db.ref('playerProfiles').once('value').then(snapshot => {
+        const firebaseProfiles = snapshot.val() || {};
+        
+        // REPLACE local profiles with Firebase data
+        playerProfiles = firebaseProfiles;
+        
+        // Save to localStorage for offline use
+        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+        
+        // Update the dropdown immediately
+        updatePlayerSelects();
+        
+        // Check for auto-login AFTER profiles are loaded
+        setTimeout(() => {
+            checkAutoLogin();
+        }, 500);
+        
+        console.log(`Loaded ${Object.keys(playerProfiles).length} player profiles from Firebase`);
+        
+    }).catch(error => {
+        console.error('Failed to load player profiles:', error);
+        // Fallback to localStorage
+        const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+        playerProfiles = localProfiles;
+        updatePlayerSelects();
+        checkAutoLogin();
+    });
+}
+function performSmartSync() {
+    if (!isFirebaseConnected) {
+        console.log('Firebase not connected, using cached data.');
+        loadCachedData();
+        return;
+    }
+    
+    showNotification('Checking for updates...', 'info');
+    
+    // 1. Get the timestamp of our last successful sync
+    const lastSyncTimestamp = localStorage.getItem('pscLastSyncTimestamp') || 0;
+    
+    // 2. Download ONLY question sets modified after our last sync
+    db.ref('questionSets')
+        .orderByChild('lastModified')
+        .startAt(parseInt(lastSyncTimestamp) + 1) // +1 to avoid duplicates
+        .once('value')
+        .then(snapshot => {
+            const newOrUpdatedSets = snapshot.val() || {};
+            const count = Object.keys(newOrUpdatedSets).length;
+            
+            if (count > 0) {
+                console.log(`Found ${count} new/updated question sets.`);
+                
+                // Merge new/updated sets into local storage
+                Object.keys(newOrUpdatedSets).forEach(setName => {
+                    questionSets[setName] = newOrUpdatedSets[setName];
+                });
+                
+                // Save updated question sets to localStorage
+                saveQuestionSets();
+                
+                showNotification(`Updated ${count} question sets from cloud!`, 'success');
+            } else {
+                console.log('Question sets are up to date.');
+            }
+            
+            // 3. Update our sync timestamp
+            const currentTimestamp = Date.now();
+            localStorage.setItem('pscLastSyncTimestamp', currentTimestamp);
+            localStorage.setItem('pscLastSyncDate', getTodayDateString());
+            
+            // 4. Load all data for use
+            loadCachedData();
+            
+        }).catch(error => {
+            console.error('Daily sync failed:', error);
+            showNotification('Using cached data (offline mode)', 'warning');
+            loadCachedData();
+        });
+}
+
+function loadCachedData() {
+    // Load all data from localStorage for offline use
+    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
+    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
+    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+    reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
+    
+    // Update UI with cached data
+    loadQuestionSets();
+    updateSubjectSelect();
+    
+    console.log('Loaded cached data from localStorage');
+}
+
+function setupPlayerProgressListener() {
+    if (!db || !currentPlayerName) return;
+    
+    // Listen only for this player's progress updates (small data)
+    db.ref(`playerProfiles/${currentPlayerName}`).on('value', snapshot => {
+        const cloudProfile = snapshot.val();
+        if (cloudProfile) {
+            // Merge with local profile
+            if (!playerProfiles[currentPlayerName]) {
+                playerProfiles[currentPlayerName] = {};
+            }
+            playerProfiles[currentPlayerName] = { ...playerProfiles[currentPlayerName], ...cloudProfile };
+            
+            // Also save to localStorage for offline use
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+            
+            // Update UI if this player is logged in
+            if (document.getElementById('playerNameDisplay') && currentPlayerName) {
+                updateProgressUI();
+            }
+        }
+    });
+}
         function setupSmartSync() {
             if (!db) return;
 
@@ -1749,61 +1904,49 @@ function hideCreatePlayerForm() {
             });
         }
 
-        function checkForNewQuestionSets() {
-            // Get the timestamp of the last time we successfully synced
-            const lastSyncTime = localStorage.getItem('pscLastSyncTimestamp') || 0;
-            console.log("Checking for sets uploaded after:", new Date(parseInt(lastSyncTime)).toLocaleString());
-
-            // Query Firebase: "Give me sets where 'lastModified' is greater than my last sync"
-            db.ref('questionSets')
-                .orderByChild('lastModified')
-                .startAt(parseInt(lastSyncTime) + 1) // +1 to avoid duplicates
-                .once('value')
-                .then(snapshot => {
-                    const newSets = snapshot.val();
-                    if (newSets) {
-                        const count = Object.keys(newSets).length;
-                        console.log(`Found ${count} new/updated sets.`);
-                        
-                        // Merge new sets into local storage
-                        questionSets = { ...questionSets, ...newSets };
-                        saveQuestionSets(); // Updates Local Storage
-                        loadQuestionSets(); // Updates UI
-                        updateSubjectSelect();
-
-                        showNotification(`Downloaded ${count} new Question Sets!`, 'success');
-                    } else {
-                        console.log("Your Question Sets are up to date.");
-                    }
-                    // Update our local timestamp so we don't download these again next time
-                    localStorage.setItem('pscLastSyncTimestamp', Date.now());
-                });
-        }
-
+        function syncAllDataFromFirebase() {
+    if (!isFirebaseConnected) {
+        showNotification('Not connected to cloud', 'error');
+        return;
+    }
+    
+    showNotification('Performing manual sync...');
+    
+    // Force a fresh sync regardless of date
+    localStorage.removeItem('pscLastSyncDate');
+    performSmartSync();
+}
         function syncToFirebase() {
-            if (!isFirebaseConnected || !currentPlayerName) return;
+    if (!isFirebaseConnected || !currentPlayerName) return;
 
-            // OPTIMIZATION: Only upload the specific user's data, not the whole DB
-            const updates = {};
-            
-            // 1. Update Player Profile (XP, Streak)
-            updates[`/playerProfiles/${currentPlayerName}`] = playerProfiles[currentPlayerName];
-            
-            // 2. Update Revision Progress (for this user only)
-            if(revisionProgress[currentPlayerName]) {
-                updates[`/revisionProgress/${currentPlayerName}`] = revisionProgress[currentPlayerName];
-            }
+    // ONLY sync player progress data, NOT question sets
+    const updates = {};
+    
+    // 1. Update Player Profile (XP, Streak, Attendance)
+    if (playerProfiles[currentPlayerName]) {
+        updates[`/playerProfiles/${currentPlayerName}`] = playerProfiles[currentPlayerName];
+    }
+    
+    // 2. Update Revision Progress (for this user only)
+    if (revisionProgress[currentPlayerName]) {
+        updates[`/revisionProgress/${currentPlayerName}`] = revisionProgress[currentPlayerName];
+    }
 
-            // 3. Update Daily Scores (Leaderboard)
-            updates['/dailyRevisionScores'] = dailyRevisionScores;
+    // 3. Update Daily Scores (Leaderboard) - only if we have today's scores
+    const todayStr = getTodayDateString();
+    if (dailyRevisionScores[todayStr]) {
+        updates['/dailyRevisionScores'] = dailyRevisionScores;
+    }
 
-            // Send specific updates
-            db.ref().update(updates).then(() => {
-                console.log("User progress synced to cloud.");
-            }).catch(err => {
-                console.error("Sync failed:", err);
-            });
-        }
+    // Send only these updates (no question sets)
+    if (Object.keys(updates).length > 0) {
+        db.ref().update(updates).then(() => {
+            console.log("Player progress synced to cloud.");
+        }).catch(err => {
+            console.error("Sync failed:", err);
+        });
+    }
+}
         let db = null;
         let isFirebaseConnected = false;
         
@@ -1836,14 +1979,11 @@ function hideCreatePlayerForm() {
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 function init() {
-    // 1. CLEAR local profiles immediately so ghost users don't show up
-    playerProfiles = {}; 
+    // 1. Load LOCAL data first (for offline use)
+    loadLocalDataImmediately();
     
-    // 2. Load Question Sets from LocalStorage (for offline use)
-    questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
-    
-    // 3. Initialize Firebase - This will fetch the REAL profile list
-    initializeFirebase(); 
+    // 2. Initialize Firebase - This will fetch player profiles from cloud
+    initializeFirebase();
     
     populateAvatars();
     setDailyQuote();
@@ -1851,10 +1991,6 @@ function init() {
     document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
-    // Update UI with local question sets initially
-    loadQuestionSets();
-    updateSubjectSelect();
-    
     // Listen for file uploads
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
@@ -1900,7 +2036,7 @@ function init() {
             }
         }
     }
-}// ADD THIS MISSING FUNCTION
+} 
 function savePlayerDataToLocalStorage() {
     if (!currentPlayerName) return;
     
@@ -1927,61 +2063,34 @@ function savePlayerDataToLocalStorage() {
     console.log('Player data saved to localStorage after login');
 }
 
-function syncAllDataFromFirebase() {
-    if (!isFirebaseConnected) {
-        showNotification('Firebase not connected', 'error');
-        return;
-    }
-    
-    showNotification('Syncing data from cloud...');
-    
-    // Sync question sets
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        questionSets = { ...questionSets, ...firebaseSets };
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-    });
 
-    // Sync player profiles
-    db.ref('playerProfiles').once('value').then(snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        playerProfiles = { ...playerProfiles, ...firebaseProfiles };
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        updatePlayerSelects();
-        showNotification('Data synced from cloud! Players and question sets updated.');
-    });
-
-    // Sync revision progress
-    db.ref('revisionProgress').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        revisionProgress = { ...revisionProgress, ...data };
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    });
-}
 // Add this new function to load local data immediately
 function loadLocalDataImmediately() {
-    // Load ONLY question sets from localStorage for offline functionality
+    console.log('Loading local data immediately...');
+    
+    // Load question sets from localStorage for offline functionality
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
     
-    // Player profiles are now ONLY from Firebase (localStorage was cleared)
-    playerProfiles = {};
-    revisionProgress = {};
-    practiceHistory = {};
-    dailyRevisionScores = {};
+    // Load player profiles from localStorage (as fallback until Firebase loads)
+    const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    playerProfiles = localProfiles;
     
-    // Update UI with question sets only
+    // Load other data
+    revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
+    practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
+    dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+    
+    // Update UI with local data
     loadQuestionSets();
     updateSubjectSelect();
     
-    console.log('Local question sets loaded. Waiting for Firebase player profiles...');
-    
-    // Show login gateway immediately
+    // TEMPORARILY show login gateway with cached players
+    // (Firebase will update this shortly)
+    updatePlayerSelects();
     switchPracticeView('loginGatewayView');
-}
-
-        function checkForUpdates() {
+    
+    console.log('Local data loaded. Waiting for Firebase updates...');
+}        function checkForUpdates() {
     showNotification('Checking for new question sets...');
     checkForNewQuestionSets();
 }
@@ -2045,31 +2154,32 @@ function switchTab(tabName) {
 // --- 3. UPDATED SAVE FUNCTION (ADDS TIMESTAMPS) ---
 
         function saveQuestionSets() {
-            const timestamp = Date.now();
-            
-            // Ensure every set has a lastModified timestamp
-            Object.keys(questionSets).forEach(setName => {
-                // If we are editing it now, or if it never had one, update the time
-                if (!questionSets[setName].lastModified) {
-                    questionSets[setName].lastModified = timestamp;
-                }
-            });
-            
-            // If we are in Admin mode and currently editing/uploading, force update the specific set's timestamp
-            if (isAdminLoggedIn && currentEditingSet && questionSets[currentEditingSet]) {
-                 questionSets[currentEditingSet].lastModified = timestamp;
-            }
-
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            localStorage.setItem('pscQuestionSetsVersion', QUESTION_SETS_VERSION);
-            
-            if(isFirebaseConnected) {
-                // We assume if you are saving, you are the Admin uploading new data
-                db.ref('questionSets').set(questionSets).then(() => {
-                   console.log("Question Sets uploaded to cloud.");
-                });
-            }
+    const timestamp = Date.now();
+    
+    // Ensure every set has a lastModified timestamp
+    Object.keys(questionSets).forEach(setName => {
+        if (!questionSets[setName].lastModified) {
+            questionSets[setName].lastModified = timestamp;
         }
+    });
+    
+    // Update the currently edited set's timestamp
+    if (currentEditingSet && questionSets[currentEditingSet]) {
+        questionSets[currentEditingSet].lastModified = timestamp;
+    }
+
+    // Save to localStorage first (for offline use)
+    localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+    
+    // Sync to Firebase ONLY when admin is uploading/changing questions
+    if (isAdminLoggedIn && isFirebaseConnected) {
+        // Only update the specific set that was changed
+        if (currentEditingSet) {
+            db.ref(`questionSets/${currentEditingSet}`).set(questionSets[currentEditingSet])
+                .then(() => console.log(`Set "${currentEditingSet}" uploaded to cloud.`));
+        }
+    }
+}
         
         function setDailyQuote() {
             const quoteEl = document.getElementById('motivationalQuote');
@@ -2105,49 +2215,6 @@ function switchTab(tabName) {
     
     // Your NEW Firebase configuration
  
-function setupOptimizedFirebaseListeners() {
-    if (!db) return;
-    
-    // 1. Load Question Sets (Sync logic handled elsewhere now)
-    db.ref('questionSets').once('value').then(snapshot => {
-        const firebaseSets = snapshot.val() || {};
-        questionSets = { ...questionSets, ...firebaseSets };
-        localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-        loadQuestionSets();
-        updateSubjectSelect();
-    });
-
-    // 2. Load Player Profiles - STRICTLY FROM FIREBASE
-    db.ref('playerProfiles').on('value', snapshot => {
-        const firebaseProfiles = snapshot.val() || {};
-        
-        // COMPLETELY REPLACE local profiles with Firebase data
-        // This ensures deleted users disappear immediately
-        playerProfiles = firebaseProfiles;
-        
-        // Update the dropdowns
-        updatePlayerSelects();
-        
-        // Check for auto-login
-        checkAutoLogin();
-    });
-
-    // 3. Load other data
-    db.ref('revisionProgress').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        revisionProgress = { ...revisionProgress, ...data };
-        localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-    });
-
-    db.ref('dailyRevisionScores').on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            dailyRevisionScores = data;
-            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-            if (document.getElementById('leaderboard')?.classList.contains('active')) showLeaderboards();
-        }
-    });
-}        
         function saveFirebaseConfig() {
             try {
                 const config = JSON.parse(document.getElementById('firebaseConfig').value);
@@ -2224,27 +2291,32 @@ function syncPendingUserData() {
        function checkAutoLogin() {
     const lastPlayer = localStorage.getItem('pscLastPlayer');
     
-    // Check if we have this player in the loaded profiles
-    if (lastPlayer && playerProfiles[lastPlayer]) {
-        // Auto-login the player
-        currentPlayerName = lastPlayer;
-        
-        // Load player progress and update UI
-        handleDailyLogin();
-        showNotification(`Welcome back, ${currentPlayerName}!`, 'success');
-        
-        // SHOW THE NAV TABS AFTER LOGIN
-        document.getElementById('tab-nav').classList.remove('hidden');
-        document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
-        loadPlayerProgress();
-        switchPracticeView('practiceSetupView');
-        updateAllBadges();
-        updateSubjectSelect();
-    } else {
-        // No auto-login possible, show login gateway
-        switchPracticeView('loginGatewayView');
-    }
-}    
+    // Wait a moment to ensure player profiles are loaded
+    setTimeout(() => {
+        // Check if we have this player in the loaded profiles
+        if (lastPlayer && playerProfiles[lastPlayer]) {
+            console.log(`Auto-login found: ${lastPlayer}`);
+            // Auto-login the player
+            currentPlayerName = lastPlayer;
+            
+            // Load player progress and update UI
+            handleDailyLogin();
+            showNotification(`Welcome back, ${currentPlayerName}!`, 'success');
+            
+            // SHOW THE NAV TABS AFTER LOGIN
+            document.getElementById('tab-nav').classList.remove('hidden');
+            document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
+            loadPlayerProgress();
+            switchPracticeView('practiceSetupView');
+            updateAllBadges();
+            updateSubjectSelect();
+        } else {
+            // No auto-login possible, show login gateway
+            console.log('No auto-login found or player not in profiles');
+            switchPracticeView('loginGatewayView');
+        }
+    }, 1000); // Wait 1 second for Firebase to load
+}
         // --- DATA MANAGEMENT ---
         function exportData() {
             const data = { questionSets, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
@@ -3142,9 +3214,10 @@ function showAnswer() {
     updateRevisionModeCSS(); // ADD THIS LINE
 }
         // --- XP, STREAK, and LEVELING LOGIC ---
-        function getTodayDateString() {
-            return new Date().toISOString().split('T')[0];
-        }
+       function getTodayDateString() {
+    const now = new Date();
+    return now.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+}
 
         function handleDailyLogin() {
             if (!currentPlayerName) return;
@@ -3352,29 +3425,35 @@ function showAnswer() {
         }
 
         function updatePlayerSelects() {
-            const selects = [
-                document.getElementById('playerSelect'), 
-                document.getElementById('playerToRemoveSelect'), 
-                document.getElementById('playerToClearHistorySelect'), 
-                document.getElementById('passwordUserSelect'), 
-                document.getElementById('attendancePlayerSelect'),
-                document.getElementById('historyPlayerSelect'),
-                document.getElementById('backlogPlayerSelect')
-            ];
-            const players = getAllPlayerNames();
-            selects.forEach(s => {
-                if (!s) return;
-                const currentVal = s.value;
-                s.innerHTML = `<option value="">Select a player</option>` + [...players].sort().map(p => `<option value="${p}">${p}</option>`).join('');
-                if (players.includes(currentVal)) {
-                    s.value = currentVal;
-                }
-            });
+    const selects = [
+        document.getElementById('playerSelect'), 
+        document.getElementById('playerToRemoveSelect'), 
+        document.getElementById('playerToClearHistorySelect'), 
+        document.getElementById('passwordUserSelect'), 
+        document.getElementById('attendancePlayerSelect'),
+        document.getElementById('historyPlayerSelect'),
+        document.getElementById('backlogPlayerSelect')
+    ];
+    
+    // Get player names from the actual playerProfiles object
+    const players = Object.keys(playerProfiles).filter(name => name && name.trim() !== '');
+    
+    selects.forEach(s => {
+        if (!s) return;
+        const currentVal = s.value;
+        s.innerHTML = `<option value="">Select a player</option>` + 
+                      players.sort().map(p => `<option value="${p}">${p}</option>`).join('');
+        if (players.includes(currentVal)) {
+            s.value = currentVal;
         }
+    });
+    
+    console.log(`Updated dropdowns with ${players.length} players`);
+}
         
 function getAllPlayerNames() {
-    // Only return players from Firebase - ignore localStorage completely
-    return Object.keys(playerProfiles).filter(Boolean);
+    // Get player names directly from the playerProfiles object
+    return Object.keys(playerProfiles || {}).filter(name => name && name.trim() !== '');
 }
 
         function saveQuestionSets(){
