@@ -1098,7 +1098,65 @@
         white-space: pre-wrap;
         text-align: justify;
     }
-}    </style>
+
+}    
+
+/* Better button organization */
+#mainButtonRow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+#mainButtonRow button {
+    min-width: 120px;
+    padding: 10px 15px;
+    font-size: 14px;
+}
+
+#continueContainer {
+    margin-top: 20px;
+}
+
+#continueContainer button {
+    padding: 12px 30px;
+    font-size: 16px;
+}
+
+/* Mobile responsiveness for buttons */
+@media screen and (max-width: 600px) {
+    #mainButtonRow {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    #mainButtonRow button {
+        width: 90%;
+        margin: 2px 0;
+    }
+}
+
+/* Smaller buttons for revision mode */
+@media screen and (min-width: 768px) {
+    body.practice-active.is-revision-mode #mainButtonRow button {
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+        margin: 3px !important;
+        min-width: 120px;
+    }
+}
+
+/* Better mobile button sizing */
+@media screen and (max-width: 600px) {
+    body.practice-active #mainButtonRow button {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        margin: 2px !important;
+    }
+}</style>
 </head>
 <body>
     <canvas id="confetti-canvas"></canvas>
@@ -1218,15 +1276,22 @@
         <div id="practiceQuestion" style="font-size: 1.3em; margin-bottom: 20px; font-weight: bold; text-align: center;"></div>
         <div id="practiceOptions"></div>
         <div class="score" id="practiceScore" style="margin-top: 20px;">Score: 0</div>
-        <div style="text-align: center; margin-top: 10px;">
-    <button onclick="skipQuestion()" class="btn-warning" id="skipQuestionBtn" disabled="">Skip Now</button>
-    <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" disabled="">End Practice</button>
+      <!-- BUTTON CONTAINERS - REORGANIZED LAYOUT -->
+<!-- Top Row: Continue Button (appears on top when needed) -->
+<div id="continueContainer" style="text-align: center; margin-top: 15px; display: none; order: 1;">
+    <button onclick="proceedToNextQuestion()" class="btn-success" style="padding: 10px 20px; font-size: 14px;">Continue to Next Question</button>
 </div>
-<div id="nextQuestionContainer" class="hidden" style="text-align: center; margin-top: 15px;">
-    <button onclick="proceedToNextQuestion()" class="btn-success">Next Question</button>
-    <div style="margin-top: 10px;">
-        <button id="reportQuestionBtn" onclick="reportCurrentQuestion()" class="btn-warning" style="background: #e67e22;">Report Question</button>
-    </div>
+
+<!-- Main Button Row (bottom row, shows different buttons based on mode) -->
+<div id="mainButtonRow" style="text-align: center; margin-top: 15px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; order: 2;">
+    <!-- Show Answer button (only in revision mode) -->
+    <button onclick="showAnswer()" class="btn-success" id="showAnswerBtn" style="display: none; padding: 8px 16px; font-size: 13px;">Show Answer</button>
+    
+    <!-- Report Question button (only in revision mode) -->
+    <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="display: none; padding: 8px 16px; font-size: 13px;">Report Question</button>
+    
+    <!-- End Session button (only in practice mode) -->
+    <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" style="padding: 8px 16px; font-size: 13px;">End Session</button>
 </div>
     </div>
 </div>
@@ -2610,9 +2675,22 @@ function syncPendingUserData() {
             if (practiceInProgress) return;
             practiceInProgress = true;
             initAudio();
-            isRevisionMode = isRev; currentRevisionKey = revisionKey;
-            currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
-            if (currentSet.length === 0) { 
+            isRevisionMode = isRev; currentRevisionKey = revisionKey; 
+            updateRevisionModeCSS(); // ADD THIS LINE
+            // Don't shuffle in revision mode, shuffle in practice mode
+if (isRev) {
+    // Revision mode: show in original order
+    currentSet = [...(questionSets[setName].questions || [])];
+} else {
+    // Practice mode: shuffle
+    // Don't shuffle in revision mode, shuffle in practice mode
+if (isRev) {
+    // Revision mode: show in original order
+    currentSet = [...(questionSets[setName].questions || [])];
+} else {
+    // Practice mode: shuffle
+    currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
+}}if (currentSet.length === 0) { 
                 showNotification('Selected set is empty.', 'error'); 
                 practiceInProgress = false;
                 switchPracticeView('practiceSetupView');
@@ -2676,183 +2754,393 @@ const category = set.category || 'gk';
         }
 
         
-                  function showNextQuestion() {
+              function showNextQuestion() {
     if (currentQuestionIndex >= currentSet.length) {
         endPractice();
         return;
     }
-    document.getElementById('nextQuestionContainer').classList.add('hidden');
-    document.getElementById('skipQuestionBtn').disabled = false;
-    document.getElementById('endPracticeBtn').disabled = false;
+    
+    // Hide Continue container
+    const continueContainer = document.getElementById('continueContainer');
+    if (continueContainer) continueContainer.style.display = 'none';
+    
+    // Enable End Session button
+    const endPracticeBtn = document.getElementById('endPracticeBtn');
+    if (endPracticeBtn) endPracticeBtn.disabled = false;
 
     const question = currentSet[currentQuestionIndex];
     
-    // FIXED: Proper line breaks for statement questions
+    // Show question
     let questionHTML = '';
-    
     if (question.type === 'statement') {
-        // Clean up but keep single line breaks between numbered points
         let cleanedQuestion = question.question
-            .replace(/\n\s*\n/g, '\n') // Remove multiple line breaks, keep single
-            .replace(/\s+/g, ' ')      // Remove extra spaces within lines
+            .replace(/\n\s*\n/g, '\n')
+            .replace(/\s+/g, ' ')
             .trim();
         
-        // Ensure proper single line breaks between numbered points
         cleanedQuestion = cleanedQuestion
-            .replace(/(\d\.)/g, '\n$1') // Add line break before each number
+            .replace(/(\d\.)/g, '\n$1')
             .trim();
         
         questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
     } else {
-        // Regular questions
         questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${question.question}</strong></div>`;
     }
 
     document.getElementById('practiceQuestion').innerHTML = questionHTML;
     
+    // Clear previous options
     const optionsDiv = document.getElementById('practiceOptions');
-    optionsDiv.innerHTML = '';
-    question.options.forEach((option, index) => {
-        const optionDiv = document.createElement('div');
-        optionDiv.className = 'option';
-        optionDiv.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
-        optionDiv.onclick = () => selectAnswer(index);
-        optionsDiv.appendChild(optionDiv);
-    });
-}
+    if (optionsDiv) optionsDiv.innerHTML = '';
+    
+    // Show/Hide buttons based on mode
+    if (isRevisionMode) {
+        // REVISION MODE: Show Show Answer, Report, and End buttons
+        const showAnswerBtn = document.getElementById('showAnswerBtn');
+        const reportQuestionBtn = document.getElementById('reportQuestionBtn');
         
-        function selectAnswer(selectedIndex) {
-            document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
-            const question = currentSet[currentQuestionIndex];
-            const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
-            const isCorrect = selectedIndex === correctIndex;
-            document.querySelectorAll('.option').forEach((o, i) => {
-                if (i === correctIndex) o.classList.add('correct');
-                else if (i === selectedIndex) o.classList.add('wrong');
-            });
-            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
-            const timeForThisQuestion = timeElapsed - lastAnswerTime;
-            currentAttempt.answers.push({ 
-                isCorrect, questionText: question.question, questionOptions: question.options,
-                selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: question.correctAnswer,
-                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: false
-            });
+        if (showAnswerBtn) showAnswerBtn.style.display = 'inline-block';
+        if (reportQuestionBtn) reportQuestionBtn.style.display = 'inline-block';
+        if (endPracticeBtn) endPracticeBtn.style.display = 'inline-block';
+        
+        // Update score display to show progress
+        document.getElementById('practiceScore').textContent = `Revision: ${currentQuestionIndex + 1}/${currentSet.length}`;
+    } else {
+        // PRACTICE MODE: Only show End Session button
+        const showAnswerBtn = document.getElementById('showAnswerBtn');
+        const reportQuestionBtn = document.getElementById('reportQuestionBtn');
+        
+        if (showAnswerBtn) showAnswerBtn.style.display = 'none';
+        if (reportQuestionBtn) reportQuestionBtn.style.display = 'none';
+        if (endPracticeBtn) endPracticeBtn.style.display = 'inline-block';
+        
+        // Update score display
+        document.getElementById('practiceScore').textContent = `Score: ${score}`;
+    }
+    
+    // Create option buttons
+    if (optionsDiv) {
+        question.options.forEach((option, index) => {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'option';
+            optionDiv.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
             
-            if (isCorrect) {
-                score++;
-                playSound('correct');
-                document.getElementById('practiceScore').textContent = `Score: ${score}`;
-                proceedToNextQuestion();
+            if (isRevisionMode) {
+                // REVISION MODE: Click shows answer
+                optionDiv.onclick = () => handleRevisionAnswer(index, question);
             } else {
-                playSound('wrong');
-                document.getElementById('nextQuestionContainer').classList.remove('hidden');
-                document.getElementById('skipQuestionBtn').disabled = true;
-                document.getElementById('endPracticeBtn').disabled = true;
+                // PRACTICE MODE: Normal answer selection
+                optionDiv.onclick = () => selectAnswer(index);
             }
+            
+            optionsDiv.appendChild(optionDiv);
+        });
+    }
+}
+// NEW HELPER FUNCTION FOR REVISION MODE
+function handleRevisionAnswer(selectedIndex, question) {
+    const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
+    const isCorrect = selectedIndex === correctIndex;
+    
+    // Disable all options
+    document.querySelectorAll('.option').forEach(o => {
+        o.onclick = null;
+        o.style.cursor = 'default';
+    });
+    
+    // Hide Show Answer button
+    document.getElementById('showAnswerBtn').style.display = 'none';
+    
+    // Highlight correct answer in GREEN
+    document.querySelectorAll('.option').forEach((o, i) => {
+        if (i === correctIndex) {
+            o.classList.add('correct');
+            o.style.backgroundColor = '#2ecc71';
+            o.style.color = 'white';
         }
-
-        function proceedToNextQuestion() {
+    });
+    
+    // Highlight wrong answer in RED if selected wrong
+    if (!isCorrect) {
+        document.querySelectorAll('.option')[selectedIndex].classList.add('wrong');
+        document.querySelectorAll('.option')[selectedIndex].style.backgroundColor = '#e74c3c';
+        document.querySelectorAll('.option')[selectedIndex].style.color = 'white';
+    }
+    
+    // Play sound
+    playSound(isCorrect ? 'correct' : 'wrong');
+    
+    // Record the answer
+    const lastAnswerTime = currentAttempt.answers.length > 0 ? 
+        currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
+    const timeForThisQuestion = timeElapsed - lastAnswerTime;
+    
+    currentAttempt.answers.push({ 
+        isCorrect, 
+        questionText: question.question, 
+        questionOptions: question.options,
+        selectedAnswer: String.fromCharCode(65 + selectedIndex), 
+        correctAnswer: question.correctAnswer,
+        timeTaken: timeForThisQuestion, 
+        timeAtAnswer: timeElapsed, 
+        isSkipped: false,
+        viewedAnswer: true
+    });
+    
+        // Auto-advance for correct answers after 0.5 seconds
+    if (isCorrect) {
+        setTimeout(() => {
             currentQuestionIndex++;
             showNextQuestion();
+        }, 500);
+    } else {
+        // For wrong answers, show Continue button (user must click)
+        document.getElementById('continueContainer').style.display = 'block';
+    }
+}
+        
+      function selectAnswer(selectedIndex) {
+    // This function is for PRACTICE MODE only
+    if (isRevisionMode) return;
+    
+    // Disable all options
+    document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
+    
+    const question = currentSet[currentQuestionIndex];
+    const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
+    const isCorrect = selectedIndex === correctIndex;
+    
+    // Highlight answers
+    document.querySelectorAll('.option').forEach((o, i) => {
+        if (i === correctIndex) {
+            o.classList.add('correct');
+            o.style.backgroundColor = '#2ecc71';
+            o.style.color = 'white';
+        } else if (i === selectedIndex && !isCorrect) {
+            o.classList.add('wrong');
+            o.style.backgroundColor = '#e74c3c';
+            o.style.color = 'white';
         }
+    });
+    
+    // Record answer
+    const lastAnswerTime = currentAttempt.answers.length > 0 ? 
+        currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
+    const timeForThisQuestion = timeElapsed - lastAnswerTime;
+    
+    currentAttempt.answers.push({ 
+        isCorrect, 
+        questionText: question.question, 
+        questionOptions: question.options,
+        selectedAnswer: String.fromCharCode(65 + selectedIndex), 
+        correctAnswer: question.correctAnswer,
+        timeTaken: timeForThisQuestion, 
+        timeAtAnswer: timeElapsed, 
+        isSkipped: false
+    });
+    
+    // Play sound
+    playSound(isCorrect ? 'correct' : 'wrong');
+    
+    if (isCorrect) {
+        score++;
+        document.getElementById('practiceScore').textContent = `Score: ${score}`;
+    }
+    
+        // Handle practice mode progression
+    if (isCorrect) {
+        // Correct answer: auto-advance after 0.25 seconds
+        setTimeout(() => {
+            currentQuestionIndex++;
+            showNextQuestion();
+        }, 250);
+    } else {
+        // Wrong answer: show Continue button
+        document.getElementById('continueContainer').style.display = 'block';
+    }
+}
+function showAnswer() {
+    if (!practiceInProgress || !isRevisionMode) return;
+    
+    const question = currentSet[currentQuestionIndex];
+    const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
+    
+    // Disable all options
+    document.querySelectorAll('.option').forEach(o => {
+        o.onclick = null;
+        o.style.cursor = 'default';
+    });
+    
+    // Hide Show Answer button
+    document.getElementById('showAnswerBtn').style.display = 'none';
+    
+    // Highlight correct answer in GREEN
+    document.querySelectorAll('.option').forEach((o, i) => {
+        if (i === correctIndex) {
+            o.classList.add('correct');
+            o.style.backgroundColor = '#2ecc71';
+            o.style.color = 'white';
+        }
+    });
+    
+    playSound('correct');
+    
+    // Record that user viewed answer
+    const lastAnswerTime = currentAttempt.answers.length > 0 ? 
+        currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
+    const timeForThisQuestion = timeElapsed - lastAnswerTime;
+    
+    currentAttempt.answers.push({
+        isCorrect: false,
+        questionText: question.question,
+        selectedAnswer: 'SHOW_ANSWER',
+        correctAnswer: question.correctAnswer,
+        timeTaken: timeForThisQuestion,
+        timeAtAnswer: timeElapsed,
+        isSkipped: false,
+        viewedAnswer: true
+    });
+    
+        // Show Continue button (user must click to continue)
+    document.getElementById('continueContainer').style.display = 'block';}
+      function proceedToNextQuestion() {
+    // This works for BOTH practice and revision modes
+    currentQuestionIndex++;
+    showNextQuestion();
+}
 
-        function skipQuestion() {
-            if (currentQuestionIndex >= currentSet.length) { return; }
-            const question = currentSet[currentQuestionIndex];
-            document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
-            const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
-            const timeForThisQuestion = timeElapsed - lastAnswerTime;
-            currentAttempt.answers.push({
-                isCorrect: false, questionText: question.question, questionOptions: question.options,
-                selectedAnswer: 'SKIPPED', correctAnswer: question.correctAnswer,
-                timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: true
-            });
-            showNotification('Question skipped.', 'warning');
-            proceedToNextQuestion();
-        }
+       
 
         function endPractice() {
-            if (!practiceInProgress || !currentAttempt) {
-                practiceInProgress = false;
-                clearInterval(timer);
-                document.body.classList.remove('practice-active');
-                switchPracticeView('practiceSetupView');
-                return;
-            }
-            
-            practiceInProgress = false;
+    if (!practiceInProgress || !currentAttempt) {
+        practiceInProgress = false;
+        clearInterval(timer);
+        document.body.classList.remove('practice-active');
+        switchPracticeView('practiceSetupView');
+        return;
+    }
+    
+    practiceInProgress = false;
+    clearInterval(timer);
+
+    const totalQuestions = currentAttempt.totalQuestions;
+    const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+    
+    let xpEarned = 0;
+    let xpMessage = '';
+
+    // ============= REVISION MODE LOGIC =============
+    if (isRevisionMode) {
+        // For revision mode, check if all questions were viewed
+        const questionsViewed = currentAttempt.answers.length;
+        
+        if (questionsViewed < totalQuestions) {
+            showNotification(`You've viewed ${questionsViewed} of ${totalQuestions} questions. Continue revising?`, 'warning');
+            practiceInProgress = true; // Reset flag to continue
             clearInterval(timer);
-
-            const totalQuestions = currentAttempt.totalQuestions;
-            const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-            
-            let xpEarned = 0;
-            let xpMessage = '';
-
-            if (isRevisionMode) {
-                const CUTOFF_DATE = new Date('2025-10-13T00:00:00');
-                const setName = currentAttempt.setName;
-                const setUploadDateStr = questionSets[setName]?.uploadDate;
-                const setUploadDate = setUploadDateStr ? new Date(setUploadDateStr + 'T00:00:00') : new Date(0); 
-
-                const isEligibleForXp = setUploadDate >= CUTOFF_DATE;
-
-                if (isEligibleForXp) {
-                    xpEarned = calculateAndApplyXP(score);
-                    xpMessage = `You earned ${xpEarned} XP!`;
-                } else {
-                    xpEarned = calculateAndApplyXP(0);
-                    xpMessage = `Score added to today's ranking. Total XP is only awarded for revisions on sets from after 13-10-2025.`;
-                    if (xpEarned > 0) {
-                        xpMessage += ` Daily activity bonus of ${xpEarned} XP applied.`;
-                    }
+            timer = setInterval(() => { 
+                timeElapsed++; 
+                const remaining = totalTimeLimit - timeElapsed;
+                document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
+                if (remaining <= 0) { 
+                    showNotification('Time limit reached!', 'error'); 
+                    endPractice();
                 }
-                
-                const todayStr = getTodayDateString();
-                if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
-                if (!dailyRevisionScores[todayStr][currentPlayerName]) dailyRevisionScores[todayStr][currentPlayerName] = 0;
-                dailyRevisionScores[todayStr][currentPlayerName] += score;
-                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
-                if (isFirebaseConnected) db.ref('dailyRevisionScores').set(dailyRevisionScores);
-
-            } else {
-                xpEarned = calculateAndApplyXP(0);
-                xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP for your daily activity! Score-based XP is for revisions.` : 'XP for correct answers is awarded during revision sessions.';
-            }
-
-            currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
-            const attemptId = `attempt-${Date.now()}`;
-            practiceHistory[attemptId] = currentAttempt;
-            localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+            }, 1000);
+            return;
+        }
+        
+        // All questions viewed - ask if they want to do practice now
+        setTimeout(() => {
+            const proceedToPractice = confirm(`🎉 Revision Completed!\n\nYou've reviewed all ${totalQuestions} questions.\n\nWould you like to do a practice exam with the same set now?\n\n(Click OK for practice, Cancel to finish)`);
             
-            if (isRevisionMode) {
-                const success = percentage >= MIN_SCORE_FOR_REVISION_SUCCESS;
+            if (proceedToPractice) {
+                // Start practice mode with the same set
+                setTimeout(() => {
+                    const setName = currentAttempt.setName;
+                    
+                    // Reset for practice mode
+                    document.body.classList.remove('practice-active');
+                    switchPracticeView('practiceSetupView');
+                    
+                    // Set the dropdowns to the same set
+                    document.getElementById('subjectSelect').value = questionSets[setName]?.subject || '';
+                    updatePracticeSetSelect(document.getElementById('subjectSelect').value);
+                    document.getElementById('practiceSetSelect').value = setName;
+                    
+                    // Wait a moment then start practice
+                    setTimeout(() => {
+                        startPracticeWrapper(setName, false, null);
+                    }, 300);
+                }, 500);
+            } else {
+                // Mark revision as complete
                 if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
-                revisionProgress[currentPlayerName][currentRevisionKey] = { percentage, date: new Date().toISOString(), success };
+                revisionProgress[currentPlayerName][currentRevisionKey] = { 
+                    percentage: 100, 
+                    date: new Date().toISOString(), 
+                    success: true,
+                    revisionCompleted: true
+                };
+                
+                // Save and update UI
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 if (isFirebaseConnected) db.ref('revisionProgress').set(revisionProgress);
+                
+                // Show simple completion message
+                document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
+                document.getElementById('modalScore').textContent = `You reviewed all ${totalQuestions} questions.`;
+                document.getElementById('modalTime').textContent = `Time spent: ${formatTime(timeElapsed)}`;
+                document.getElementById('modalXPGained').textContent = '📚 Revision mode: No XP awarded.';
+                openModal('resultsModal');
+                
+                // Clean up and exit
+                document.body.classList.remove('practice-active');
+                switchPracticeView('practiceSetupView');
+                isRevisionMode = false;
+                currentRevisionKey = null;
+                currentSet = [];
+                
+                // Update revision pages
                 renderRevisionPage();
                 renderBacklogPage();
             }
+        }, 500);
+        return;
+    }
+    
+    // ============= PRACTICE MODE LOGIC (existing) =============
+    // Practice mode - keep existing XP logic
+    xpEarned = calculateAndApplyXP(score);
+    xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP!` : 'Keep practicing to earn XP!';
 
-            document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
-            document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
-            document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
-            document.getElementById('modalXPGained').textContent = xpMessage;
-            openModal('resultsModal');
-            
-            if (percentage > 70) startConfetti();
+    // Update daily scores for leaderboard (only for revision mode, not practice)
+    // Daily scores are only for revisions, not practice sessions
 
-            const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
-            if (wrongAnswers.length > 0) {
-                showWrongAnswersPopup(wrongAnswers);
-            }
-            
-            document.body.classList.remove('practice-active');
-            switchPracticeView('practiceSetupView'); 
-            isRevisionMode = false; currentRevisionKey = null; currentSet = [];
-        }
-        
+    currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
+    const attemptId = `attempt-${Date.now()}`;
+    practiceHistory[attemptId] = currentAttempt;
+    localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
+    
+    // Show results modal
+    document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
+    document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
+    document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
+    document.getElementById('modalXPGained').textContent = xpMessage;
+    openModal('resultsModal');
+    
+    if (percentage > 70) startConfetti();
+
+    const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
+    if (wrongAnswers.length > 0) {
+        showWrongAnswersPopup(wrongAnswers);
+    }
+    
+    document.body.classList.remove('practice-active');
+    switchPracticeView('practiceSetupView'); 
+    isRevisionMode = false; currentRevisionKey = null; currentSet = [];
+    updateRevisionModeCSS(); // ADD THIS LINE
+}
         // --- XP, STREAK, and LEVELING LOGIC ---
         function getTodayDateString() {
             return new Date().toISOString().split('T')[0];
@@ -4016,19 +4304,42 @@ function showAdminSetupModal() {
         }
 
         // --- REPORTING FUNCTIONS ---
-        function reportCurrentQuestion() {
+       function reportCurrentQuestion() {
+    // Only allow reporting in revision mode
+    if (!isRevisionMode) {
+        showNotification('Question reporting is only available in revision mode.', 'warning');
+        return;
+    }
+    
     const question = currentSet[currentQuestionIndex];
-    const isAlreadyReported = reportedQuestions.some(r => r.setName === currentAttempt.setName && r.question.question === question.question);
-    if (isAlreadyReported) { showNotification('This question has already been reported.', 'warning'); return; }
-    reportedQuestions.push({ reportId: `report-${Date.now()}`, setName: currentAttempt.setName, question: JSON.parse(JSON.stringify(question)), reportedAt: new Date().toISOString(), reportedBy: currentPlayerName });
+    const isAlreadyReported = reportedQuestions.some(r => 
+        r.setName === currentAttempt.setName && 
+        r.question.question === question.question
+    );
+    
+    if (isAlreadyReported) {
+        showNotification('This question has already been reported.', 'warning');
+        return;
+    }
+    
+    reportedQuestions.push({ 
+        reportId: `report-${Date.now()}`, 
+        setName: currentAttempt.setName, 
+        question: JSON.parse(JSON.stringify(question)), 
+        reportedAt: new Date().toISOString(), 
+        reportedBy: currentPlayerName 
+    });
+    
     localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
-    if (isFirebaseConnected) { db.ref('reportedQuestions').set(reportedQuestions); }
+    if (isFirebaseConnected) { 
+        db.ref('reportedQuestions').set(reportedQuestions); 
+    }
+    
     showNotification('Question reported for admin review.', 'success');
     
-    // UPDATE: Always update admin badges when a question is reported
+    // Update admin badges
     updateAdminBadges();
 }
-
         function renderReportedQuestions() {
             const listDiv = document.getElementById('reportedQuestionsList');
             if (reportedQuestions.length === 0) { listDiv.innerHTML = '<p>No questions have been reported. All clear!</p>'; return; }
@@ -4154,6 +4465,24 @@ function validateAndSyncQuestionSets(callback) {
         console.error("Sync Check Failed", err);
         if(callback) callback();
     });
+}
+
+function updateRevisionModeCSS() {
+    if (isRevisionMode) {
+        document.body.classList.add('is-revision-mode');
+        // Hide End Session button in revision mode
+        document.getElementById('endPracticeBtn').style.display = 'none';
+        // Show revision-specific buttons
+        document.getElementById('showAnswerBtn').style.display = 'inline-block';
+        document.getElementById('reportQuestionBtn').style.display = 'inline-block';
+    } else {
+        document.body.classList.remove('is-revision-mode');
+        // Show End Session button in practice mode
+        document.getElementById('endPracticeBtn').style.display = 'inline-block';
+        // Hide revision-specific buttons
+        document.getElementById('showAnswerBtn').style.display = 'none';
+        document.getElementById('reportQuestionBtn').style.display = 'none';
+    }
 }
     </script>
 </body>
