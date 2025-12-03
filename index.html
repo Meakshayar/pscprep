@@ -1708,7 +1708,7 @@ function hideCreatePlayerForm() {
 
         // --- 2. NEW OPTIMIZED SYNC LOGIC ---
         
-       function initializeFirebase() {
+      function initializeFirebase() {
     // Initialize Firebase with your hardcoded config
     if (firebase.apps.length === 0) {
         firebase.initializeApp(firebaseConfig);
@@ -1724,30 +1724,16 @@ function hideCreatePlayerForm() {
             isFirebaseConnected = true;
             console.log('Firebase connected.');
             
-            // Load player profiles when connected
+            // Load profiles when connected
             setTimeout(() => {
                 loadPlayerProfilesFromFirebase();
             }, 1000);
             
-            // Check for question set updates
-            checkForQuestionSetUpdates();
+            // RUN SMART SYNC AUTOMATICALLY ON PAGE LOAD
+            performSmartSync();
             
-            // Setup daily sync
-            setupSmartDailySync();
-            
-            // Listen for real-time question set updates (admin changes)
-            db.ref('lastQuestionSetUpdate').on('value', (snapshot) => {
-                if (snapshot.val()) {
-                    const lastCloudUpdate = snapshot.val();
-                    const lastLocalUpdate = localStorage.getItem('pscLastQuestionSetUpdate') || 0;
-                    
-                    if (lastCloudUpdate > lastLocalUpdate) {
-                        console.log('Real-time: Question sets updated by admin');
-                        performSmartSync(); // This downloads only what changed
-                        localStorage.setItem('pscLastQuestionSetUpdate', lastCloudUpdate);
-                    }
-                }
-            });
+            // Setup progress listener
+            setupPlayerProgressListener();
             
         } else {
             updateFirebaseStatus('Disconnected (Offline Mode)', false);
@@ -1760,68 +1746,12 @@ function hideCreatePlayerForm() {
 function setupSmartDailySync() {
     if (!db) return;
     
-    // Get today's date as a string (YYYY-MM-DD)
-    const today = getTodayDateString();
+    // ALWAYS check for updates when app loads
+    performSmartSync();
     
-    // Check if we already synced today
-    const lastSyncDate = localStorage.getItem('pscLastSyncDate');
-    
-    // Always check for updates when app loads
-    if (lastSyncDate !== today) {
-        console.log(`Daily sync needed. Last sync: ${lastSyncDate || 'Never'}, Today: ${today}`);
-        performSmartSync();
-        
-        // Also sync revision progress
-        setTimeout(() => {
-            syncRevisionProgressOnly();
-        }, 2000);
-    } else {
-        console.log('Already synced today, using cached data.');
-        // Even if we synced today, check for updates
-        setTimeout(() => {
-            performSmartSync(); // Silent sync for question sets
-            syncRevisionProgressOnly(); // Sync revision progress
-        }, 5000);
-    }
-    
-    // Set up listener for player progress updates
+    // Set up listener for player progress updates only (small data)
     setupPlayerProgressListener();
-    
-    // Set up listener for revision progress updates
-    if (currentPlayerName) {
-        db.ref(`revisionProgress/${currentPlayerName}`).on('value', snapshot => {
-            const cloudData = snapshot.val();
-            if (cloudData) {
-                // Merge cloud data with local
-                if (!revisionProgress[currentPlayerName]) {
-                    revisionProgress[currentPlayerName] = {};
-                }
-                
-                let hasChanges = false;
-                Object.keys(cloudData).forEach(key => {
-                    if (!revisionProgress[currentPlayerName][key] || 
-                        revisionProgress[currentPlayerName][key].date !== cloudData[key].date) {
-                        revisionProgress[currentPlayerName][key] = cloudData[key];
-                        hasChanges = true;
-                    }
-                });
-                
-                if (hasChanges) {
-                    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                    
-                    // Update UI if we're viewing revision/backlog
-                    if (document.getElementById('revision').classList.contains('active')) {
-                        renderRevisionPage();
-                    }
-                    if (document.getElementById('backlog').classList.contains('active')) {
-                        renderBacklogPage();
-                    }
-                }
-            }
-        });
-    }
 }
-
 function loadPlayerProfilesFromFirebase() {
     console.log('DEBUG: Trying to load profiles from Firebase...');
     
@@ -1878,13 +1808,15 @@ function performSmartSync() {
         return;
     }
     
-    // Get our last sync timestamp from localStorage
+    showNotification('Checking for updates...', 'info');
+    
+    // 1. Get the timestamp of our last successful sync
     const lastSyncTimestamp = localStorage.getItem('pscLastSyncTimestamp') || 0;
     
-    // Only listen for NEW/MODIFIED question sets
+    // 2. Download ONLY question sets modified after our last sync
     db.ref('questionSets')
         .orderByChild('lastModified')
-        .startAt(parseInt(lastSyncTimestamp) + 1)
+        .startAt(parseInt(lastSyncTimestamp) + 1) // +1 to avoid duplicates
         .once('value')
         .then(snapshot => {
             const newOrUpdatedSets = snapshot.val() || {};
@@ -1909,26 +1841,25 @@ function performSmartSync() {
                 // Save revision progress back to localStorage
                 localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 
-                // Update UI if we have new sets
+                // Update UI with new data
                 loadQuestionSets();
                 updateSubjectSelect();
                 
-                // Sync revision progress back to Firebase to ensure consistency
-                if (currentPlayerName && revisionProgress[currentPlayerName]) {
-                    db.ref(`revisionProgress/${currentPlayerName}`).update(revisionProgress[currentPlayerName]);
-                }
-                
-                showNotification(`${count} question set(s) updated from cloud!`, 'success');
+                showNotification(`Updated ${count} question set(s) from cloud!`, 'success');
+            } else {
+                console.log('Question sets are up to date.');
+                showNotification('All question sets are up to date.', 'info');
             }
             
-            // Update our sync timestamp
+            // 3. Update our sync timestamp
             const currentTimestamp = Date.now();
             localStorage.setItem('pscLastSyncTimestamp', currentTimestamp);
             localStorage.setItem('pscLastSyncDate', getTodayDateString());
             
         }).catch(error => {
             console.error('Smart sync failed:', error);
-            // Continue with cached data
+            showNotification('Using cached data (offline mode)', 'warning');
+            loadCachedData();
         });
 }
 function syncRevisionProgressOnly() {
