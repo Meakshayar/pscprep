@@ -1266,8 +1266,8 @@
         <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled>Start Practice</button>
 
         <div style="text-align: center; margin: 10px 0;">
-            <button onclick="checkForUpdates()" class="btn-warning">Check for New Question Sets</button>
-        </div>
+    <button onclick="syncQuestionSetsFromFirebase()" class="btn-warning">Sync Question Sets from Cloud</button>
+</div>
     </div>
 
     <!-- PRACTICE SESSION (SAME AS BEFORE) -->
@@ -1724,20 +1724,37 @@ function hideCreatePlayerForm() {
             isFirebaseConnected = true;
             console.log('Firebase connected.');
             
-            // ADD THIS: Load profiles when connected
+            // Load player profiles when connected
             setTimeout(() => {
                 loadPlayerProfilesFromFirebase();
-            }, 1000); // Wait 1 second to ensure connection is stable
+            }, 1000);
             
-            // START SMART SYNC - Check for daily updates
+            // Check for question set updates
+            checkForQuestionSetUpdates();
+            
+            // Setup daily sync
             setupSmartDailySync();
+            
+            // Listen for real-time question set updates (admin changes)
+            db.ref('lastQuestionSetUpdate').on('value', (snapshot) => {
+                if (snapshot.val()) {
+                    const lastCloudUpdate = snapshot.val();
+                    const lastLocalUpdate = localStorage.getItem('pscLastQuestionSetUpdate') || 0;
+                    
+                    if (lastCloudUpdate > lastLocalUpdate) {
+                        console.log('Real-time: Question sets updated by admin');
+                        performSmartSync(); // This downloads only what changed
+                        localStorage.setItem('pscLastQuestionSetUpdate', lastCloudUpdate);
+                    }
+                }
+            });
+            
         } else {
             updateFirebaseStatus('Disconnected (Offline Mode)', false);
             isFirebaseConnected = false;
         }
     });
 }
-
 // --- NEW: SMART DAILY SYNC SYSTEM ---
 // --- NEW: SMART DAILY SYNC SYSTEM ---
 function setupSmartDailySync() {
@@ -1749,12 +1766,16 @@ function setupSmartDailySync() {
     // Check if we already synced today
     const lastSyncDate = localStorage.getItem('pscLastSyncDate');
     
+    // Always check for updates when app loads, but show notification only once per day
     if (lastSyncDate !== today) {
         console.log(`Daily sync needed. Last sync: ${lastSyncDate || 'Never'}, Today: ${today}`);
-        performSmartSync();
+        performSmartSync(); // This does intelligent sync
     } else {
         console.log('Already synced today, using cached data.');
-        loadCachedData();
+        // Even if we synced today, check for urgent updates (but don't notify)
+        setTimeout(() => {
+            performSmartSync(); // Silent sync
+        }, 5000); // Wait 5 seconds after page load
     }
     
     // Set up listener for player progress updates only (small data)
@@ -1810,12 +1831,10 @@ function performSmartSync() {
         return;
     }
     
-    showNotification('Checking for updates...', 'info');
-    
-    // 1. Get the timestamp of our last successful sync
+    // Get our last sync timestamp from localStorage
     const lastSyncTimestamp = localStorage.getItem('pscLastSyncTimestamp') || 0;
     
-    // 2. Download ONLY question sets modified after our last sync
+    // Only listen for NEW/MODIFIED question sets
     db.ref('questionSets')
         .orderByChild('lastModified')
         .startAt(parseInt(lastSyncTimestamp) + 1) // +1 to avoid duplicates
@@ -1833,28 +1852,25 @@ function performSmartSync() {
                 });
                 
                 // Save updated question sets to localStorage
-                saveQuestionSets();
+                localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                 
-                showNotification(`Updated ${count} question sets from cloud!`, 'success');
-            } else {
-                console.log('Question sets are up to date.');
+                // Update UI if we have new sets
+                loadQuestionSets();
+                updateSubjectSelect();
+                
+                showNotification(`${count} question set(s) updated from cloud!`, 'success');
             }
             
-            // 3. Update our sync timestamp
+            // Update our sync timestamp
             const currentTimestamp = Date.now();
             localStorage.setItem('pscLastSyncTimestamp', currentTimestamp);
             localStorage.setItem('pscLastSyncDate', getTodayDateString());
             
-            // 4. Load all data for use
-            loadCachedData();
-            
         }).catch(error => {
-            console.error('Daily sync failed:', error);
-            showNotification('Using cached data (offline mode)', 'warning');
-            loadCachedData();
+            console.error('Smart sync failed:', error);
+            // Continue with cached data
         });
 }
-
 function loadCachedData() {
     // Load all data from localStorage for offline use
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
@@ -2197,7 +2213,7 @@ function switchTab(tabName) {
 
 // --- 3. UPDATED SAVE FUNCTION (ADDS TIMESTAMPS) ---
 
-        function saveQuestionSets() {
+      function saveQuestionSets() {
     const timestamp = Date.now();
     
     // Ensure every set has a lastModified timestamp
@@ -2220,9 +2236,30 @@ function switchTab(tabName) {
         // Only update the specific set that was changed
         if (currentEditingSet) {
             db.ref(`questionSets/${currentEditingSet}`).set(questionSets[currentEditingSet])
-                .then(() => console.log(`Set "${currentEditingSet}" uploaded to cloud.`));
+                .then(() => {
+                    console.log(`Set "${currentEditingSet}" uploaded to cloud.`);
+                    // Update the global "lastUpdated" timestamp for all clients
+                    db.ref('lastQuestionSetUpdate').set(timestamp);
+                });
         }
     }
+}
+
+function checkForQuestionSetUpdates() {
+    if (!isFirebaseConnected) return;
+    
+    // Check if there's a global update timestamp
+    db.ref('lastQuestionSetUpdate').once('value').then(snapshot => {
+        const lastCloudUpdate = snapshot.val();
+        const lastLocalUpdate = localStorage.getItem('pscLastQuestionSetUpdate') || 0;
+        
+        if (lastCloudUpdate > lastLocalUpdate) {
+            console.log('Question sets have been updated on cloud.');
+            // Trigger a sync
+            performSmartSync();
+            localStorage.setItem('pscLastQuestionSetUpdate', lastCloudUpdate);
+        }
+    });
 }
         
         function setDailyQuote() {
@@ -4559,45 +4596,13 @@ function validateAndSyncQuestionSets(callback) {
         return;
     }
 
-    // Download the authoritative list from Firebase
-    db.ref('questionSets').once('value').then(snapshot => {
-        const cloudSets = snapshot.val() || {};
-        const cloudKeys = Object.keys(cloudSets);
-        const localKeys = Object.keys(questionSets);
-        
-        let hasChanges = false;
-
-        // 1. Remove sets from Local that don't exist in Cloud (Deleted or Renamed)
-        localKeys.forEach(localKey => {
-            if (!cloudKeys.includes(localKey)) {
-                delete questionSets[localKey];
-                hasChanges = true;
-                console.log(`Removed obsolete set: ${localKey}`);
-            }
-        });
-
-        // 2. Add/Update sets from Cloud
-        cloudKeys.forEach(cloudKey => {
-            // If we don't have it, OR if the cloud version is newer (optional check, here we just overwrite to be safe)
-            if (!questionSets[cloudKey] || JSON.stringify(questionSets[cloudKey]) !== JSON.stringify(cloudSets[cloudKey])) {
-                questionSets[cloudKey] = cloudSets[cloudKey];
-                hasChanges = true;
-            }
-        });
-
-        if (hasChanges) {
-            localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-            loadQuestionSets(); // Refreshes Admin List
-            showNotification('Question Sets synced with server.');
-        }
-        
-        if (callback) callback();
-    }).catch(err => {
-        console.error("Sync Check Failed", err);
-        if(callback) callback();
-    });
+    // Just do a smart sync
+    performSmartSync();
+    
+    if (callback) {
+        setTimeout(callback, 1000); // Give it a second to complete
+    }
 }
-
 function updateRevisionModeCSS() {
     if (isRevisionMode) {
         document.body.classList.add('is-revision-mode');
