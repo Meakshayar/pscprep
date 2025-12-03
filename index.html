@@ -2937,87 +2937,89 @@ function updateBulkSetDropdown() {
         }
 
         function startPractice(setName, isRev, revisionKey) { 
-            if (practiceInProgress) return;
-            practiceInProgress = true;
-            initAudio();
-            isRevisionMode = isRev; currentRevisionKey = revisionKey; 
-            updateRevisionModeCSS(); // ADD THIS LINE
-            // Don't shuffle in revision mode, shuffle in practice mode
-if (isRev) {
-    // Revision mode: show in original order
-    currentSet = [...(questionSets[setName].questions || [])];
-} else {
-    // Practice mode: shuffle
+    if (practiceInProgress) return;
+    practiceInProgress = true;
+    initAudio();
+    isRevisionMode = isRev; currentRevisionKey = revisionKey; 
+    updateRevisionModeCSS();
+    
     // Don't shuffle in revision mode, shuffle in practice mode
-if (isRev) {
-    // Revision mode: show in original order
-    currentSet = [...(questionSets[setName].questions || [])];
-} else {
-    // Practice mode: shuffle
-    currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
-}}if (currentSet.length === 0) { 
-                showNotification('Selected set is empty.', 'error'); 
-                practiceInProgress = false;
-                switchPracticeView('practiceSetupView');
-                return; 
-            }
-            
-            const set = questionSets[setName];
-const category = set.category || 'gk';
-// --- NEW AUTOMATIC TIMER LOGIC (Per User Request) ---
-    // This logic implements the 1-minute Math timer and the Statement/Regular automatic timer.
+    if (isRev) {
+        // Revision mode: show in original order
+        currentSet = [...(questionSets[setName].questions || [])];
+    } else {
+        // Practice mode: shuffle
+        currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5);
+    }
+    
+    if (currentSet.length === 0) { 
+        showNotification('Selected set is empty.', 'error'); 
+        practiceInProgress = false;
+        switchPracticeView('practiceSetupView');
+        return; 
+    }
     
     currentQuestionIndex = 0;
     score = 0;
     timeElapsed = 0;
 
-    let totalTimeLimitCalculation = 0;
-    const setCategory = questionSets[setName].category;
-
-    if (setCategory === 'math') {
-        // 1. Set Math timer to 1 minute (60 seconds) per question
-        totalTimeLimitCalculation = currentSet.length * 60;
+    // --- TIMER LOGIC: NO TIMER IN REVISION MODE ---
+    if (isRev) {
+        // Revision mode: NO timer
+        totalTimeLimit = 999999; // Very large number = effectively no timer
     } else {
-        // 2. Automatic timer for all other sets (replaces old GK/Custom logic)
+        // Practice mode: Keep timer logic
+        let totalTimeLimitCalculation = 0;
+        const setCategory = questionSets[setName].category;
+
+        if (setCategory === 'math') {
+            // 1. Set Math timer to 1 minute (60 seconds) per question
+            totalTimeLimitCalculation = currentSet.length * 60;
+        } else {
+            // 2. Automatic timer for all other sets
+            let statementCount = 0;
+            let regularCount = 0;
+
+            currentSet.forEach(q => {
+                if (q.type === 'statement') {
+                    statementCount++;
+                } else {
+                    regularCount++;
+                }
+            });
+
+            // Calculation: 45 seconds for statement, 10 seconds for regular
+            totalTimeLimitCalculation = (statementCount * 45) + (regularCount * 10);
+        }
         
-        let statementCount = 0;
-        let regularCount = 0;
-
-        currentSet.forEach(q => {
-            // Statement questions are identified by question.type === 'statement'
-            if (q.type === 'statement') {
-                statementCount++;
-            } else {
-                regularCount++;
-            }
-        });
-
-        // Calculation: 45 seconds for statement, 10 seconds for regular
-        totalTimeLimitCalculation = (statementCount * 45) + (regularCount * 10);
+        totalTimeLimit = totalTimeLimitCalculation;
     }
     
-    // Set the calculated total time limit
-    totalTimeLimit = totalTimeLimitCalculation; 
-    // --- END NEW AUTOMATIC TIMER LOGIC --- 
-            currentAttempt = { 
-                playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
-                answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
-                isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
-            };
-            document.getElementById('practiceScore').textContent = 'Score: 0';
-            clearInterval(timer); 
-            timer = setInterval(() => { 
-                timeElapsed++; 
-                const remaining = totalTimeLimit - timeElapsed;
-                document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-                if (remaining <= 0) { 
-                    showNotification('Time limit reached!', 'error'); 
-                    endPractice();
-                }
-            }, 1000);
-            showNextQuestion();
+    currentAttempt = { 
+        playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), 
+        answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
+        isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
+    };
+    document.getElementById('practiceScore').textContent = 'Score: 0';
+    clearInterval(timer); 
+    timer = setInterval(() => { 
+        timeElapsed++; 
+        
+        if (isRevisionMode) {
+            // Revision mode: Show elapsed time instead of countdown
+            document.getElementById('practiceTimer').textContent = `Time: ${formatTime(timeElapsed)}`;
+        } else {
+            // Practice mode: Show countdown timer
+            const remaining = totalTimeLimit - timeElapsed;
+            document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
+            if (remaining <= 0) { 
+                showNotification('Time limit reached!', 'error'); 
+                endPractice();
+            }
         }
-
+    }, 1000);
+    showNextQuestion();
+}
         
               function showNextQuestion() {
     if (currentQuestionIndex >= currentSet.length) {
@@ -3304,12 +3306,7 @@ function endPractice() {
             clearInterval(timer);
             timer = setInterval(() => { 
                 timeElapsed++; 
-                const remaining = totalTimeLimit - timeElapsed;
-                document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
-                if (remaining <= 0) { 
-                    showNotification('Time limit reached!', 'error'); 
-                    endPractice();
-                }
+                document.getElementById('practiceTimer').textContent = `Time: ${formatTime(timeElapsed)}`;
             }, 1000);
             return;
         }
@@ -3326,7 +3323,7 @@ function endPractice() {
         // SAVE IMMEDIATELY to localStorage
         localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
         
-        // SYNC TO FIREBASE if connected (CRITICAL FIX)
+        // SYNC TO FIREBASE if connected
         if (isFirebaseConnected && currentPlayerName) {
             db.ref(`revisionProgress/${currentPlayerName}/${currentRevisionKey}`).set({
                 percentage: 100, 
@@ -3445,8 +3442,7 @@ function endPractice() {
         savePlayerProfiles();
         syncRevisionProgressOnly();
     }, 500);
-}
-        function handleDailyLogin() {
+}        function handleDailyLogin() {
             if (!currentPlayerName) return;
             const profile = playerProfiles[currentPlayerName];
             const today = getTodayDateString();
