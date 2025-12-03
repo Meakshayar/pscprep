@@ -1241,9 +1241,10 @@
             <button onclick="handleAdminLogin()" class="btn-admin">Admin Login</button>
         </div>
 
-        <div class="sync-section">
-            <button onclick="syncAllDataFromFirebase()" class="btn-sync">Refresh Data from Cloud</button>
-        </div>
+
+        <div class="sync-section" style="margin-top: 10px;">
+    <button onclick="testLoadProfiles()" class="btn-sync" style="background: #9b59b6;">Load Profiles</button>
+</div>
     </div>
 </div>
     <!-- PRACTICE SETUP (SAME AS BEFORE) -->
@@ -1723,6 +1724,11 @@ function hideCreatePlayerForm() {
             isFirebaseConnected = true;
             console.log('Firebase connected.');
             
+            // ADD THIS: Load profiles when connected
+            setTimeout(() => {
+                loadPlayerProfilesFromFirebase();
+            }, 1000); // Wait 1 second to ensure connection is stable
+            
             // START SMART SYNC - Check for daily updates
             setupSmartDailySync();
         } else {
@@ -1754,46 +1760,47 @@ function setupSmartDailySync() {
     // Set up listener for player progress updates only (small data)
     setupPlayerProgressListener();
 }function loadPlayerProfilesFromFirebase() {
-    if (!db || !isFirebaseConnected) {
-        console.log('Firebase not connected, using localStorage for player profiles');
-        
-        // Try to load from localStorage as fallback
-        const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    console.log('DEBUG: Trying to load profiles from Firebase...');
+    
+    // FIRST: Always show local profiles immediately
+    const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
+    console.log('DEBUG: Local profiles:', Object.keys(localProfiles));
+    
+    if (Object.keys(localProfiles).length > 0) {
         playerProfiles = localProfiles;
         updatePlayerSelects();
-        checkAutoLogin();
+        console.log('DEBUG: Updated dropdown with local profiles');
+    }
+    
+    // SECOND: Try to load from Firebase
+    if (!db) {
+        console.log('DEBUG: Firebase not initialized yet');
         return;
     }
     
-    console.log('Loading player profiles from Firebase...');
-    
-    // Load player profiles from Firebase
+    console.log('DEBUG: Loading from Firebase...');
     db.ref('playerProfiles').once('value').then(snapshot => {
         const firebaseProfiles = snapshot.val() || {};
+        console.log('DEBUG: Firebase profiles found:', Object.keys(firebaseProfiles));
         
-        // IMPORTANT FIX: Merge Firebase data with existing local data
-        playerProfiles = { ...localProfiles, ...firebaseProfiles };
-        
-        // Save to localStorage for offline use
-        localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-        
-        // Update the dropdown
-        updatePlayerSelects();
-        
-        // Check for auto-login
-        setTimeout(() => {
-            checkAutoLogin();
-        }, 500);
-        
-        console.log(`Loaded ${Object.keys(playerProfiles).length} player profiles from Firebase`);
+        if (Object.keys(firebaseProfiles).length > 0) {
+            // Update with Firebase data
+            playerProfiles = firebaseProfiles;
+            
+            // Save to localStorage
+            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+            
+            // Update dropdown
+            updatePlayerSelects();
+            
+            console.log('DEBUG: Updated with Firebase profiles');
+            showNotification('Player profiles loaded from cloud', 'success');
+        } else {
+            console.log('DEBUG: No profiles in Firebase');
+        }
         
     }).catch(error => {
-        console.error('Failed to load player profiles:', error);
-        // Fallback to localStorage
-        const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-        playerProfiles = localProfiles;
-        updatePlayerSelects();
-        checkAutoLogin();
+        console.error('DEBUG: Firebase error:', error);
     });
 }
 function performSmartSync() {
@@ -1992,26 +1999,25 @@ function setupPlayerProgressListener() {
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', init);
 function init() {
-    // 1. Check for auto-login IMMEDIATELY (before loading anything else)
+    console.log('Initializing app...');
+    
+    // 1. Initialize Firebase first
+    initializeFirebase();
+    
+    // 2. Load LOCAL data immediately (for offline use)
+    loadLocalDataImmediately();
+    
+    // 3. Check for auto-login using localStorage
     const lastPlayer = localStorage.getItem('pscLastPlayer');
     const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
     
     if (lastPlayer && localProfiles[lastPlayer]) {
-        // IMMEDIATE auto-login using localStorage data
+        // Auto-login using localStorage data
         currentPlayerName = lastPlayer;
         playerProfiles[currentPlayerName] = localProfiles[lastPlayer];
         
         console.log(`Auto-logged in as: ${currentPlayerName} (using localStorage)`);
-    }
-    
-    // 2. Load LOCAL data (for offline use)
-    loadLocalDataImmediately();
-    
-    // 3. Initialize Firebase (will update data in background)
-    initializeFirebase();
-    
-    // 4. If auto-logged in, update UI immediately
-    if (currentPlayerName) {
+        
         // Update UI right away
         document.getElementById('tab-nav').classList.remove('hidden');
         document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
@@ -2040,7 +2046,7 @@ function init() {
     // Listen for file uploads
     document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
     
-    // Event Listeners (keep all existing code below this line)
+    // Event Listeners
     document.getElementById('backToSetListBtn').addEventListener('click', () => {
         if (editingFromReport.active) {
             returnToReportedQuestionsView();
@@ -2082,8 +2088,7 @@ function init() {
             }
         }
     }
-} 
-function savePlayerDataToLocalStorage() {
+}function savePlayerDataToLocalStorage() {
     if (!currentPlayerName) return;
     
     // Save player profiles to localStorage
@@ -2126,19 +2131,12 @@ function loadLocalDataImmediately() {
     practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
     dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
     
-    // Update UI with local data
+    // Update UI with local data IMMEDIATELY
     loadQuestionSets();
     updateSubjectSelect();
-    
-    // TEMPORARILY show login gateway with cached players
-    // (Firebase will update this shortly)
-    updatePlayerSelects();
-    switchPracticeView('loginGatewayView');
+    updatePlayerSelects();  // ADD THIS LINE - update dropdown immediately
     
     console.log('Local data loaded. Waiting for Firebase updates...');
-}        function checkForUpdates() {
-    showNotification('Checking for new question sets...');
-    checkForNewQuestionSets();
 }
         function loadFromFirebase() {
     if (!isFirebaseConnected) { 
@@ -4665,6 +4663,28 @@ function filterQuestionSetsBySubject() {
             </div>
         </div>`;
     }).join('') || '<p>No question sets found for this subject.</p>';
+}
+// DEBUG FUNCTION - Add this at the very end
+function testLoadProfiles() {
+    console.log('=== DEBUG TEST ===');
+    console.log('playerProfiles object:', playerProfiles);
+    console.log('Profile keys:', Object.keys(playerProfiles));
+    console.log('localStorage profiles:', JSON.parse(localStorage.getItem('pscPlayerProfiles')));
+    
+    if (db && isFirebaseConnected) {
+        console.log('Testing Firebase connection...');
+        db.ref('playerProfiles').once('value').then(snapshot => {
+            const data = snapshot.val();
+            console.log('Firebase playerProfiles data:', data);
+            if (data) {
+                alert('Firebase has ' + Object.keys(data).length + ' profiles: ' + Object.keys(data).join(', '));
+            } else {
+                alert('No profiles found in Firebase');
+            }
+        });
+    } else {
+        alert('Firebase not connected');
+    }
 }
     </script>
 </body>
