@@ -1766,58 +1766,105 @@ function setupSmartDailySync() {
     // Check if we already synced today
     const lastSyncDate = localStorage.getItem('pscLastSyncDate');
     
-    // Always check for updates when app loads, but show notification only once per day
+    // Always check for updates when app loads
     if (lastSyncDate !== today) {
         console.log(`Daily sync needed. Last sync: ${lastSyncDate || 'Never'}, Today: ${today}`);
-        performSmartSync(); // This does intelligent sync
+        performSmartSync();
+        
+        // Also sync revision progress
+        setTimeout(() => {
+            syncRevisionProgressOnly();
+        }, 2000);
     } else {
         console.log('Already synced today, using cached data.');
-        // Even if we synced today, check for urgent updates (but don't notify)
+        // Even if we synced today, check for updates
         setTimeout(() => {
-            performSmartSync(); // Silent sync
-        }, 5000); // Wait 5 seconds after page load
+            performSmartSync(); // Silent sync for question sets
+            syncRevisionProgressOnly(); // Sync revision progress
+        }, 5000);
     }
     
-    // Set up listener for player progress updates only (small data)
+    // Set up listener for player progress updates
     setupPlayerProgressListener();
-}function loadPlayerProfilesFromFirebase() {
+    
+    // Set up listener for revision progress updates
+    if (currentPlayerName) {
+        db.ref(`revisionProgress/${currentPlayerName}`).on('value', snapshot => {
+            const cloudData = snapshot.val();
+            if (cloudData) {
+                // Merge cloud data with local
+                if (!revisionProgress[currentPlayerName]) {
+                    revisionProgress[currentPlayerName] = {};
+                }
+                
+                let hasChanges = false;
+                Object.keys(cloudData).forEach(key => {
+                    if (!revisionProgress[currentPlayerName][key] || 
+                        revisionProgress[currentPlayerName][key].date !== cloudData[key].date) {
+                        revisionProgress[currentPlayerName][key] = cloudData[key];
+                        hasChanges = true;
+                    }
+                });
+                
+                if (hasChanges) {
+                    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+                    
+                    // Update UI if we're viewing revision/backlog
+                    if (document.getElementById('revision').classList.contains('active')) {
+                        renderRevisionPage();
+                    }
+                    if (document.getElementById('backlog').classList.contains('active')) {
+                        renderBacklogPage();
+                    }
+                }
+            }
+        });
+    }
+}
+
+function loadPlayerProfilesFromFirebase() {
     console.log('DEBUG: Trying to load profiles from Firebase...');
     
     // FIRST: Always show local profiles immediately
     const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-    console.log('DEBUG: Local profiles:', Object.keys(localProfiles));
     
     if (Object.keys(localProfiles).length > 0) {
         playerProfiles = localProfiles;
         updatePlayerSelects();
-        console.log('DEBUG: Updated dropdown with local profiles');
     }
     
     // SECOND: Try to load from Firebase
-    if (!db) {
-        console.log('DEBUG: Firebase not initialized yet');
-        return;
-    }
+    if (!db) return;
     
-    console.log('DEBUG: Loading from Firebase...');
     db.ref('playerProfiles').once('value').then(snapshot => {
         const firebaseProfiles = snapshot.val() || {};
-        console.log('DEBUG: Firebase profiles found:', Object.keys(firebaseProfiles));
         
         if (Object.keys(firebaseProfiles).length > 0) {
-            // Update with Firebase data
             playerProfiles = firebaseProfiles;
-            
-            // Save to localStorage
             localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            
-            // Update dropdown
             updatePlayerSelects();
-            
-            console.log('DEBUG: Updated with Firebase profiles');
-            showNotification('Player profiles loaded from cloud', 'success');
-        } else {
-            console.log('DEBUG: No profiles in Firebase');
+        }
+        
+        // ALSO LOAD REVISION PROGRESS
+        if (currentPlayerName) {
+            db.ref(`revisionProgress/${currentPlayerName}`).once('value').then(revSnapshot => {
+                const firebaseRevision = revSnapshot.val() || {};
+                if (Object.keys(firebaseRevision).length > 0) {
+                    if (!revisionProgress[currentPlayerName]) {
+                        revisionProgress[currentPlayerName] = {};
+                    }
+                    
+                    Object.keys(firebaseRevision).forEach(key => {
+                        revisionProgress[currentPlayerName][key] = firebaseRevision[key];
+                    });
+                    
+                    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+                    
+                    // Update UI
+                    renderRevisionPage();
+                    renderBacklogPage();
+                }
+            });
         }
         
     }).catch(error => {
@@ -1837,7 +1884,7 @@ function performSmartSync() {
     // Only listen for NEW/MODIFIED question sets
     db.ref('questionSets')
         .orderByChild('lastModified')
-        .startAt(parseInt(lastSyncTimestamp) + 1) // +1 to avoid duplicates
+        .startAt(parseInt(lastSyncTimestamp) + 1)
         .once('value')
         .then(snapshot => {
             const newOrUpdatedSets = snapshot.val() || {};
@@ -1846,17 +1893,30 @@ function performSmartSync() {
             if (count > 0) {
                 console.log(`Found ${count} new/updated question sets.`);
                 
+                // CRITICAL FIX: Save current revision progress BEFORE updating question sets
+                const currentRevisionProgress = JSON.parse(JSON.stringify(revisionProgress));
+                
                 // Merge new/updated sets into local storage
                 Object.keys(newOrUpdatedSets).forEach(setName => {
                     questionSets[setName] = newOrUpdatedSets[setName];
                 });
                 
+                // CRITICAL FIX: Restore revision progress after updating question sets
+                revisionProgress = currentRevisionProgress;
+                
                 // Save updated question sets to localStorage
                 localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                // Save revision progress back to localStorage
+                localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                 
                 // Update UI if we have new sets
                 loadQuestionSets();
                 updateSubjectSelect();
+                
+                // Sync revision progress back to Firebase to ensure consistency
+                if (currentPlayerName && revisionProgress[currentPlayerName]) {
+                    db.ref(`revisionProgress/${currentPlayerName}`).update(revisionProgress[currentPlayerName]);
+                }
                 
                 showNotification(`${count} question set(s) updated from cloud!`, 'success');
             }
@@ -1871,6 +1931,46 @@ function performSmartSync() {
             // Continue with cached data
         });
 }
+function syncRevisionProgressOnly() {
+    if (!isFirebaseConnected || !currentPlayerName) return;
+    
+    // Upload user's revision progress to Firebase
+    if (revisionProgress[currentPlayerName]) {
+        db.ref(`revisionProgress/${currentPlayerName}`).update(revisionProgress[currentPlayerName])
+            .then(() => {
+                console.log('Revision progress synced to cloud');
+            })
+            .catch(err => {
+                console.error('Failed to sync revision progress:', err);
+            });
+    }
+    
+    // Download any updates to revision progress from Firebase
+    db.ref(`revisionProgress/${currentPlayerName}`).once('value').then(snapshot => {
+        const cloudRevisionProgress = snapshot.val();
+        if (cloudRevisionProgress) {
+            // Merge cloud revision progress with local
+            if (!revisionProgress[currentPlayerName]) {
+                revisionProgress[currentPlayerName] = {};
+            }
+            
+            Object.keys(cloudRevisionProgress).forEach(key => {
+                revisionProgress[currentPlayerName][key] = cloudRevisionProgress[key];
+            });
+            
+            localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
+            
+            // Update UI if we're on revision/backlog pages
+            if (document.getElementById('revision').classList.contains('active')) {
+                renderRevisionPage();
+            }
+            if (document.getElementById('backlog').classList.contains('active')) {
+                renderBacklogPage();
+            }
+        }
+    });
+}
+
 function loadCachedData() {
     // Load all data from localStorage for offline use
     questionSets = JSON.parse(localStorage.getItem('pscQuestionSets')) || {};
@@ -2545,9 +2645,18 @@ function syncPendingUserData() {
         }
         
         function savePlayerProfiles() {
-            localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-            if (isFirebaseConnected) { db.ref('playerProfiles').set(playerProfiles); }
+    localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+    
+    if (isFirebaseConnected) { 
+        // Save player profile
+        db.ref('playerProfiles').update(playerProfiles); 
+        
+        // Also sync revision progress for current player
+        if (currentPlayerName && revisionProgress[currentPlayerName]) {
+            db.ref(`revisionProgress/${currentPlayerName}`).update(revisionProgress[currentPlayerName]);
         }
+    }
+}
 
         function loadPlayerProgress() {
             if (!currentPlayerName) return;
@@ -2768,32 +2877,27 @@ function updateBulkSetDropdown() {
             });
         }
         
-        function loginPlayer(name, isAutoLogin = false) {
-            currentPlayerName = name;
-            localStorage.setItem('pscLastPlayer', currentPlayerName);
-            // ADD THIS LINE: Save player data to localStorage only after login
-    savePlayerDataToLocalStorage();
-    
+       function loginPlayer(name, isAutoLogin = false) {
+    currentPlayerName = name;
     localStorage.setItem('pscLastPlayer', currentPlayerName);
     
+    // Load player data
     handleDailyLogin();
-    // ... rest of the function remains the same
-            
-            handleDailyLogin();
-
-            // --- ADD THIS NEW SECTION ---
-            // Stop listening to any old player's progress
-            // --- END OF NEW SECTION ---
-
-            if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
-            // SHOW THE NAV TABS AFTER LOGIN
-    document.getElementById('tab-nav').classList.remove('hidden');
     
+    if (!isAutoLogin) { showNotification(`Welcome, ${currentPlayerName}!`); }
+    
+    // Show the nav tabs after login
+    document.getElementById('tab-nav').classList.remove('hidden');
     document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
     loadPlayerProgress();
     switchPracticeView('practiceSetupView');
     updateAllBadges();
     updateSubjectSelect();
+    
+    // CRITICAL: Sync revision progress after login
+    setTimeout(() => {
+        syncRevisionProgressOnly();
+    }, 1000);
 }
 
         function updateUserPassword() {
@@ -3171,8 +3275,7 @@ function showAnswer() {
 }
 
        
-
-       function endPractice() {
+function endPractice() {
     if (!practiceInProgress || !currentAttempt) {
         practiceInProgress = false;
         clearInterval(timer);
@@ -3223,15 +3326,31 @@ function showAnswer() {
         // SAVE IMMEDIATELY to localStorage
         localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
         
-        // Sync to Firebase if connected
-        if (isFirebaseConnected) {
+        // SYNC TO FIREBASE if connected (CRITICAL FIX)
+        if (isFirebaseConnected && currentPlayerName) {
             db.ref(`revisionProgress/${currentPlayerName}/${currentRevisionKey}`).set({
                 percentage: 100, 
                 date: new Date().toISOString(), 
                 success: true,
                 revisionCompleted: true
+            }).then(() => {
+                console.log('Revision completion synced to Firebase');
+            }).catch(error => {
+                console.error('Failed to sync revision completion:', error);
+                // Save to sync queue for later
+                const pendingSync = JSON.parse(localStorage.getItem('pscPendingSync') || '[]');
+                pendingSync.push({
+                    type: 'revisionComplete',
+                    playerName: currentPlayerName,
+                    revisionKey: currentRevisionKey,
+                    timestamp: Date.now()
+                });
+                localStorage.setItem('pscPendingSync', JSON.stringify(pendingSync));
             });
         }
+        
+        // Also sync to player profiles for consistency
+        savePlayerProfiles();
         
         // Now ask if they want to do practice
         setTimeout(() => {
@@ -3271,15 +3390,24 @@ function showAnswer() {
                 currentRevisionKey = null;
                 currentSet = [];
                 
-                // Update revision pages
+                // Update revision pages IMMEDIATELY
                 renderRevisionPage();
                 renderBacklogPage();
+                
+                // Update badges
+                updateAllBadges();
+                
+                // Force sync of all user data to ensure consistency
+                setTimeout(() => {
+                    syncRevisionProgressOnly();
+                    savePlayerProfiles();
+                }, 1000);
             }
         }, 500);
         return;
     }
     
-    // ============= PRACTICE MODE LOGIC (existing) =============
+    // ============= PRACTICE MODE LOGIC =============
     // Practice mode - keep existing XP logic
     xpEarned = calculateAndApplyXP(score);
     xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP!` : 'Keep practicing to earn XP!';
@@ -3308,10 +3436,16 @@ function showAnswer() {
     
     document.body.classList.remove('practice-active');
     switchPracticeView('practiceSetupView'); 
-    isRevisionMode = false; currentRevisionKey = null; currentSet = [];
-    updateRevisionModeCSS(); // ADD THIS LINE
+    isRevisionMode = false; 
+    currentRevisionKey = null; 
+    currentSet = [];
+    
+    // Sync player data after practice
+    setTimeout(() => {
+        savePlayerProfiles();
+        syncRevisionProgressOnly();
+    }, 500);
 }
-
         function handleDailyLogin() {
             if (!currentPlayerName) return;
             const profile = playerProfiles[currentPlayerName];
