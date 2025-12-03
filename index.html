@@ -1408,10 +1408,10 @@
                         <input type="date" id="setUploadDate">
                     </div>
                      <div class="form-group">
-                        <label>Subject (e.g., History, Math, GK):</label>
-                        <input type="text" id="setSubject" list="existingSubjectsList" placeholder="Type new or select existing Subject">
-<datalist id="existingSubjectsList"></datalist>
-                    </div>
+    <label>Subject (e.g., History, Math, GK):</label>
+    <input type="text" id="setSubject" list="existingSubjectsList" placeholder="Type new or select existing Subject" onchange="updateBulkSetDropdown()">
+    <datalist id="existingSubjectsList"></datalist>
+</div>
                     <div class="form-group">
                         <label>Select Target Set:</label>
                         <select id="bulkSetSelect" onchange="toggleNewBulkSetName()"></select>
@@ -1428,9 +1428,18 @@
                     <button onclick="importBulkQuestions()">Import Questions</button>
                 </div>
                 <div id="savedSets" style="margin-top: 30px;">
-                    <h3>Your Question Sets</h3>
-                    <div id="setsList"></div>
-                </div>
+    <h3>Your Question Sets</h3>
+    
+    <!-- ADD THIS FILTER DROPDOWN -->
+    <div class="form-group" style="margin-bottom: 20px;">
+        <label>Filter by Subject:</label>
+        <select id="subjectFilter" onchange="filterQuestionSetsBySubject()">
+            <option value="">All Subjects</option>
+        </select>
+    </div>
+    
+    <div id="setsList"></div>
+</div>
             </div>
             
             
@@ -2616,15 +2625,52 @@ function syncPendingUserData() {
         }
 
         function showAddQuestionsSection() {
-            document.getElementById('adminQuestionSets').classList.remove('hidden');
-            const bulkSelect = document.getElementById('bulkSetSelect');
-            const setNames = Object.keys(questionSets).filter(name => questionSets[name].type !== 'pdf').sort();
-            bulkSelect.innerHTML = `<option value="">-- Select an existing set --</option>`;
-            bulkSelect.innerHTML += setNames.map(name => `<option value="${name}">${name}</option>`).join('');
-            bulkSelect.innerHTML += `<option value="_new_">** Create a New Set **</option>`;
-            bulkSelect.value = '_new_'; 
-            toggleNewBulkSetName(); 
-        }
+    document.getElementById('adminQuestionSets').classList.remove('hidden');
+    updateBulkSetDropdown(); // Call the new function to populate the dropdown
+}
+
+// NEW FUNCTION: Update the bulk set dropdown based on selected subject
+function updateBulkSetDropdown() {
+    const bulkSelect = document.getElementById('bulkSetSelect');
+    const selectedSubject = document.getElementById('setSubject').value.trim();
+    
+    // Get all question sets (excluding PDFs)
+    const allSetNames = Object.keys(questionSets).filter(name => questionSets[name].type !== 'pdf');
+    
+    // Filter sets by subject if a subject is selected
+    let filteredSetNames;
+    if (selectedSubject) {
+        filteredSetNames = allSetNames.filter(name => {
+            const set = questionSets[name];
+            return (set.subject || 'Uncategorized') === selectedSubject;
+        }).sort();
+    } else {
+        filteredSetNames = allSetNames.sort();
+    }
+    
+    // Save current selection
+    const currentSelection = bulkSelect.value;
+    
+    // Update the dropdown
+    bulkSelect.innerHTML = `<option value="">-- Select an existing set --</option>`;
+    
+    // Add filtered sets
+    if (filteredSetNames.length > 0) {
+        bulkSelect.innerHTML += filteredSetNames.map(name => `<option value="${name}">${name}</option>`).join('');
+    }
+    
+    // Add "Create New Set" option
+    bulkSelect.innerHTML += `<option value="_new_">** Create a New Set **</option>`;
+    
+    // Restore selection if it's still valid
+    if (filteredSetNames.includes(currentSelection) || currentSelection === "_new_") {
+        bulkSelect.value = currentSelection;
+    } else {
+        bulkSelect.value = '_new_';
+    }
+    
+    toggleNewBulkSetName();
+}
         
         // --- Player and Password Functions ---
         function handlePlayerSelection() {
@@ -3346,38 +3392,35 @@ function showAnswer() {
 
         // --- Question Set Management ---
         function loadQuestionSets() {
-            const setsList = document.getElementById('setsList');
-            if(!setsList) return;
+    const setsList = document.getElementById('setsList');
+    const subjectFilter = document.getElementById('subjectFilter');
+    
+    if(!setsList) return;
 
-            const sortedSetNames = Object.keys(questionSets).sort((a, b) => {
-                const dateA = new Date(questionSets[a].uploadDate || 0);
-                const dateB = new Date(questionSets[b].uploadDate || 0);
-                return dateB - dateA;
-            });
+    // Get all unique subjects for the filter dropdown
+    if (subjectFilter) {
+        const allSubjects = [...new Set(Object.values(questionSets).map(set => set.subject || 'Uncategorized'))].sort();
+        
+        // Save current selection
+        const currentSelection = subjectFilter.value;
+        
+        // Update dropdown
+        subjectFilter.innerHTML = '<option value="">All Subjects</option>' + 
+                                  allSubjects.map(subj => `<option value="${subj}">${subj}</option>`).join('');
+        
+        // Restore selection if still valid
+        if (allSubjects.includes(currentSelection)) {
+            subjectFilter.value = currentSelection;
+        }
+    }
 
-            setsList.innerHTML = sortedSetNames.map(setName => {
-                const set = questionSets[setName];
-                const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
-                const countText = `${(set.questions || []).length} questions`;
-                const categoryText = set.category ? `(${set.category.toUpperCase()})` : '';
-                const subjectText = set.subject ? `[${set.subject}]` : '[No Subject]';
-                return `
-                <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
-                    <div>
-                        <h4 style="margin-bottom: 3px;">${subjectText} ${setName} ${categoryText} (${countText})</h4>
-                        <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap;">
-    <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
-    <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
-    <button onclick="exportQuestionSet('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px; background: #27ae60;">Export Text</button>
-    <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
-</div>
-                </div>`;
-            }).join('') || '<p>No question sets found.</p>';
-            
-            showAddQuestionsSection(); // To populate bulk upload dropdown
-            // --- NEW CODE: Populate Subject Suggestions ---
+    // Call the filter function to display the sets (this will handle both filtered and unfiltered views)
+    filterQuestionSetsBySubject();
+    
+    // Update the bulk upload dropdown
+    showAddQuestionsSection();
+    
+    // --- Populate Subject Suggestions for bulk import ---
     const subjectList = document.getElementById('existingSubjectsList');
     if (subjectList) {
         subjectList.innerHTML = ''; // Clear previous list
@@ -3391,9 +3434,8 @@ function showAnswer() {
             subjectList.appendChild(option);
         });
     }
-    // --- END NEW CODE ---
-        }
-        
+    // --- END POPULATE SUBJECT SUGGESTIONS ---
+}
        function updateSubjectSelect() {
     // Trigger the sync check lightly here
     validateAndSyncQuestionSets(() => {
@@ -3476,15 +3518,15 @@ function getAllPlayerNames() {
         }
 
         function toggleNewBulkSetName() {
-            const select = document.getElementById('bulkSetSelect');
-            const newNameGroup = document.getElementById('newBulkSetNameGroup');
-            if (select.value === '_new_') {
-                newNameGroup.style.display = 'block';
-                document.getElementById('bulkSetName').value = '';
-            } else {
-                newNameGroup.style.display = 'none';
-            }
-        }
+    const select = document.getElementById('bulkSetSelect');
+    const newNameGroup = document.getElementById('newBulkSetNameGroup');
+    if (select.value === '_new_') {
+        newNameGroup.style.display = 'block';
+        document.getElementById('bulkSetName').value = '';
+    } else {
+        newNameGroup.style.display = 'none';
+    }
+}
 
         function importBulkQuestions() {
             const select = document.getElementById('bulkSetSelect');
@@ -4576,6 +4618,55 @@ function updateRevisionModeCSS() {
         document.getElementById('showAnswerBtn').style.display = 'none';
         document.getElementById('reportQuestionBtn').style.display = 'none';
     }
+}
+
+// NEW FUNCTION: Filter question sets by subject
+function filterQuestionSetsBySubject() {
+    const selectedSubject = document.getElementById('subjectFilter').value;
+    const setsListDiv = document.getElementById('setsList');
+    
+    if (!setsListDiv) return;
+    
+    // Get all sets, filtered by subject if one is selected
+    let filteredSetNames;
+    if (selectedSubject) {
+        filteredSetNames = Object.keys(questionSets).filter(setName => {
+            const set = questionSets[setName];
+            return (set.subject || 'Uncategorized') === selectedSubject;
+        }).sort((a, b) => {
+            const dateA = new Date(questionSets[a].uploadDate || 0);
+            const dateB = new Date(questionSets[b].uploadDate || 0);
+            return dateB - dateA;
+        });
+    } else {
+        filteredSetNames = Object.keys(questionSets).sort((a, b) => {
+            const dateA = new Date(questionSets[a].uploadDate || 0);
+            const dateB = new Date(questionSets[b].uploadDate || 0);
+            return dateB - dateA;
+        });
+    }
+    
+    // Update the displayed list
+    setsListDiv.innerHTML = filteredSetNames.map(setName => {
+        const set = questionSets[setName];
+        const uploadDateStr = set.uploadDate ? new Date(set.uploadDate + 'T00:00:00').toLocaleDateString() : 'No date';
+        const countText = `${(set.questions || []).length} questions`;
+        const categoryText = set.category ? `(${set.category.toUpperCase()})` : '';
+        const subjectText = set.subject ? `[${set.subject}]` : '[No Subject]';
+        return `
+        <div class="question-set" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 5px;">
+            <div>
+                <h4 style="margin-bottom: 3px;">${subjectText} ${setName} ${categoryText} (${countText})</h4>
+                <p style="font-size: 12px; color: #555;">Uploaded: ${uploadDateStr}</p>
+            </div>
+            <div style="display: flex; flex-wrap: wrap;">
+                <button onclick="editQuestionSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px;">Edit</button>
+                <button onclick="renameSet('${setName}')" class="btn-warning" style="margin: 2px; padding: 6px 12px; background: #3498db;">Rename</button>
+                <button onclick="exportQuestionSet('${setName}')" class="btn-success" style="margin: 2px; padding: 6px 12px; background: #27ae60;">Export Text</button>
+                <button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="margin: 2px; padding: 6px 12px;">Delete</button>
+            </div>
+        </div>`;
+    }).join('') || '<p>No question sets found for this subject.</p>';
 }
     </script>
 </body>
