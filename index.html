@@ -1755,34 +1755,32 @@ function setupSmartDailySync() {
     setupPlayerProgressListener();
 }function loadPlayerProfilesFromFirebase() {
     if (!db || !isFirebaseConnected) {
-        console.log('Firebase not connected, checking localStorage for player profiles');
+        console.log('Firebase not connected, using localStorage for player profiles');
         
         // Try to load from localStorage as fallback
         const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
-        if (Object.keys(localProfiles).length > 0) {
-            playerProfiles = localProfiles;
-            updatePlayerSelects();
-            checkAutoLogin();
-        }
+        playerProfiles = localProfiles;
+        updatePlayerSelects();
+        checkAutoLogin();
         return;
     }
     
     console.log('Loading player profiles from Firebase...');
     
-    // Load ALL player profiles from Firebase
+    // Load player profiles from Firebase
     db.ref('playerProfiles').once('value').then(snapshot => {
         const firebaseProfiles = snapshot.val() || {};
         
-        // REPLACE local profiles with Firebase data
-        playerProfiles = firebaseProfiles;
+        // IMPORTANT FIX: Merge Firebase data with existing local data
+        playerProfiles = { ...localProfiles, ...firebaseProfiles };
         
         // Save to localStorage for offline use
         localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
         
-        // Update the dropdown immediately
+        // Update the dropdown
         updatePlayerSelects();
         
-        // Check for auto-login AFTER profiles are loaded
+        // Check for auto-login
         setTimeout(() => {
             checkAutoLogin();
         }, 500);
