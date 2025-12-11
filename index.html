@@ -12,13 +12,117 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
-      /* Statement-wise question formatting - FIXED FOR MOBILE */
+        #optionsContainer label {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+}
+        /* Force ALL questions to have same font size */
+#practiceQuestion, 
+#practiceQuestion .statement-question,
+#practiceQuestion > div {
+    font-size: 1.2em !important;
+    line-height: 1.6 !important;
+}
+        /* Better statement question formatting */
 .statement-question {
-    line-height: 1.6;
+    text-align: justify;
+    text-justify: inter-word;
+    line-height: 1.8;
+    word-spacing: 0.05em;
+    letter-spacing: 0.01em;
+    flex: 1;
+}
+
+.statement-question strong {
+    display: block;
+    margin-bottom: 15px;
     text-align: left;
-    white-space: pre-line; /* This preserves line breaks */
-    word-wrap: break-word;
+    font-size: 1.2em;
+    color: #2c3e50;
+}
+
+/* Better line breaks for statements */
+.statement-question br {
+    display: block;
+    margin-bottom: 12px;
+    content: "";
+}
+
+/* Mobile optimization for statements */
+@media screen and (max-width: 600px) {
+    #practiceQuestion {
+        padding: 20px;
+        font-size: 1.2em;
+    }
+    
+    #practiceQuestion .statement-question {
+        font-size: 1em;
+        line-height: 1.7;
+    }
+    
+    .statement-question br {
+        margin-bottom: 10px;
+    }
+}
+/* Force justification for all question text */
+#practiceQuestion, 
+#practiceQuestion div,
+#practiceQuestion p,
+.statement-question {
+    text-align: justify !important;
+    text-justify: inter-word !important;
+    hyphens: auto !important;
+}
+
+/* But keep question numbers left-aligned */
+#practiceQuestion strong {
+    text-align: left !important;
+}
+     /* --- FIXED CSS FOR QUESTION DISPLAY --- */
+
+/* 1. Main Question Container - Fills available space */
+#questionScrollContainer {
+    flex: 1;
+    margin-top: 45px; 
+    margin-bottom: 170px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+}
+
+#practiceQuestion {
+    flex-grow: 1;
+    font-size: 1.2em;
+    line-height: 1.6;
+    background: white;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    text-align: justify;
+    width: 100%;
     overflow-wrap: break-word;
+    word-wrap: break-word;
+    min-height: auto !important; /* REMOVE fixed min-height */
+    max-height: none !important; /* REMOVE max-height limits */
+    overflow-y: visible !important; /* REMOVE scrolling */
+    display: block;
+}
+/* 2. Unified Font Size for Statement Questions */
+.statement-question {
+    font-size: 1em !important; /* Inherits 1.2em from parent */
+    line-height: 1.6 !important;
+    text-align: justify !important;
+    white-space: normal !important; /* Allows text to wrap into the blank space */
+}
+
+.statement-question strong {
+    font-size: 1em !important;
+    margin-bottom: 15px;
+    display: block;
+    color: #2c3e50;
 }
 
 .statement-question br {
@@ -189,22 +293,275 @@
             padding: 0 !important;
         }
        
-       #practiceSessionView {
+      /* ============ NEW EXAM SCREEN LAYOUT ============ */
+#practiceSessionView {
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    height: 100vh;
-    padding: 20px;
+    padding: 0;
     position: relative;
-    padding-top: 60px;
     overflow: hidden;
 }
 
-#practiceOptions {
-    margin: 20px 0;
-    overflow-y: auto;
+/* 1. TOP BAR (Fixed) */
+#topProgressIndicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 45px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    display: flex;
+    align-items: center;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* 2. QUESTION AREA (Takes all available space) */
+#questionScrollContainer {
     flex: 1;
-    min-height: 0;
+    margin-top: 45px; /* Space for fixed header */
+    margin-bottom: 170px; /* Space for options grid */
+    overflow-y: auto;
+    padding: 5px; /* Reduced further */
+    background: #f8f9fa;
+    height: calc(100vh - 215px); /* Full height minus header and options */
+}
+
+#practiceQuestion {
+    flex: 1;
+    font-size: 1.2em; /* Increased font size */
+    line-height: 1.6;
+    background: white;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    text-align: justify;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 200px;
+    max-height: none;
+    margin: 0;
+    width: 100%;
+}
+/* Statement questions - SAME SIZE as regular questions */
+#practiceQuestion .statement-question {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    font-size: 1.1em; /* Same as regular questions */
+    line-height: 1.5; /* Same as regular questions */
+}
+/* Statement questions - FORCE SAME STYLING AND JUSTIFICATION */
+#practiceQuestion .statement-question {
+    flex: 1;
+    display: block;
+    font-size: 1.2em !important; /* Same as regular questions */
+    line-height: 1.6 !important; /* Same as regular questions */
+    text-align: justify !important;
+    text-justify: inter-word !important;
+    hyphens: auto !important;
+    width: 100%;
+    word-spacing: normal;
+    letter-spacing: normal;
+}
+
+#practiceQuestion .statement-question strong {
+    display: block;
+    margin-bottom: 15px;
+    text-align: left;
+    font-size: 1.2em;
+    color: #2c3e50;
+}
+
+/* Make sure statement numbers have proper spacing */
+#practiceQuestion .statement-question br {
+    display: block;
+    margin-bottom: 8px;
+    content: "";
+}
+
+/* Regular questions */
+#practiceQuestion > div:not(.statement-question) {
+   flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* FIX: Aligns content to the TOP */
+    align-items: stretch;    /* Allows the content to use full width */
+    text-align: left;        /* FIX: Aligns text to the left (standard) */
+    padding: 10px 20px;
+}
+/* 3. OPTIONS GRID (Fixed at bottom) */
+#optionsGridContainer {
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 15px;
+    border-top: 2px solid #e9ecef;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    z-index: 50;
+    height: 170px;
+}
+
+#optionsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 10px;
+    height: 100%;
+}
+
+.option-grid-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: var(--border-radius);
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 12px 8px;
+    text-align: center;
+    user-select: none;
+}
+
+.option-grid-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-color: var(--primary-color);
+}
+
+.option-grid-item.correct {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    border-color: #27ae60;
+}
+
+.option-grid-item.wrong {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border-color: #c0392b;
+}
+
+.option-grid-item .option-letter {
+    display: inline-block;
+    margin-right: 8px;
+    font-weight: 700;
+}
+
+/* 4. FOOTER (Fixed at bottom) */
+#examFooter {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 20px;
+    background-color: var(--color-background-secondary); /* Assuming you use a color variable */
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    display: none; /* <--- THIS IS THE KEY ADDITION */
+    justify-content: flex-end;
+    gap: 10px;
+    align-items: center;
+}
+
+#examFooter button {
+    padding: 8px 20px;
+    font-size: 0.9em;
+    min-width: 120px;
+}
+
+/* Hide old elements */
+#practiceOptions {
+    display: none !important;
+}
+
+#continueContainer {
+    display: none !important;
+}
+
+#mainButtonRow {
+    display: none !important;
+}
+
+.timer {
+    display: none !important;
+}
+
+/* Statement questions formatting */
+.statement-question {
+    text-align: justify;
+    text-justify: inter-word;
+    line-height: 1.6;
+    word-spacing: 0.05em;
+}
+
+.statement-question strong {
+    display: block;
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+.statement-question br {
+    display: block;
+    margin-bottom: 8px;
+    content: "";
+}
+
+/* ============ MOBILE FIXES ============ */
+@media screen and (max-width: 600px) {
+    #questionScrollContainer {
+        margin-top: 45px;
+        margin-bottom: 180px;
+        padding: 10px;
+    }
+    
+    #practiceQuestion {
+        font-size: 1.1em;
+        padding: 15px;
+    }
+    
+    #optionsGridContainer {
+        height: 160px;
+        padding: 10px;
+    }
+    
+    .option-grid-item {
+        font-size: 0.9em;
+        padding: 10px 5px;
+    }
+    
+    #examFooter {
+        height: 55px;
+    }
+    
+    #examFooter button {
+        padding: 8px 15px;
+        font-size: 0.9em;
+    }
+}
+
+/* Extra small screens */
+@media screen and (max-width: 540px) {
+    #practiceQuestion {
+        font-size: 1em;
+        padding: 12px;
+    }
+    
+    .option-grid-item {
+        font-size: 0.85em;
+        padding: 8px 4px;
+    }
 }
         #practiceOptions {
             margin: 20px 0;
@@ -908,6 +1265,18 @@
 }
         /* --- RESPONSIVE ADJUSTMENTS --- */
         @media screen and (max-width: 600px) {
+            #practiceQuestion {
+        font-size: 1.1em !important; /* Smaller font on mobile */
+        padding: 15px;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    
+    /* Fix for very small screens */
+    @media screen and (max-width: 540px) {
+        #practiceQuestion {
+            font-size: 1em !important;
+            padding: 12px;
     body { padding: 5px; }
     .container, #adminPanel { padding: 0; border-radius: 0; }
     nav button { font-size: 12px; padding: 12px 5px; }
@@ -1154,8 +1523,58 @@
     body.practice-active #mainButtonRow button {
         padding: 8px 12px !important;
         font-size: 12px !important;
-        margin: 2px !important;
+        margin: 2px !important;    /* NEW EXAM LAYOUT MOBILE STYLES */
+    #topProgressIndicator {
+        height: 40px;
+        font-size: 1em;
     }
+    
+    #questionScrollContainer {
+        margin-top: 40px;
+        margin-bottom: 230px;
+        padding: 10px;
+    }
+    
+    #practiceQuestion {
+        font-size: 1em;
+        padding: 15px;
+    }
+    
+    #optionsGridContainer {
+        bottom: 60px;
+        padding: 10px;
+    }
+    
+    #optionsGrid {
+        height: 140px;
+        gap: 8px;
+    }
+    
+    .option-grid-item {
+        font-size: 0.9em;
+        padding: 8px;
+    }
+    
+    #examFooter {
+        height: 60px;
+        gap: 10px;
+    }
+    
+    #examFooter button {
+        padding: 6px 15px;
+        font-size: 0.85em;
+        min-width: 100px;
+    }
+
+    }
+    
+}
+/* Ensure Next button is visible in the footer */
+#examFooter button {
+    padding: 10px 25px;
+    font-size: 1em;
+    min-width: 140px;
+    display: inline-block !important;
 }</style>
 </head>
 <body>
@@ -1270,31 +1689,40 @@
 </div>
     </div>
 
-    <!-- PRACTICE SESSION (SAME AS BEFORE) -->
-    <div id="practiceSessionView" class="view-stage hidden">
-        <div class="timer" id="practiceTimer">00:00</div>
-        
-        <div id="practiceQuestion" style="font-size: 1.3em; margin-bottom: 20px; font-weight: bold; text-align: center;"></div>
-        <div id="practiceOptions"></div>
-        <div class="score" id="practiceScore" style="margin-top: 20px;">Score: 0</div>
-      <!-- BUTTON CONTAINERS - REORGANIZED LAYOUT -->
-<!-- Top Row: Continue Button (appears on top when needed) -->
-<div id="continueContainer" style="text-align: center; margin-top: 15px; display: none; order: 1;">
-    <button onclick="proceedToNextQuestion()" class="btn-success" style="padding: 10px 20px; font-size: 14px;">Continue to Next Question</button>
-</div>
-
-<!-- Main Button Row (bottom row, shows different buttons based on mode) -->
-<div id="mainButtonRow" style="text-align: center; margin-top: 15px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; order: 2;">
-    <!-- Show Answer button (only in revision mode) -->
-    <button onclick="showAnswer()" class="btn-success" id="showAnswerBtn" style="display: none; padding: 8px 16px; font-size: 13px;">Show Answer</button>
-    
-    <!-- Report Question button (only in revision mode) -->
-    <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="display: none; padding: 8px 16px; font-size: 13px;">Report Question</button>
-    
-    <!-- End Session button (only in practice mode) -->
-    <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" style="padding: 8px 16px; font-size: 13px;">End Session</button>
-</div>
+   <div id="practiceSessionView" class="view-stage hidden">
+    <!-- 1. TOP BAR -->
+    <div id="topProgressIndicator">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 15px;">
+            <div>Q: <span id="currentQuestionNum">1</span>/<span id="totalQuestions">0</span></div>
+            <div id="practiceTimer">Time: 00:00</div>
+            <div><button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="padding: 5px 10px; font-size: 0.8em;">Report</button></div>
+        </div>
     </div>
+    
+    <!-- 2. QUESTION AREA (Will contain statement-question div) -->
+    <div id="questionScrollContainer">
+        <div id="practiceQuestion"></div>
+    </div>
+    
+    <!-- 3. OPTIONS -->
+    <div id="optionsGridContainer">
+        <div id="optionsGrid">
+            <div class="option-grid-item" onclick="selectOption(0)" id="optionGridA"><span class="option-letter">A.</span> <span class="option-text"></span></div>
+            <div class="option-grid-item" onclick="selectOption(1)" id="optionGridB"><span class="option-letter">B.</span> <span class="option-text"></span></div>
+            <div class="option-grid-item" onclick="selectOption(2)" id="optionGridC"><span class="option-letter">C.</span> <span class="option-text"></span></div>
+            <div class="option-grid-item" onclick="selectOption(3)" id="optionGridD"><span class="option-letter">D.</span> <span class="option-text"></span></div>
+        </div>
+    </div>
+    
+   
+    
+    <div class="score" id="practiceScore" style="display: none;">Score: 0</div>
+</div>
+    
+    <div id="examFooter">
+    <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" style="padding: 8px 16px;">End Session</button>
+    <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none; padding: 8px 16px;">Next Question →</button>
+</div>
 </div>
 
             <div id="revision" class="tab-content">
@@ -2087,7 +2515,7 @@ function init() {
     populateAvatars();
     setDailyQuote();
     
-    document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here until successfully completed (>= ${MIN_SCORE_FOR_REVISION_SUCCESS}% for question sets).`;
+    document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here`;
     document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
 
     // Listen for file uploads
@@ -2196,51 +2624,6 @@ function loadLocalDataImmediately() {
     showNotification('Using optimized data loading strategy');
 }
 
-function switchTab(tabName) {
-    document.body.classList.remove('practice-active');
-    document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
-    const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
-    if(mainTabButton) mainTabButton.classList.add('active');
-    document.querySelectorAll('.container > main > .tab-content').forEach(tab => tab.classList.remove('active'));
-    
-    document.getElementById(tabName).classList.add('active');
-
-    // FIXED: Better leaderboard listener management
-    if (dailyScoresListener) {
-        dailyScoresListener.off();
-        dailyScoresListener = null;
-        console.log('Leaderboard listener OFF');
-    }
-
-    if(tabName === 'leaderboard') {
-        showLeaderboards(); // Show with local data first
-        // Only listen when actually viewing leaderboard
-        if (db && isFirebaseConnected) {
-            dailyScoresListener = db.ref('dailyRevisionScores');
-            dailyScoresListener.on('value', snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    dailyRevisionScores = data;
-                    localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data));
-                    showLeaderboards();
-                    console.log('Leaderboard scores updated.');
-                }
-            });
-        }
-    }
-
-    if(tabName === 'revision') {
-        // Sync before showing revision to ensure no deleted sets are shown
-        validateAndSyncQuestionSets(() => {
-            renderRevisionPage();
-        });
-    }
-    if(tabName === 'backlog') renderBacklogPage();
-    if(tabName === 'attendance') {
-        currentAttendanceCalendarDate = new Date();
-        renderAttendanceCalendar(currentAttendanceCalendarDate.getFullYear(), currentAttendanceCalendarDate.getMonth());
-    }
-}
 
 // --- 3. UPDATED SAVE FUNCTION (ADDS TIMESTAMPS) ---
 
@@ -2622,6 +3005,7 @@ function syncPendingUserData() {
 
         // --- CORE APP FUNCTIONS ---
        function switchTab(tabName) {
+        
     document.body.classList.remove('practice-active');
     document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
     const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
@@ -2931,54 +3315,63 @@ function updateBulkSetDropdown() {
         answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit,
         isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null
     };
-    document.getElementById('practiceScore').textContent = 'Score: 0';
+    document.getElementById('examFooter').style.display = 'flex'; // <--- ADD THIS LINE
+    const scoreElement = document.getElementById('practiceScore');
+if (scoreElement) {
+    scoreElement.textContent = 'Score: 0';
+}
     clearInterval(timer); 
     timer = setInterval(() => { 
-        timeElapsed++; 
-        
+    timeElapsed++; 
+    
+    // Get timer element
+    const timerElement = document.getElementById('practiceTimer');
+    
+    if (timerElement) { // CHECK IF ELEMENT EXISTS
         if (isRevisionMode) {
-            // Revision mode: Show elapsed time instead of countdown
-            document.getElementById('practiceTimer').textContent = `Time: ${formatTime(timeElapsed)}`;
+            // Revision mode: Show elapsed time
+            timerElement.textContent = `Time: ${formatTime(timeElapsed)}`;
         } else {
             // Practice mode: Show countdown timer
             const remaining = totalTimeLimit - timeElapsed;
-            document.getElementById('practiceTimer').textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
+            timerElement.textContent = `Time Left: ${formatTime(Math.max(0, remaining))}`;
             if (remaining <= 0) { 
                 showNotification('Time limit reached!', 'error'); 
                 endPractice();
             }
         }
-    }, 1000);
+    }
+}, 1000);
     showNextQuestion();
 }
         
-              function showNextQuestion() {
+          function showNextQuestion() {
+      document.body.scrollTop = document.documentElement.scrollTop = 0; // <--- ADD THIS LINE      
+    // FIX: Check if we have reached the end of the set immediately
     if (currentQuestionIndex >= currentSet.length) {
-        endPractice();
+        endPractice(); // Automatically triggers end of session
         return;
     }
-    
-    // Hide Continue container
-    const continueContainer = document.getElementById('continueContainer');
-    if (continueContainer) continueContainer.style.display = 'none';
-    
-    // Enable End Session button
-    const endPracticeBtn = document.getElementById('endPracticeBtn');
-    if (endPracticeBtn) endPracticeBtn.disabled = false;
 
+    // Reset buttons
+    document.getElementById('endPracticeBtn').style.display = 'inline-block';
+    document.getElementById('nextQuestionBtn').style.display = 'none';
+
+    // Update progress
+    document.getElementById('currentQuestionNum').textContent = currentQuestionIndex + 1;
+    document.getElementById('totalQuestions').textContent = currentSet.length;
+    
     const question = currentSet[currentQuestionIndex];
     
     // Show question
     let questionHTML = '';
     if (question.type === 'statement') {
         let cleanedQuestion = question.question
-            .replace(/\n\s*\n/g, '\n')
-            .replace(/\s+/g, ' ')
-            .trim();
-        
-        cleanedQuestion = cleanedQuestion
-            .replace(/(\d\.)/g, '\n$1')
-            .trim();
+            .replace(/1\./g, '<br><br>1.')
+            .replace(/2\./g, '<br><br>2.')
+            .replace(/3\./g, '<br><br>3.')
+            .replace(/4\./g, '<br><br>4.')
+            .replace(/<br><br><br>/g, '<br><br>');
         
         questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
     } else {
@@ -2987,52 +3380,29 @@ function updateBulkSetDropdown() {
 
     document.getElementById('practiceQuestion').innerHTML = questionHTML;
     
-    // Clear previous options
-    const optionsDiv = document.getElementById('practiceOptions');
-    if (optionsDiv) optionsDiv.innerHTML = '';
-    
-    // Show/Hide buttons based on mode
-    if (isRevisionMode) {
-        // REVISION MODE: Show Show Answer, Report, and End buttons
-        const showAnswerBtn = document.getElementById('showAnswerBtn');
-        const reportQuestionBtn = document.getElementById('reportQuestionBtn');
-        
-        if (showAnswerBtn) showAnswerBtn.style.display = 'inline-block';
-        if (reportQuestionBtn) reportQuestionBtn.style.display = 'inline-block';
-        if (endPracticeBtn) endPracticeBtn.style.display = 'inline-block';
-        
-        // Update score display to show progress
-        document.getElementById('practiceScore').textContent = `Revision: ${currentQuestionIndex + 1}/${currentSet.length}`;
-    } else {
-        // PRACTICE MODE: Only show End Session button
-        const showAnswerBtn = document.getElementById('showAnswerBtn');
-        const reportQuestionBtn = document.getElementById('reportQuestionBtn');
-        
-        if (showAnswerBtn) showAnswerBtn.style.display = 'none';
-        if (reportQuestionBtn) reportQuestionBtn.style.display = 'none';
-        if (endPracticeBtn) endPracticeBtn.style.display = 'inline-block';
-        
-        // Update score display
-        document.getElementById('practiceScore').textContent = `Score: ${score}`;
-    }
-    
-    // Create option buttons
-    if (optionsDiv) {
-        question.options.forEach((option, index) => {
-            const optionDiv = document.createElement('div');
-            optionDiv.className = 'option';
-            optionDiv.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+    // Reset Options
+    const optionIds = ['optionGridA', 'optionGridB', 'optionGridC', 'optionGridD'];
+    optionIds.forEach((id, index) => {
+        const optionDiv = document.getElementById(id);
+        if (optionDiv) {
+            optionDiv.className = 'option-grid-item';
+            optionDiv.style.cursor = 'pointer';
+            optionDiv.onclick = () => selectOption(index);
             
-            if (isRevisionMode) {
-                // REVISION MODE: Click shows answer
-                optionDiv.onclick = () => handleRevisionAnswer(index, question);
-            } else {
-                // PRACTICE MODE: Normal answer selection
-                optionDiv.onclick = () => selectAnswer(index);
+            const optionTextSpan = optionDiv.querySelector('.option-text');
+            if (optionTextSpan) {
+                optionTextSpan.textContent = question.options[index] || '';
             }
-            
-            optionsDiv.appendChild(optionDiv);
-        });
+        }
+    });
+    
+    // FIX: Ensure End Button is always visible in revision so you can manually end
+    if (isRevisionMode) {
+        document.getElementById('reportQuestionBtn').style.display = 'inline-block';
+        document.getElementById('endPracticeBtn').style.display = 'inline-block'; 
+    } else {
+        document.getElementById('reportQuestionBtn').style.display = 'none';
+        document.getElementById('endPracticeBtn').style.display = 'inline-block';
     }
 }
 // NEW HELPER FUNCTION FOR REVISION MODE
@@ -3040,84 +3410,81 @@ function handleRevisionAnswer(selectedIndex, question) {
     const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
     const isCorrect = selectedIndex === correctIndex;
     
-    // Disable all options
-    document.querySelectorAll('.option').forEach(o => {
-        o.onclick = null;
-        o.style.cursor = 'default';
-    });
-    
-    // Hide Show Answer button
-    document.getElementById('showAnswerBtn').style.display = 'none';
-    
-    // Highlight correct answer in GREEN
-    document.querySelectorAll('.option').forEach((o, i) => {
-        if (i === correctIndex) {
-            o.classList.add('correct');
-            o.style.backgroundColor = '#2ecc71';
-            o.style.color = 'white';
+    // Disable inputs
+    const optionIds = ['optionGridA', 'optionGridB', 'optionGridC', 'optionGridD'];
+    optionIds.forEach(id => {
+        const optionDiv = document.getElementById(id);
+        if (optionDiv) {
+            optionDiv.onclick = null;
+            optionDiv.style.cursor = 'default';
         }
     });
     
-    // Highlight wrong answer in RED if selected wrong
-    if (!isCorrect) {
-        document.querySelectorAll('.option')[selectedIndex].classList.add('wrong');
-        document.querySelectorAll('.option')[selectedIndex].style.backgroundColor = '#e74c3c';
-        document.querySelectorAll('.option')[selectedIndex].style.color = 'white';
-    }
+    // Show colors
+    optionIds.forEach((id, index) => {
+        const optionDiv = document.getElementById(id);
+        if (optionDiv) {
+            if (index === correctIndex) optionDiv.classList.add('correct');
+            else if (index === selectedIndex && !isCorrect) optionDiv.classList.add('wrong');
+        }
+    });
     
-    // Play sound
     playSound(isCorrect ? 'correct' : 'wrong');
     
-    // Record the answer
-    const lastAnswerTime = currentAttempt.answers.length > 0 ? 
-        currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
-    const timeForThisQuestion = timeElapsed - lastAnswerTime;
-    
+    // Record Answer
     currentAttempt.answers.push({ 
         isCorrect, 
         questionText: question.question, 
-        questionOptions: question.options,
         selectedAnswer: String.fromCharCode(65 + selectedIndex), 
         correctAnswer: question.correctAnswer,
-        timeTaken: timeForThisQuestion, 
-        timeAtAnswer: timeElapsed, 
-        isSkipped: false,
         viewedAnswer: true
     });
     
-        // Auto-advance for correct answers after 0.5 seconds
+    // FIX: Auto-advance logic
     if (isCorrect) {
+        // If correct, go to next question automatically
         setTimeout(() => {
             currentQuestionIndex++;
-            showNextQuestion();
+            showNextQuestion(); 
         }, 500);
     } else {
-        // For wrong answers, show Continue button (user must click)
-        document.getElementById('continueContainer').style.display = 'block';
-    }
-}
+        // If wrong, show 'Next' button
+        document.getElementById('endPracticeBtn').style.display = 'none';
+        document.getElementById('nextQuestionBtn').style.display = 'inline-block';
         
-      function selectAnswer(selectedIndex) {
+        // Ensure manual click works
+        document.getElementById('nextQuestionBtn').onclick = function() {
+            currentQuestionIndex++;
+            showNextQuestion();
+        };
+    }
+}     function selectAnswer(selectedIndex) {
     // This function is for PRACTICE MODE only
     if (isRevisionMode) return;
     
     // Disable all options
-    document.querySelectorAll('.option').forEach(o => { o.onclick = null; });
+    const optionIds = ['optionGridA', 'optionGridB', 'optionGridC', 'optionGridD'];
+    optionIds.forEach(id => {
+        const optionDiv = document.getElementById(id);
+        if (optionDiv) {
+            optionDiv.onclick = null;
+            optionDiv.style.cursor = 'default';
+        }
+    });
     
     const question = currentSet[currentQuestionIndex];
     const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
     const isCorrect = selectedIndex === correctIndex;
     
-    // Highlight answers
-    document.querySelectorAll('.option').forEach((o, i) => {
-        if (i === correctIndex) {
-            o.classList.add('correct');
-            o.style.backgroundColor = '#2ecc71';
-            o.style.color = 'white';
-        } else if (i === selectedIndex && !isCorrect) {
-            o.classList.add('wrong');
-            o.style.backgroundColor = '#e74c3c';
-            o.style.color = 'white';
+    // Highlight answers in the grid
+    optionIds.forEach((id, index) => {
+        const optionDiv = document.getElementById(id);
+        if (optionDiv) {
+            if (index === correctIndex) {
+                optionDiv.classList.add('correct');
+            } else if (index === selectedIndex && !isCorrect) {
+                optionDiv.classList.add('wrong');
+            }
         }
     });
     
@@ -3141,20 +3508,35 @@ function handleRevisionAnswer(selectedIndex, question) {
     playSound(isCorrect ? 'correct' : 'wrong');
     
     if (isCorrect) {
-        score++;
-        document.getElementById('practiceScore').textContent = `Score: ${score}`;
-    }
-    
-        // Handle practice mode progression
-    if (isCorrect) {
         // Correct answer: auto-advance after 0.25 seconds
         setTimeout(() => {
             currentQuestionIndex++;
             showNextQuestion();
-        }, 250);
+        }, 250); // 0.25 seconds
     } else {
-        // Wrong answer: show Continue button
-        document.getElementById('continueContainer').style.display = 'block';
+        // Wrong answer: show Next button in the footer
+        document.getElementById('endPracticeBtn').style.display = 'none';
+        document.getElementById('nextQuestionBtn').style.display = 'inline-block';
+        // Don't auto-advance - wait for user to click Next
+    }
+}
+
+function nextQuestionManual() {
+    // Hide Next button, show End Session button
+    document.getElementById('nextQuestionBtn').style.display = 'none';
+    document.getElementById('endPracticeBtn').style.display = 'inline-block';
+    
+    // Move to next question
+    currentQuestionIndex++;
+    showNextQuestion();
+}
+function selectOption(selectedIndex) {
+    if (isRevisionMode) {
+        // In revision mode, show answer immediately
+        handleRevisionAnswer(selectedIndex, currentSet[currentQuestionIndex]);
+    } else {
+        // In practice mode, select answer
+        selectAnswer(selectedIndex, selectedIndex); // Pass the selected index
     }
 }
 function showAnswer() {
@@ -3163,21 +3545,27 @@ function showAnswer() {
     const question = currentSet[currentQuestionIndex];
     const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
     
-    // Disable all options
-    document.querySelectorAll('.option').forEach(o => {
-        o.onclick = null;
-        o.style.cursor = 'default';
+    // Disable all grid options
+    const optionIds = ['optionGridA', 'optionGridB', 'optionGridC', 'optionGridD'];
+    optionIds.forEach(id => {
+        const optionDiv = document.getElementById(id);
+        if (optionDiv) {
+            optionDiv.onclick = null;
+            optionDiv.style.cursor = 'default';
+        }
     });
     
-    // Hide Show Answer button
-    document.getElementById('showAnswerBtn').style.display = 'none';
+    // Hide Show Answer button if it exists
+    const showAnswerBtn = document.getElementById('showAnswerBtn');
+    if (showAnswerBtn) {
+        showAnswerBtn.style.display = 'none';
+    }
     
-    // Highlight correct answer in GREEN
-    document.querySelectorAll('.option').forEach((o, i) => {
-        if (i === correctIndex) {
-            o.classList.add('correct');
-            o.style.backgroundColor = '#2ecc71';
-            o.style.color = 'white';
+    // Highlight correct answer in the grid
+    optionIds.forEach((id, index) => {
+        const optionDiv = document.getElementById(id);
+        if (optionDiv && index === correctIndex) {
+            optionDiv.classList.add('correct');
         }
     });
     
@@ -3199,15 +3587,12 @@ function showAnswer() {
         viewedAnswer: true
     });
     
-        // Show Continue button (user must click to continue)
-    document.getElementById('continueContainer').style.display = 'block';}
-      function proceedToNextQuestion() {
-    // This works for BOTH practice and revision modes
-    currentQuestionIndex++;
-    showNextQuestion();
-}
-
-       
+    // Auto-advance after 0.15 seconds
+    setTimeout(() => {
+        currentQuestionIndex++;
+        showNextQuestion();
+    }, 150);
+}       
 function endPractice() {
     if (!practiceInProgress || !currentAttempt) {
         practiceInProgress = false;
@@ -3216,33 +3601,29 @@ function endPractice() {
         switchPracticeView('practiceSetupView');
         return;
     }
-    
-    practiceInProgress = false;
-    clearInterval(timer);
-
+// --- ADDED: HIDE FOOTER IMMEDIATELY ---
+    document.getElementById('examFooter').style.display = 'none'; 
+    // -------------------------------------
     const totalQuestions = currentAttempt.totalQuestions;
-    const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-    
-    let xpEarned = 0;
-    let xpMessage = '';
+    const questionsViewed = currentAttempt.answers.length;
 
-    // ============= REVISION MODE LOGIC =============
+    // --- REVISION MODE LOGIC ---
     if (isRevisionMode) {
-        // For revision mode, check if all questions were viewed
-        const questionsViewed = currentAttempt.answers.length;
-        
-        if (questionsViewed < totalQuestions) {
-            showNotification(`You've viewed ${questionsViewed} of ${totalQuestions} questions. Continue revising?`, 'warning');
-            practiceInProgress = true; // Reset flag to continue
-            clearInterval(timer);
-            timer = setInterval(() => { 
-                timeElapsed++; 
-                document.getElementById('practiceTimer').textContent = `Time: ${formatTime(timeElapsed)}`;
-            }, 1000);
-            return;
+        // If they haven't finished all questions AND they are not at the very end of the set
+        if (questionsViewed < totalQuestions && currentQuestionIndex < totalQuestions) {
+            const confirmEnd = confirm(`You have viewed ${questionsViewed} of ${totalQuestions} questions.\n\nDo you want to end the revision session now?`);
+            if (!confirmEnd) {
+                // User chose to continue
+                return;
+            }
+            // User chose to force end - proceed below
         }
         
-        // MARK REVISION AS COMPLETED - DO THIS IMMEDIATELY
+        // STOP TIMER
+        clearInterval(timer);
+        practiceInProgress = false;
+
+        // MARK REVISION AS COMPLETED
         if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
         revisionProgress[currentPlayerName][currentRevisionKey] = { 
             percentage: 100, 
@@ -3251,104 +3632,66 @@ function endPractice() {
             revisionCompleted: true
         };
         
-        // SAVE IMMEDIATELY to localStorage
+        // SAVE
         localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
         
-        // SYNC TO FIREBASE if connected
+        // SYNC
         if (isFirebaseConnected && currentPlayerName) {
-            db.ref(`revisionProgress/${currentPlayerName}/${currentRevisionKey}`).set({
-                percentage: 100, 
-                date: new Date().toISOString(), 
-                success: true,
-                revisionCompleted: true
-            }).then(() => {
-                console.log('Revision completion synced to Firebase');
-            }).catch(error => {
-                console.error('Failed to sync revision completion:', error);
-                // Save to sync queue for later
-                const pendingSync = JSON.parse(localStorage.getItem('pscPendingSync') || '[]');
-                pendingSync.push({
-                    type: 'revisionComplete',
-                    playerName: currentPlayerName,
-                    revisionKey: currentRevisionKey,
-                    timestamp: Date.now()
-                });
-                localStorage.setItem('pscPendingSync', JSON.stringify(pendingSync));
-            });
+            db.ref(`revisionProgress/${currentPlayerName}/${currentRevisionKey}`).set(revisionProgress[currentPlayerName][currentRevisionKey]);
         }
         
-        // Also sync to player profiles for consistency
         savePlayerProfiles();
         
-        // Now ask if they want to do practice
+        // ASK TO PRACTICE OR QUIT
         setTimeout(() => {
-            const proceedToPractice = confirm(`🎉 Revision Completed!\n\nYou've reviewed all ${totalQuestions} questions.\n\nWould you like to do a practice exam with the same set now?\n\n(Click OK for practice, Cancel to finish)`);
+            const proceedToPractice = confirm(`🎉 Revision Completed!\n\nWould you like to do a practice exam with this set now?\n\n(OK = Practice, Cancel = Finish)`);
             
             if (proceedToPractice) {
-                // Start practice mode with the same set
-                setTimeout(() => {
-                    const setName = currentAttempt.setName;
-                    
-                    // Reset for practice mode
-                    document.body.classList.remove('practice-active');
-                    switchPracticeView('practiceSetupView');
-                    
-                    // Set the dropdowns to the same set
-                    document.getElementById('subjectSelect').value = questionSets[setName]?.subject || '';
-                    updatePracticeSetSelect(document.getElementById('subjectSelect').value);
-                    document.getElementById('practiceSetSelect').value = setName;
-                    
-                    // Wait a moment then start practice
-                    setTimeout(() => {
-                        startPracticeWrapper(setName, false, null);
-                    }, 300);
-                }, 500);
-            } else {
-                // Show completion message
-                document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
-                document.getElementById('modalScore').textContent = `You reviewed all ${totalQuestions} questions.`;
-                document.getElementById('modalTime').textContent = `Time spent: ${formatTime(timeElapsed)}`;
-                document.getElementById('modalXPGained').textContent = '📚 Revision mode: No XP awarded.';
-                openModal('resultsModal');
-                
-                // Clean up and exit
+                // Start practice
+                const setName = currentAttempt.setName;
                 document.body.classList.remove('practice-active');
                 switchPracticeView('practiceSetupView');
-                isRevisionMode = false;
-                currentRevisionKey = null;
-                currentSet = [];
                 
-                // Update revision pages IMMEDIATELY
+                // Set dropdowns
+                document.getElementById('subjectSelect').value = questionSets[setName]?.subject || '';
+                updatePracticeSetSelect(document.getElementById('subjectSelect').value);
+                document.getElementById('practiceSetSelect').value = setName;
+                
+                setTimeout(() => { startPracticeWrapper(setName, false, null); }, 300);
+            } else {
+                // Finish
+                document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
+                document.getElementById('modalScore').textContent = `Questions reviewed: ${questionsViewed}/${totalQuestions}`;
+                document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
+                document.getElementById('modalXPGained').textContent = 'No XP in revision mode.';
+                openModal('resultsModal');
+                
+                document.body.classList.remove('practice-active');
+                switchPracticeView('practiceSetupView');
+                
                 renderRevisionPage();
                 renderBacklogPage();
-                
-                // Update badges
                 updateAllBadges();
-                
-                // Force sync of all user data to ensure consistency
-                setTimeout(() => {
-                    syncRevisionProgressOnly();
-                    savePlayerProfiles();
-                }, 1000);
             }
-        }, 500);
+        }, 300);
         return;
     }
     
-    // ============= PRACTICE MODE LOGIC =============
-    // Practice mode - keep existing XP logic
-    xpEarned = calculateAndApplyXP(score);
-    xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP!` : 'Keep practicing to earn XP!';
+    // --- REGULAR PRACTICE MODE LOGIC ---
+    const score = currentAttempt.answers.filter(ans => ans.isCorrect).length; // <--- ADD THIS LINE IF MISSING
+    practiceInProgress = false;
+    clearInterval(timer);
 
-    // Update daily scores for leaderboard (only for revision mode, not practice)
-    // Daily scores are only for revisions, not practice sessions
+    const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+    
+    const xpEarned = calculateAndApplyXP(score);
+    const xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP!` : 'Keep practicing to earn XP!';
 
     currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
     const attemptId = `attempt-${Date.now()}`;
     practiceHistory[attemptId] = currentAttempt;
     localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
     
-    // Show results modal
     document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
     document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
     document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
@@ -3368,7 +3711,6 @@ function endPractice() {
     currentRevisionKey = null; 
     currentSet = [];
     
-    // Sync player data after practice
     setTimeout(() => {
         savePlayerProfiles();
         syncRevisionProgressOnly();
@@ -4665,23 +5007,15 @@ function validateAndSyncQuestionSets(callback) {
     }
 }
 function updateRevisionModeCSS() {
+    // Report button is always visible now, so we don't need to hide/show it
+    // Just update the mode class for styling
     if (isRevisionMode) {
         document.body.classList.add('is-revision-mode');
-        // Hide End Session button in revision mode
-        document.getElementById('endPracticeBtn').style.display = 'none';
-        // Show revision-specific buttons
-        document.getElementById('showAnswerBtn').style.display = 'inline-block';
-        document.getElementById('reportQuestionBtn').style.display = 'inline-block';
     } else {
         document.body.classList.remove('is-revision-mode');
-        // Show End Session button in practice mode
-        document.getElementById('endPracticeBtn').style.display = 'inline-block';
-        // Hide revision-specific buttons
-        document.getElementById('showAnswerBtn').style.display = 'none';
-        document.getElementById('reportQuestionBtn').style.display = 'none';
     }
-}
 
+}
 // NEW FUNCTION: Filter question sets by subject
 function filterQuestionSetsBySubject() {
     const selectedSubject = document.getElementById('subjectFilter').value;
@@ -4751,6 +5085,18 @@ function testLoadProfiles() {
     } else {
         alert('Firebase not connected');
     }
+}
+function proceedToNextQuestion() {
+    document.getElementById('practiceQuestion').scrollTop = 0; // <--- NEW FIX
+    // Hide Continue button if it exists
+    const continueContainer = document.getElementById('continueContainer');
+    if (continueContainer) {
+        continueContainer.style.display = 'none';
+    }
+    
+    // This works for BOTH practice and revision modes
+    currentQuestionIndex++;
+    showNextQuestion();
 }
     </script>
 </body>
