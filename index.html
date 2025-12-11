@@ -5455,9 +5455,27 @@ function joinRoom(roomCode, isHost) {
     // Setup MINIMAL listeners
     multiplayerRoomListener = db.ref(`m/${roomCode}/r`);
     multiplayerRoomListener.on('value', snapshot => {
-        const room = snapshot.val();
-        if (room) updateRoomUI(room, isHost);
-    });
+    const room = snapshot.val();
+    
+    if (room) {
+        // Always update the lobby UI first
+        updateRoomUI(room, isHost);
+        
+        // --- FIX #1: Start game for ALL players when status is 'p' (Playing) ---
+        // 'multiplayerGameView' is the ID for the main game screen container
+        if (room.st === 'p' && document.getElementById('multiplayerGameView').classList.contains('hidden')) {
+            showMultiplayerGameView(); // Show the game screen for everyone
+            
+            // Check if a new question has started or needs to be loaded
+            // We need to compare to currentQuestionIndex (a variable from your code)
+            if (room.cq >= 1 && room.cq > currentQuestionIndex) { 
+                currentQuestionIndex = room.cq;
+                loadNextMultiplayerQuestion(); 
+            }
+        }
+        // --- End of FIX #1 ---
+    }
+});
     
     // Listen only for player list (small data)
     multiplayerGameListener = db.ref(`m/${roomCode}/p`);
@@ -5466,14 +5484,14 @@ function joinRoom(roomCode, isHost) {
         updatePlayerList(players);
     });
     
-    showMultiplayerGameView();
-}
+  
 
-// Update room UI
+// Update room UI function (FIXED)
 function updateRoomUI(room, isHost) {
     document.getElementById('multiplayerRoomTitle').textContent = `Room: ${room.n || 'Unknown'}`;
-    document.getElementById('multiplayerRoomInfo').textContent = 
-        `Questions: ${room.q || 0} | Status: ${getStatusText(room.st)}`;
+    
+    // FIX: Correctly set the room information text and add player count
+    document.getElementById('multiplayerRoomInfo').textContent = `Players: ${Object.keys(room.p || {}).length} | Questions: ${room.q || 0} | Status: ${getStatusText(room.st)}`;
     
     if (isHost && room.st === 'w') {
         document.getElementById('startGameBtn').style.display = 'inline-block';
@@ -5835,6 +5853,55 @@ function returnToMultiplayerLobby() {
 }
 
 // Run cleanup every hour
-setInterval(cleanupOldRooms, 60 * 60 * 1000);    </script>
+setInterval(cleanupOldRooms, 60 * 60 * 1000);  
+
+// *** FIX #2: FUNCTION TO DISPLAY THE QUESTION AND OPTIONS FOR MULTIPLAYER ***
+function showQuestion(question, currentQ, totalQuestions) {
+    // 1. Update question number and question text
+    document.getElementById('multiplayerQuestionNumber').textContent = `Question ${currentQ}/${totalQuestions}`;
+    
+    // Logic to handle different question types (from your full code)
+    let questionHTML = '';
+    if (question.type === 'statement') {
+        let cleanedQuestion = question.question
+            .replace(/1\./g, '<br><br>1.')
+            .replace(/2\./g, '<br><br>2.')
+            .replace(/3\./g, '<br><br>3.')
+            .replace(/4\./g, '<br><br>4.')
+            .replace(/<br><br><br>/g, '<br><br>'); // Clean up excessive breaks
+        questionHTML = `<div class="statement-question"><strong>${cleanedQuestion}</strong></div>`;
+    } else {
+        questionHTML = `<div><strong>${question.question}</strong></div>`;
+    }
+
+    // Set the question text
+    document.getElementById('multiplayerQuestion').innerHTML = questionHTML;
+    
+    // 2. Render the options (This is the critical part for creating the buttons)
+    const optionsContainer = document.getElementById('multiplayerOptions');
+    optionsContainer.innerHTML = ''; // Clear previous options
+    
+    if (question.options && question.options.length > 0) {
+        question.options.forEach((optionText, index) => {
+            const btn = document.createElement('button');
+            const optionLetter = String.fromCharCode(65 + index); // Generates A, B, C, D
+            
+            // Set the visible text for the option
+            btn.textContent = `${optionLetter}. ${optionText}`;
+            
+            // Apply your style class
+            btn.className = 'option-grid-item'; 
+            
+            // Set the click handler to select the answer
+            btn.onclick = () => selectMultiplayerAnswer(index, question.correctAnswer);
+            
+            optionsContainer.appendChild(btn);
+        });
+    } else {
+        optionsContainer.innerHTML = '<p style="text-align:center;">Error: Options not found for this question.</p>';
+    }
+}
+// End of FIX #2
+</script>
 </body>
 </html>
