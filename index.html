@@ -1960,6 +1960,7 @@
                             <!-- Final scores will appear here -->
                         </div>
                         <button onclick="returnToMultiplayerLobby()" class="btn-primary" style="margin-top: 20px;">Back to Lobby</button>
+                        <button onclick="playAgainMultiplayer()" class="btn-success" style="margin-top: 20px;">Play Again</button>
                     </div>
                 </div>
             </div>
@@ -5553,33 +5554,204 @@ function startMultiplayerGame() {
         });
 }
 // Load question (LOCAL - no Firebase download)
+// Load question - SYNCED VERSION
 function loadMultiplayerQuestion() {
-    // Get room info once
+    if (!currentRoomCode) return;
+    
+    // FIRST: Get room info from Firebase (so both devices get same data)
     db.ref(`m/${currentRoomCode}/r`).once('value')
         .then(snapshot => {
             const room = snapshot.val();
-            if (!room || !room.s) return;
-            
-            const setName = room.s;
-            const set = questionSets[setName];
-            
-            if (!set || !set.questions) {
-                showNotification("Question set not found", "error");
+            if (!room || !room.s) {
+                showNotification("Room data missing", "error");
                 return;
             }
             
-            // Use LOCAL questions (no Firebase download)
-            const questions = [...set.questions].sort(() => Math.random() - 0.5);
-            const questionCount = Math.min(room.q || 10, questions.length);
+            // Get question count
+            const totalQuestions = room.q || 10;
             
-            // Show first question
-            if (questions.length > 0) {
-                showQuestion(questions[0], 1, questionCount);
-            }
+            // CRITICAL: Store current question number in Firebase so both devices are on same question
+            return db.ref(`m/${currentRoomCode}/r/cq`).transaction(currentQ => {
+                // If no current question, start at 1
+                if (currentQ === null || currentQ === undefined || currentQ >= totalQuestions) {
+                    return 1;
+                } else {
+                    return currentQ + 1; // Move to next question
+                }
+            });
+        })
+        .then(() => {
+            // NOW listen for the current question number
+            db.ref(`m/${currentRoomCode}/r/cq`).once('value')
+                .then(snapshot => {
+                    const currentQ = snapshot.val() || 1;
+                    
+                    // Get room info again to know which set
+                    return db.ref(`m/${currentRoomCode}/r`).once('value');
+                })
+                .then(snapshot => {
+                    const room = snapshot.val();
+                    const setName = room.s;
+                    const currentQ = room.cq || 1;
+                    const totalQuestions = room.q || 10;
+                    
+                    // Get questions from LOCAL storage (same for all players if they have same sets)
+                    const set = questionSets[setName];
+                    
+                    if (!set || !set.questions) {
+                        showNotification("Question set not found locally", "error");
+                        return;
+                    }
+                    
+                    // Shuffle questions the SAME way for everyone
+                    // Use room code as seed so all devices get same order
+                    const seed = room.t || Date.now(); // Use room timestamp as seed
+                    const shuffledQuestions = [...set.questions];
+                    
+                    // Simple deterministic shuffle based on room code
+                    const roomCodeNum = Array.from(currentRoomCode).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+                    for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+                        const j = (roomCodeNum + i) % (i + 1);
+                        [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+                    }
+                    
+                    // Take only needed number of questions
+                    const gameQuestions = shuffledQuestions.slice(0, totalQuestions);
+                    
+                    // Show current question
+                    if (currentQ <= gameQuestions.length) {
+                        showQuestion(gameQuestions[currentQ - 1], currentQ, totalQuestions);
+                        
+                        // Start timer for this question
+                        startQuestionTimer();
+                    } else {
+                        // Game over
+                        endMultiplayerGame();
+                    }
+                });
+        })
+        .catch(error => {
+            console.error("Load question error:", error);
+            showNotification("Failed to load question", "error");
         });
 }
 
-// Show question (local)
+// Start timer for current question
+function startQuestionTimer() {
+    let timeLeft = 20;
+    const timerElement = document.getElementById('multiplayerTimer');
+    
+    const timer = setInterval(() => {
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            // Auto-next question when time runs out
+            setTimeout(() => loadMultiplayerQuestion(), 1000);
+            return;
+        }
+        
+        timeLeft--;
+        if (timerElement) {
+            timerElement.textContent = timeLeft;
+            
+            // Color change for low time
+            if (timeLeft <= 5) {
+                timerElement.style.color = 'red';
+            } else if (timeLeft <= 10) {
+                timerElement.style.color = 'orange';
+            }
+        }
+    }, 1000);
+}
+
+// Show question on screen
+function showQuestion(question, qNum, totalQ) {
+    document.getElementById('multiplayerQuestionNumber').textContent = `Question ${qNum}/${totalQ}`;
+    document.getElementById('multiplayerQuestion').innerHTML = `<strong>${qNum}. ${question.question}</strong>`;
+    
+    const optionsDiv = document.getElementById('multiplayerOptions');
+    optionsDiv.innerHTML = '';
+    
+    question.options.forEach((opt, index) => {
+        const button = document.createElement('button');
+        button.className = 'option-grid-item';
+        button.style.cssText = 'margin: 5px; padding: 12px; border-radius: 8px; cursor: pointer;';
+        button.innerHTML = `<span class="option-letter">${String.fromCharCode(65 + index)}.</span> ${opt}`;
+        button.onclick = () => selectMultiplayerAnswer(index, question.correctAnswer);
+        optionsDiv.appendChild(button);
+    });
+}
+
+// Select answer
+function selectMultiplayerAnswer(selectedIndex, correctAnswer) {
+    const correctIndex = correctAnswer.charCodeAt(0) - 65;
+    const isCorrect = selectedIndex === correctIndex;
+    
+    // Disable all buttons
+    document.querySelectorAll('#multiplayerOptions button').forEach(btn => {
+        btn.onclick = null;
+        btn.style.cursor = 'default';
+    });
+    
+    // Highlight correct/wrong
+    document.querySelectorAll('#multiplayerOptions button').forEach((btn, index) => {
+        if (index === correctIndex) {
+            btn.style.background = 'linear-gradient(135deg, #2ecc71, #27ae60)';
+            btn.style.color = 'white';
+        } else if (index === selectedIndex && !isCorrect) {
+            btn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+            btn.style.color = 'white';
+        }
+    });
+    
+    // Update score in Firebase
+    if (isCorrect) {
+        db.ref(`m/${currentRoomCode}/p/${currentPlayerName}/sc`).transaction(score => {
+            return (score || 0) + 1;
+        });
+    }
+    
+    // Auto-next after 3 seconds
+    setTimeout(() => {
+        loadMultiplayerQuestion();
+    }, 3000);
+}
+
+// End game
+function endMultiplayerGame() {
+    // Update room status
+    db.ref(`m/${currentRoomCode}/r/st`).set('f');
+    
+    // Show results
+    document.getElementById('multiplayerGameArea').classList.add('hidden');
+    document.getElementById('multiplayerResults').classList.remove('hidden');
+    
+    // Load final scores
+    db.ref(`m/${currentRoomCode}/p`).once('value')
+        .then(snapshot => {
+            const players = snapshot.val() || {};
+            const scores = [];
+            
+            Object.keys(players).forEach(playerId => {
+                scores.push({
+                    name: players[playerId].n || playerId,
+                    score: players[playerId].sc || 0
+                });
+            });
+            
+            // Sort by score
+            scores.sort((a, b) => b.score - a.score);
+            
+            // Display results
+            const resultsDiv = document.getElementById('finalScores');
+            resultsDiv.innerHTML = scores.map((player, index) => `
+                <div style="background: ${index === 0 ? '#fffbe6' : '#f8f9fa'}; 
+                          padding: 15px; margin: 10px; border-radius: 8px;
+                          border-left: 4px solid ${index === 0 ? '#f39c12' : '#3498db'};">
+                    <h3>${index === 0 ? '🏆 ' : ''}${player.name}: ${player.score} points</h3>
+                </div>
+            `).join('');
+        });
+}// Show question (local)
 function showQuestion(question, qNum, totalQ) {
     document.getElementById('multiplayerQuestionNumber').textContent = `Question ${qNum}/${totalQ}`;
     document.getElementById('multiplayerQuestion').innerHTML = `<strong>${qNum}. ${question.question}</strong>`;
@@ -5654,6 +5826,12 @@ function cleanupOldRooms() {
             }
         });
     });
+}
+
+function returnToMultiplayerLobby() {
+    document.getElementById('multiplayerResults').classList.add('hidden');
+    document.getElementById('multiplayerGameArea').classList.add('hidden');
+    document.getElementById('multiplayerControls').style.display = 'block';
 }
 
 // Run cleanup every hour
