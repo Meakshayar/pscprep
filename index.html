@@ -5358,7 +5358,7 @@ function createMultiplayerRoom() {
     const roomData = {
         n: roomName.substring(0, 20), // Short name
         h: currentPlayerName.substring(0, 15), // Host
-        s: setName.substring(0, 30), // Set name
+        s: setName, // Set name
         q: questionCount, // Question count
         t: Date.now(), // Timestamp
         st: 'w' // Status: w=waiting, p=playing, f=finished
@@ -5470,7 +5470,7 @@ function joinRoom(roomCode, isHost) {
             // We need to compare to currentQuestionIndex (a variable from your code)
             if (room.cq >= 1 && room.cq > currentQuestionIndex) { 
                 currentQuestionIndex = room.cq;
-                loadNextMultiplayerQuestion(); 
+                loadMultiplayerQuestion(); 
             }
         }
         // --- End of FIX #1 ---
@@ -5962,5 +5962,6 @@ function showMultiplayerGameView() {
 </script>
 </body>
 </html>
+
 
 
