@@ -5293,7 +5293,12 @@ function proceedToNextQuestion() {
 let currentRoomCode = null;
 let multiplayerRoomListener = null;
 let multiplayerGameListener = null;
-
+// Simple game state (if needed)
+let multiplayerState = {
+    currentQuestion: 1,
+    totalQuestions: 10,
+    score: 0
+};
 // Initialize multiplayer tab
 function initMultiplayerTab() {
     if (!currentPlayerName) {
@@ -5512,22 +5517,41 @@ function showMultiplayerGameView() {
 }
 
 // Start game
+// Start game - FIXED VERSION
 function startMultiplayerGame() {
-    if (!currentRoomCode || !multiplayerGameState.isHost) return;
+    if (!currentRoomCode) {
+        showNotification("Not in a room", "error");
+        return;
+    }
     
-    // Update room status ONLY
-    db.ref(`m/${currentRoomCode}/r/st`).set('p')
+    // Check if you're host by looking at Firebase
+    db.ref(`m/${currentRoomCode}/p/${currentPlayerName}/h`).once('value')
+        .then(snapshot => {
+            const playerData = snapshot.val();
+            
+            if (!playerData || !playerData.h) {
+                showNotification("Only host can start game", "error");
+                return;
+            }
+            
+            // Update room status to playing
+            return db.ref(`m/${currentRoomCode}/r/st`).set('p');
+        })
         .then(() => {
             showNotification("Game started!", "success");
+            
+            // Hide start button, show game area
+            document.getElementById('startGameBtn').style.display = 'none';
             document.getElementById('multiplayerGameArea').classList.remove('hidden');
-            document.getElementById('multiplayerControls').style.display = 'none';
+            
+            // Load first question
             loadMultiplayerQuestion();
         })
         .catch(error => {
+            console.error("Start game error:", error);
             showNotification("Failed to start game", "error");
         });
 }
-
 // Load question (LOCAL - no Firebase download)
 function loadMultiplayerQuestion() {
     // Get room info once
