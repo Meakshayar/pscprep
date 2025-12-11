@@ -5927,7 +5927,7 @@ function joinRoom(roomCode, isHost) {
     if (window.multiplayerGameListener) window.multiplayerGameListener.off();
     
     // FIX: Switch to the waiting room view (This is the "response" you were missing)
-    switchMultiplayerView('room');
+    showMultiplayerGameView();
 
     // Listener for room info changes (r)
     window.multiplayerRoomListener = db.ref(`m/${roomCode}/r`);
@@ -5962,3 +5962,5 @@ function showMultiplayerGameView() {
 </script>
 </body>
 </html>
+
+
