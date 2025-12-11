@@ -3346,9 +3346,19 @@ if (scoreElement) {
 }
         
           function showNextQuestion() {
-      document.body.scrollTop = document.documentElement.scrollTop = 0; // <--- ADD THIS LINE    
-      document.body.scrollTop = document.documentElement.scrollTop = 0;  
-    // FIX: Check if we have reached the end of the set immediately
+      // --- COMPREHENSIVE SCROLL RESET ---
+    // 1. Reset scroll of the main question container (most likely scroller)
+    document.getElementById('practiceQuestion').scrollTop = 0; 
+    
+    // 2. Reset scroll of the inner statement content (if it's the scroller)
+    const statementDiv = document.querySelector('.statement-question');
+    if (statementDiv) {
+        statementDiv.scrollTop = 0;
+    }
+    
+    // 3. Reset scroll of the overall page/window (as a fallback)
+    window.scrollTo(0, 0); 
+    // -
     if (currentQuestionIndex >= currentSet.length) {
         endPractice(); // Automatically triggers end of session
         return;
@@ -5088,9 +5098,19 @@ function testLoadProfiles() {
     }
 }
 function proceedToNextQuestion() {
+    // --- COMPREHENSIVE SCROLL RESET ---
+    // 1. Reset scroll of the main question container (most likely scroller)
     document.getElementById('practiceQuestion').scrollTop = 0; 
-    document.body.scrollTop = document.documentElement.scrollTop = 0;
-    // Hide Continue button if it exists
+    
+    // 2. Reset scroll of the inner statement content (if it's the scroller)
+    const statementDiv = document.querySelector('.statement-question');
+    if (statementDiv) {
+        statementDiv.scrollTop = 0;
+    }
+    
+    // 3. Reset scroll of the overall page/window (as a fallback)
+    window.scrollTo(0, 0); 
+    // ----------------------------------
     const continueContainer = document.getElementById('continueContainer');
     if (continueContainer) {
         continueContainer.style.display = 'none';
