@@ -1280,7 +1280,7 @@
     body { padding: 5px; }
     .container, #adminPanel { padding: 0; border-radius: 0; }
     nav button { font-size: 12px; padding: 12px 5px; }
-    .tab-content { padding: 15px; }
+    .tab-content { padding: 15px; }}
 
     /* SPECIAL STYLES FOR VERY SMALL SCREENS (like 540px width) */
     /* SPECIAL STYLES FOR VERY SMALL SCREENS (like 540px width) */
@@ -1346,7 +1346,7 @@
     #nextQuestionContainer {
         margin-top: 10px;
     }
-}
+}}
 
     /* Regular small screens (601px - 540px) */
     /* FIX: Ensure statement questions display properly on all mobile sizes */
@@ -1860,7 +1860,7 @@
                     <p>Create or join a live quiz room to compete with other players in real-time.</p>
                 </div>
                 
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+                <div id="multiplayerSetupView" style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
                     <!-- CREATE ROOM SECTION -->
                     <div style="flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: var(--border-radius); box-shadow: var(--shadow);">
                         <h3>Create New Quiz Room</h3>
@@ -5902,6 +5902,63 @@ function showQuestion(question, currentQ, totalQuestions) {
     }
 }
 // End of FIX #2
+function switchMultiplayerView(viewId) {
+    // 1. Target the setup view (where create/join forms are)
+    const setupView = document.getElementById('multiplayerSetupView'); 
+    const roomView = document.getElementById('multiplayerRoomView');
+    const gameView = document.getElementById('multiplayerGameView');
+
+    if (setupView) setupView.classList.toggle('hidden', viewId !== 'setup');
+    if (roomView) roomView.classList.toggle('hidden', viewId !== 'room');
+    if (gameView) gameView.classList.toggle('hidden', viewId !== 'game'); 
+
+    if (viewId === 'setup') {
+        document.getElementById('multiplayer').classList.add('active');
+    }
+}
+
+// 2. The critical missing function: joins the room UI and sets up listeners
+function joinRoom(roomCode, isHost) {
+    currentRoomCode = roomCode;
+    currentIsHost = isHost;
+
+    // Clear old listeners before setting up new ones
+    if (window.multiplayerRoomListener) window.multiplayerRoomListener.off();
+    if (window.multiplayerGameListener) window.multiplayerGameListener.off();
+    
+    // FIX: Switch to the waiting room view (This is the "response" you were missing)
+    switchMultiplayerView('room');
+
+    // Listener for room info changes (r)
+    window.multiplayerRoomListener = db.ref(`m/${roomCode}/r`);
+    window.multiplayerRoomListener.on('value', snapshot => {
+        const room = snapshot.val();
+        if (!room) {
+            // Assuming leaveMultiplayerRoom is defined elsewhere
+            return;
+        }
+        currentRoomInfo = room;
+        updateRoomUI(room, isHost); // Assumes updateRoomUI is defined
+        
+        // Check if game started and switch view
+        if (room.st === 'p' && document.getElementById('multiplayerGameView').classList.contains('hidden')) { 
+             showMultiplayerGameView(); 
+        }
+    }); 
+    
+    // Listener for player list changes (p)
+    window.multiplayerGameListener = db.ref(`m/${roomCode}/p`);
+    window.multiplayerGameListener.on('value', snapshot => {
+        const players = snapshot.val() || {};
+        updatePlayerList(players); // Assumes updatePlayerList is defined
+    });
+}
+
+// 3. The showMultiplayerGameView function
+function showMultiplayerGameView() {
+    switchMultiplayerView('game');
+    // Assumes loadMultiplayerQuestion and startMultiplayerTimer are defined
+}
 </script>
 </body>
 </html>
