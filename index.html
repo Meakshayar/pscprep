@@ -3346,7 +3346,8 @@ if (scoreElement) {
 }
         
           function showNextQuestion() {
-      document.body.scrollTop = document.documentElement.scrollTop = 0; // <--- ADD THIS LINE      
+      document.body.scrollTop = document.documentElement.scrollTop = 0; // <--- ADD THIS LINE    
+      document.body.scrollTop = document.documentElement.scrollTop = 0;  
     // FIX: Check if we have reached the end of the set immediately
     if (currentQuestionIndex >= currentSet.length) {
         endPractice(); // Automatically triggers end of session
@@ -5087,7 +5088,8 @@ function testLoadProfiles() {
     }
 }
 function proceedToNextQuestion() {
-    document.getElementById('practiceQuestion').scrollTop = 0; // <--- NEW FIX
+    document.getElementById('practiceQuestion').scrollTop = 0; 
+    document.body.scrollTop = document.documentElement.scrollTop = 0;
     // Hide Continue button if it exists
     const continueContainer = document.getElementById('continueContainer');
     if (continueContainer) {
