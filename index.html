@@ -1773,7 +1773,7 @@
     
     <div id="examFooter">
     <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" style="padding: 8px 16px;">End Session</button>
-    <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none; padding: 8px 16px;">Next Question →</button>
+    <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none; padding: 8px 16px;">Next Question â†’</button>
 </div>
 </div>
 
@@ -1840,7 +1840,7 @@
                 <h2>How This App Helps Students (PSC Exam Prep)</h2>
                  <div class="dashboard-card" style="background: linear-gradient(135deg, #2c3e50, #95a5a6);">
                     <h3>New Gamified XP System</h3>
-                    <p>Earn XP for correct answers and build up daily streaks for massive bonuses! Maintain your streak to climb the ranks from Stone ⚫ to Diamond 💎. But be careful, missing days will break your streak and may even cost you XP!</p>
+                    <p>Earn XP for correct answers and build up daily streaks for massive bonuses! Maintain your streak to climb the ranks from Stone âš« to Diamond ðŸ’Ž. But be careful, missing days will break your streak and may even cost you XP!</p>
                 </div>
                 <div class="dashboard-card" style="background: linear-gradient(135deg, #1abc9c, #16a085);">
                     <h3>Spaced Repetition System (SRS) & Backlog</h3>
@@ -2190,13 +2190,13 @@
         
         // --- GAMIFICATION & LEVELING SYSTEM ---
         const LEVEL_CONFIG = [
-            { minXp: 0, title: "Stone ⚫", nextLevelXp: 500 },
-            { minXp: 500, title: "Iron ⚙️", nextLevelXp: 1500 },
-            { minXp: 1500, title: "Bronze 🥉", nextLevelXp: 3500 },
-            { minXp: 3500, title: "Silver 🥈", nextLevelXp: 6000 },
-            { minXp: 6000, title: "Gold 🥇", nextLevelXp: 9000 },
-            { minXp: 9000, title: "Platinum 💠", nextLevelXp: 12000 },
-            { minXp: 12000, title: "Diamond 💎", nextLevelXp: Infinity }
+            { minXp: 0, title: "Stone âš«", nextLevelXp: 500 },
+            { minXp: 500, title: "Iron âš™ï¸", nextLevelXp: 1500 },
+            { minXp: 1500, title: "Bronze ðŸ¥‰", nextLevelXp: 3500 },
+            { minXp: 3500, title: "Silver ðŸ¥ˆ", nextLevelXp: 6000 },
+            { minXp: 6000, title: "Gold ðŸ¥‡", nextLevelXp: 9000 },
+            { minXp: 9000, title: "Platinum ðŸ’ ", nextLevelXp: 12000 },
+            { minXp: 12000, title: "Diamond ðŸ’Ž", nextLevelXp: Infinity }
         ];
         // --- QUESTION SET VERSION CONTROL ---
 function checkQuestionSetsVersion() {
@@ -3824,7 +3824,7 @@ function endPractice() {
         
         // ASK TO PRACTICE OR QUIT
         setTimeout(() => {
-            const proceedToPractice = confirm(`🎉 Revision Completed!\n\nWould you like to do a practice exam with this set now?\n\n(OK = Practice, Cancel = Finish)`);
+            const proceedToPractice = confirm(`ðŸŽ‰ Revision Completed!\n\nWould you like to do a practice exam with this set now?\n\n(OK = Practice, Cancel = Finish)`);
             
             if (proceedToPractice) {
                 // Start practice
@@ -3840,7 +3840,7 @@ function endPractice() {
                 setTimeout(() => { startPracticeWrapper(setName, false, null); }, 300);
             } else {
                 // Finish
-                document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
+                document.getElementById('modalTitle').textContent = "âœ“ Revision Completed!";
                 document.getElementById('modalScore').textContent = `Questions reviewed: ${questionsViewed}/${totalQuestions}`;
                 document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
                 document.getElementById('modalXPGained').textContent = 'No XP in revision mode.';
@@ -3975,7 +3975,7 @@ function endPractice() {
             const newLevelInfo = getLevelForXP(profile.totalXP);
             if (newLevelInfo.title !== oldLevelInfo.title) {
                 playSound('levelup');
-                showNotification(`🎉 Title Up! You are now a ${newLevelInfo.title}!`);
+                showNotification(`ðŸŽ‰ Title Up! You are now a ${newLevelInfo.title}!`);
             }
             
             savePlayerProfiles();
@@ -4434,7 +4434,7 @@ function getAllPlayerNames() {
             tbody.innerHTML = leaderboardData.map((player, i) => {
                 const highlightClass = player.name === currentPlayerName ? 'current-player-highlight' : '';
                 const winnerClass = i === 0 ? 'winner' : '';
-                let rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
+                let rankDisplay = i < 3 ? ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'][i] : i + 1;
                 return `
                 <tr class="${winnerClass} ${highlightClass}" style="animation-delay: ${i * 50}ms">
                     <td data-label="Rank">${rankDisplay}</td>
@@ -4457,7 +4457,7 @@ function getAllPlayerNames() {
             tbody.innerHTML = leaderboardData.map((player, i) => {
                  const highlightClass = player.name === currentPlayerName ? 'current-player-highlight' : '';
                 const winnerClass = i === 0 ? 'winner' : '';
-                let rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
+                let rankDisplay = i < 3 ? ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'][i] : i + 1;
                 return `
                 <tr class="${winnerClass} ${highlightClass}" style="animation-delay: ${i * 50}ms">
                     <td data-label="Rank">${rankDisplay}</td>
@@ -5523,7 +5523,7 @@ function updatePlayerList(players) {
         div.innerHTML = `
             <strong>${player.n || playerId}</strong><br>
             Score: ${player.sc || 0}<br>
-            ${player.h ? '👑 Host' : ''}
+            ${player.h ? 'ðŸ‘‘ Host' : ''}
         `;
         playerList.appendChild(div);
     });
@@ -5765,7 +5765,7 @@ function endMultiplayerGame() {
                 <div style="background: ${index === 0 ? '#fffbe6' : '#f8f9fa'}; 
                           padding: 15px; margin: 10px; border-radius: 8px;
                           border-left: 4px solid ${index === 0 ? '#f39c12' : '#3498db'};">
-                    <h3>${index === 0 ? '🏆 ' : ''}${player.name}: ${player.score} points</h3>
+                    <h3>${index === 0 ? 'ðŸ† ' : ''}${player.name}: ${player.score} points</h3>
                 </div>
             `).join('');
         });
@@ -5959,9 +5959,103 @@ function showMultiplayerGameView() {
     switchMultiplayerView('game');
     // Assumes loadMultiplayerQuestion and startMultiplayerTimer are defined
 }
+/* ====== Multiplayer: Host-controlled realtime navigation ====== */
+
+/* Client loader for a specific question number (does NOT increment shared counter) */
+function loadMultiplayerQuestionForClient(currentQ) {
+    if (!currentRoomCode) return;
+    db.ref(`m/${currentRoomCode}/r`).once('value').then(snapshot => {
+        const room = snapshot.val();
+        if (!room || !room.s) { showNotification("Room data missing", "error"); return; }
+        const totalQuestions = room.q || 10;
+        const set = questionSets[room.s];
+        if (!set || !set.questions) { showNotification("Question set not found locally", "error"); return; }
+
+        const shuffledQuestions = [...set.questions];
+        const roomCodeNum = Array.from(currentRoomCode).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+        for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+            const j = (roomCodeNum + i) % (i + 1);
+            [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+        }
+        const gameQuestions = shuffledQuestions.slice(0, totalQuestions);
+        if (currentQ <= gameQuestions.length) {
+            showQuestion(gameQuestions[currentQ - 1], currentQ, totalQuestions);
+            startQuestionTimer();
+        } else {
+            endMultiplayerGame();
+        }
+    }).catch(err => {
+        console.error('Load question (client) error:', err);
+        showNotification('Failed to load question', 'error');
+    });
+}
+
+/* Host-side function to advance the current question (transaction on shared counter) */
+function hostAdvanceQuestion() {
+    if (!currentRoomCode) return;
+    db.ref(`m/${currentRoomCode}/r/cq`).transaction(cq => ( (cq || 0) + 1 ));
+}
+
+/* Host-start override: set room to playing and initialize cq=1 + questionStart timestamp */
+function startMultiplayerGameOverride() {
+    if (!currentRoomCode) { showNotification("Not in a room", "error"); return; }
+    db.ref(`m/${currentRoomCode}/p/${currentPlayerName}/h`).once('value').then(snapshot => {
+        if (!snapshot.val()) { showNotification("Only host can start the game", "error"); return; }
+        db.ref(`m/${currentRoomCode}/r`).update({ st: 'p', cq: 1, questionStart: Date.now(), t: Date.now() })
+            .then(() => {
+                showNotification("Game started!", "success");
+                const startBtn = document.getElementById('startGameBtn');
+                if (startBtn) startBtn.style.display = 'none';
+                const gameArea = document.getElementById('multiplayerGameArea');
+                if (gameArea) gameArea.classList.remove('hidden');
+            }).catch(err => {
+                console.error('Start game override error:', err);
+                showNotification('Failed to start game', 'error');
+            });
+    }).catch(err => {
+        console.error('Host check error:', err);
+        showNotification('Failed to verify host', 'error');
+    });
+}
+
+/* Ensure clients render when host updates the shared current-question (r/cq) */
+function setupCQListener() {
+    if (!currentRoomCode || !db) return;
+    try {
+        if (window.multiplayerCQListener) {
+            try { window.multiplayerCQListener.off(); } catch(e) {}
+        }
+        window.multiplayerCQListener = db.ref(`m/${currentRoomCode}/r/cq`);
+        window.multiplayerCQListener.on('value', snap => {
+            const cq = snap.val();
+            if (!cq || cq <= 0) return;
+            if (cq === currentQuestionIndex) return;
+            currentQuestionIndex = cq;
+            loadMultiplayerQuestionForClient(cq);
+        });
+    } catch (e) {
+        console.error('setupCQListener error:', e);
+    }
+}
+
+/* Wrap joinRoom so we can set up the cq listener after join */
+if (typeof joinRoom === 'function') {
+    const _origJoinRoom = joinRoom;
+    joinRoom = function(roomCode, isHost) {
+        _origJoinRoom(roomCode, isHost);
+        setTimeout(() => {
+            currentRoomCode = roomCode;
+            setupCQListener();
+        }, 200);
+    }
+}
+
+/* Override the start button handler to use the host-controlled start */
+document.addEventListener('DOMContentLoaded', () => {
+    const startBtn = document.getElementById('startGameBtn');
+    if (startBtn) startBtn.onclick = startMultiplayerGameOverride;
+});
+/* ====== End host-controlled realtime navigation ====== */
 </script>
 </body>
 </html>
-
-
-
