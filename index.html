@@ -27,246 +27,49 @@
             --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: var(--font-family);
-            background: linear-gradient(135deg, #1d2b64, #f8cdda);
-            background-size: 400% 400%;
-            animation: gradientAnimation 15s ease infinite;
-            min-height: 100vh;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-            padding: 20px;
+            font-family: var(--font-family); background: linear-gradient(135deg, #1d2b64, #f8cdda);
+            background-size: 400% 400%; animation: gradientAnimation 15s ease infinite;
+            min-height: 100vh; color: var(--dark-color); display: flex; align-items: center;
+            justify-content: center; transition: all 0.3s; padding: 20px;
         }
 
-        /* --- EXAM MODE (PRACTICE ACTIVE) LAYOUT --- */
-        body.practice-active {
-            padding: 0 !important;
-            margin: 0 !important;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            align-items: flex-start;
-            background: #fff;
-        }
+        body.practice-active { padding: 0 !important; margin: 0 !important; height: 100vh; width: 100vw; overflow: hidden; align-items: flex-start; background: #fff; }
+        body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #fff; padding: 0; margin: 0; }
+        body.practice-active header, body.practice-active nav { display: none !important; }
+        body.practice-active main { height: 100%; padding: 0 !important; }
+        body.practice-active .tab-content { padding: 0; height: 100%; display: block; }
 
-        body.practice-active .container, 
-        body.practice-active #adminPanel {
-            max-width: 100% !important;
-            width: 100% !important;
-            height: 100% !important;
-            border-radius: 0;
-            box-shadow: none;
-            background: #fff;
-            padding: 0;
-            margin: 0;
-        }
+        #practiceSessionView { height: 100vh; width: 100vw; display: flex; flex-direction: column; background: #fdfdfd; }
+        #topProgressIndicator { flex: 0 0 50px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 20; }
+        #practiceSessionViewContentWrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
-        body.practice-active header,
-        body.practice-active nav {
-            display: none !important;
-        }
-
-        body.practice-active main {
-            height: 100%;
-            padding: 0 !important;
-        }
-
-        body.practice-active .tab-content {
-            padding: 0;
-            height: 100%;
-            display: block;
-        }
-
-        /* --- THE EXAM SCREEN CONTAINER --- */
-        #practiceSessionView {
-            height: 100vh;
-            width: 100vw;
-            display: flex;
-            flex-direction: column;
-            background: #fdfdfd;
-        }
-
-        /* 1. Header (Progress Bar) */
-        #topProgressIndicator {
-            flex: 0 0 50px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            z-index: 20;
-        }
-
-        /* 2. Content Area (Question + Options) */
-        #practiceSessionViewContentWrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* --- RESPONSIVE LOGIC --- */
         @media screen and (min-width: 1024px) {
-            #practiceSessionViewContentWrapper {
-                flex-direction: row;
-            }
-
-            #questionScrollContainer {
-                flex: 1;
-                height: 100%;
-                overflow-y: auto;
-                padding: 40px;
-                background: #f8f9fa;
-                border-right: 1px solid #e0e0e0;
-            }
-
-            #practiceQuestion {
-                background: white;
-                padding: 30px;
-                border-radius: var(--border-radius);
-                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-                font-size: 1.3em;
-                line-height: 1.8;
-                max-width: 900px;
-                margin: 0 auto;
-            }
-
-            #optionsGridContainer {
-                flex: 0 0 400px;
-                height: 100%;
-                overflow-y: auto;
-                background: white;
-                padding: 20px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                border-top: none;
-                position: static !important;
-            }
-
-            #optionsGrid {
-                display: flex;
-                flex-direction: column; 
-                gap: 15px;
-                height: auto;
-            }
-
-            .option-grid-item {
-                width: 100%;
-                padding: 20px;
-                font-size: 1.1em;
-                justify-content: flex-start;
-                text-align: left;
-            }
+            #practiceSessionViewContentWrapper { flex-direction: row; }
+            #questionScrollContainer { flex: 1; height: 100%; overflow-y: auto; padding: 40px; background: #f8f9fa; border-right: 1px solid #e0e0e0; }
+            #practiceQuestion { background: white; padding: 30px; border-radius: var(--border-radius); box-shadow: 0 2px 10px rgba(0,0,0,0.05); font-size: 1.3em; line-height: 1.8; max-width: 900px; margin: 0 auto; }
+            #optionsGridContainer { flex: 0 0 400px; height: 100%; overflow-y: auto; background: white; padding: 20px; display: flex; flex-direction: column; justify-content: center; border-top: none; position: static !important; }
+            #optionsGrid { display: flex; flex-direction: column; gap: 15px; height: auto; }
+            .option-grid-item { width: 100%; padding: 20px; font-size: 1.1em; justify-content: flex-start; text-align: left; }
         }
 
         @media screen and (max-width: 1023px) {
-            #practiceSessionViewContentWrapper {
-                flex-direction: column;
-            }
-
-            #questionScrollContainer {
-                flex: 1;
-                overflow-y: auto;
-                padding: 15px;
-                background: #f8f9fa;
-            }
-
-            #practiceQuestion {
-                padding: 15px;
-                font-size: 1.1em;
-            }
-
-            #optionsGridContainer {
-                flex: 0 0 auto;
-                max-height: 40vh;
-                overflow-y: auto;
-                padding: 10px;
-                background: white;
-                border-top: 1px solid #ddd;
-                position: static !important;
-            }
-
-            #optionsGrid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-
-            .option-grid-item {
-                padding: 12px 5px;
-                font-size: 0.9em;
-                height: 100%;
-                min-height: 50px;
-            }
+            #practiceSessionViewContentWrapper { flex-direction: column; }
+            #questionScrollContainer { flex: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; }
+            #practiceQuestion { padding: 15px; font-size: 1.1em; }
+            #optionsGridContainer { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px; background: white; border-top: 1px solid #ddd; position: static !important; }
+            #optionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .option-grid-item { padding: 12px 5px; font-size: 0.9em; height: 100%; min-height: 50px; }
         }
 
-        /* 3. Footer */
-        #examFooter {
-            flex: 0 0 60px;
-            background: white;
-            border-top: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding: 0 20px;
-            gap: 15px;
-            z-index: 20;
-            position: static !important;
-        }
+        #examFooter { flex: 0 0 60px; background: white; border-top: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 15px; z-index: 20; position: static !important; }
 
-        /* --- STANDARD APP STYLES --- */
-        .container, #adminPanel {
-            width: 100%;
-            max-width: 1000px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s;
-            min-height: 80vh;
-        }
-
-        header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 15px;
-            text-align: center;
-            position: relative;
-        }
-
-        nav {
-            display: flex;
-            background: var(--dark-color);
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        nav button {
-            background: none;
-            border: none;
-            color: var(--light-color);
-            padding: 15px 20px;
-            cursor: pointer;
-            font-size: 14px;
-            font-family: var(--font-family);
-            transition: all 0.3s;
-            font-weight: 600;
-            flex-grow: 1;
-        }
+        .container, #adminPanel { width: 100%; max-width: 1000px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s; min-height: 80vh; }
+        header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 15px; text-align: center; position: relative; }
+        nav { display: flex; background: var(--dark-color); flex-wrap: wrap; justify-content: center; }
+        nav button { background: none; border: none; color: var(--light-color); padding: 15px 20px; cursor: pointer; font-size: 14px; font-family: var(--font-family); transition: all 0.3s; font-weight: 600; flex-grow: 1; }
         nav button:hover { background: rgba(255,255,255,0.1); }
         nav button.active { background: var(--primary-color); }
 
@@ -274,70 +77,24 @@
         .tab-content.active { display: block; }
         .view-stage.hidden, .hidden { display: none !important; }
 
-        button {
-            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
+        button { background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: transform 0.2s; }
         button:hover { transform: translateY(-2px); }
         button:active { transform: translateY(0); }
-        
         .btn-success { background: linear-gradient(135deg, var(--success-color), #27ae60); }
         .btn-danger { background: linear-gradient(135deg, var(--danger-color), #c0392b); }
         .btn-warning { background: linear-gradient(135deg, var(--warning-color), #d35400); }
 
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-family: inherit;
-        }
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; }
 
-        .statement-question {
-            text-align: justify;
-            line-height: 1.8;
-        }
-        .statement-question strong {
-            display: block;
-            margin-bottom: 15px;
-            color: #2c3e50;
-        }
-        .statement-question br {
-            display: block; margin-bottom: 8px; content: "";
-        }
+        .statement-question { text-align: justify; line-height: 1.8; }
+        .statement-question strong { display: block; margin-bottom: 15px; color: #2c3e50; }
+        .statement-question br { display: block; margin-bottom: 8px; content: ""; }
 
-        .option-grid-item {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            border: 2px solid #e9ecef;
-            border-radius: var(--border-radius);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            user-select: none;
-        }
-        .option-grid-item:hover {
-            border-color: var(--primary-color);
-            background: #fefefe;
-        }
-        .option-grid-item.correct {
-            background: var(--success-color); color: white; border-color: var(--success-color);
-        }
-        .option-grid-item.wrong {
-            background: var(--danger-color); color: white; border-color: var(--danger-color);
-        }
-        .option-letter {
-            font-weight: bold; margin-right: 10px; min-width: 20px;
-        }
+        .option-grid-item { display: flex; align-items: center; justify-content: center; background: white; border: 2px solid #e9ecef; border-radius: var(--border-radius); font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .option-grid-item:hover { border-color: var(--primary-color); background: #fefefe; }
+        .option-grid-item.correct { background: var(--success-color); color: white; border-color: var(--success-color); }
+        .option-grid-item.wrong { background: var(--danger-color); color: white; border-color: var(--danger-color); }
+        .option-letter { font-weight: bold; margin-right: 10px; min-width: 20px; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes gradientAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -345,17 +102,8 @@
         .dashboard-card { background: #eee; padding: 20px; border-radius: 10px; margin-bottom: 15px; color: white; }
         .history-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #ddd; }
         
-        .modal {
-            display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
-            align-items: center; justify-content: center;
-        }
-        .modal-content {
-            background-color: #fff; padding: 30px; border-radius: 15px;
-            width: 90%; max-width: 500px; text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            max-height: 80vh; overflow-y: auto;
-        }
+        .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px); align-items: center; justify-content: center; }
+        .modal-content { background-color: #fff; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
 
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
         .calendar-day { padding: 8px; text-align: center; border-radius: 5px; font-size: 0.9em; }
@@ -373,7 +121,6 @@
 
         .login-container { max-width: 400px; margin: 40px auto; padding: 20px; }
         .login-form { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
-
     </style>
 </head>
 <body>
@@ -414,7 +161,6 @@
         
         <main>
             <div id="practice" class="tab-content active">
-                
                 <div id="loginGatewayView" class="view-stage">
                     <div class="login-container">
                         <div class="login-form">
@@ -465,8 +211,7 @@
                     
                     <div id="practiceSessionViewContentWrapper">
                         <div id="questionScrollContainer">
-                            <div id="practiceQuestion">
-                                </div>
+                            <div id="practiceQuestion"></div>
                         </div>
 
                         <div id="optionsGridContainer">
@@ -486,7 +231,6 @@
                         <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none;">Next Question &rarr;</button>
                     </div>
                 </div>
-
             </div>
 
             <div id="revision" class="tab-content">
@@ -658,8 +402,25 @@
     <div id="adminAuthModal" class="modal"><div class="modal-content"><h3 id="adminModalTitle">Admin</h3><p id="adminModalPrompt"></p><input type="text" id="adminUsername" placeholder="Username"><input type="password" id="adminPassword" placeholder="Password"><div id="adminPasswordConfirmGroup" class="hidden"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div><button id="adminSubmitBtn" class="btn-primary" style="margin-top: 10px;">Submit</button><button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button></div></div>
 
     <script>
-        // --- LOGIC PRESERVED FROM ORIGINAL, NO FUNCTIONAL CHANGES ---
+        // --- LOCAL TIMEZONE HELPERS ADDED TO FIX SRS DATE BUGS ---
+        function getLocalYYYYMMDD(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
         
+        function parseLocalDate(dateStr) {
+            if (!dateStr) return new Date();
+            const [y, m, d] = dateStr.split('-');
+            return new Date(y, m - 1, d);
+        }
+
+        function getTodayDateString() { 
+            return getLocalYYYYMMDD(new Date()); 
+        }
+
+        // --- REST OF THE CODE ---
         function clearLocalStorageProfiles() {
             localStorage.removeItem('pscPlayerProfiles');
             const allKeys = Object.keys(localStorage);
@@ -718,8 +479,6 @@
         const quotes = ["The secret to getting ahead is getting started.", "Believe you can and you're halfway there.", "Success is the sum of small efforts, repeated day in and day out.", "The mind is everything. What you think you become.", "Strive for progress, not perfection."];
         let audioCtx;
 
-        function getTodayDateString() { return new Date().toISOString().split('T')[0]; }
-
         let firebaseConfig = { apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs", authDomain: "pscprep-6bb66.firebaseapp.com", databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com", projectId: "pscprep-6bb66", storageBucket: "pscprep-6bb66.firebasestorage.app", messagingSenderId: "926517422096", appId: "1:926517422096:web:ec706c3d125877c74d4295" };
 
         function initializeFirebase() {
@@ -770,7 +529,6 @@
             if (!isFirebaseConnected) { loadCachedData(); return; }
             showNotification('Checking for updates...', 'info');
             const lastSyncTimestamp = localStorage.getItem('pscLastSyncTimestamp') || 0;
-            // SYNC FIX: Ensure we are fetching correctly based on timestamp
             db.ref('questionSets').orderByChild('lastModified').startAt(parseInt(lastSyncTimestamp) + 1).once('value').then(snapshot => {
                 const newOrUpdatedSets = snapshot.val() || {};
                 const count = Object.keys(newOrUpdatedSets).length;
@@ -893,7 +651,7 @@
             populateAvatars();
             setDailyQuote();
             document.getElementById('revisionSuccessInfo').textContent = `Revision tasks remain here`;
-            document.getElementById('setUploadDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('setUploadDate').value = getTodayDateString();
             document.getElementById('pfpUploadHidden').addEventListener('change', handlePFPUpload);
             
             document.getElementById('backToSetListBtn').addEventListener('click', () => {
@@ -958,27 +716,19 @@
             updatePlayerSelects();  
         }
 
-        // --- BUG FIX: UPDATED SAVE FUNCTION ---
         function saveQuestionSets(targetSetName = null) {
             const timestamp = Date.now();
-            
-            // 1. Update timestamp locally
             Object.keys(questionSets).forEach(setName => { 
                 if (!questionSets[setName].lastModified) questionSets[setName].lastModified = timestamp; 
             });
-            
-            // 2. Save entire object to LocalStorage
             localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
             
-            // 3. Push to Firebase if Admin & Online
             if (isAdminLoggedIn && isFirebaseConnected) {
                 if (targetSetName && questionSets[targetSetName]) {
-                    // Update ONLY the specific set to minimize data usage
                     questionSets[targetSetName].lastModified = timestamp;
                     db.ref(`questionSets/${targetSetName}`).set(questionSets[targetSetName])
                       .then(() => showNotification(`synced '${targetSetName}' to cloud`));
                 } else if (currentEditingSet && questionSets[currentEditingSet]) {
-                    // Legacy support for editing
                     questionSets[currentEditingSet].lastModified = timestamp;
                     db.ref(`questionSets/${currentEditingSet}`).set(questionSets[currentEditingSet]);
                 }
@@ -988,7 +738,7 @@
         function setDailyQuote() {
             const quoteEl = document.getElementById('motivationalQuote');
             const quoteElLoggedIn = document.getElementById('motivationalQuoteLoggedIn');
-            const today = new Date().toISOString().split('T')[0];
+            const today = getTodayDateString();
             const storedQuote = JSON.parse(localStorage.getItem('dailyQuote'));
             let quoteToDisplay;
             if (storedQuote && storedQuote.date === today) {
@@ -1366,7 +1116,11 @@
             if (!selectedSetName) { showNotification('Please select a question set.', 'error'); return; }
             if (isRev) {
                 const todayStr = getTodayDateString();
-                const hasRevisedToday = Object.values(practiceHistory).some(attempt => attempt.playerName === currentPlayerName && attempt.setName === selectedSetName && attempt.isRevision && attempt.startTime.startsWith(todayStr));
+                const hasRevisedToday = Object.values(practiceHistory).some(attempt => {
+                    if (attempt.playerName !== currentPlayerName || attempt.setName !== selectedSetName || !attempt.isRevision) return false;
+                    const attemptLocalStr = attempt.localDateStr || getLocalYYYYMMDD(new Date(attempt.startTime));
+                    return attemptLocalStr === todayStr;
+                });
                 if (hasRevisedToday) { showNotification("Revision already completed today.", "warning"); return; }
             }
             document.body.classList.add('practice-active');
@@ -1399,7 +1153,7 @@
                 }
                 totalTimeLimit = totalTimeLimitCalculation;
             }
-            currentAttempt = { playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit, isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null };
+            currentAttempt = { playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), localDateStr: getTodayDateString(), answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit, isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null };
             document.getElementById('examFooter').style.display = 'flex'; 
             const scoreElement = document.getElementById('practiceScore');
             if (scoreElement) { scoreElement.textContent = 'Score: 0'; }
@@ -1547,8 +1301,8 @@
                 const nextStage = currentStage + 1;
                 const daysToAdd = SRS_INTERVALS[currentStage] || 90; 
                 const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + daysToAdd);
-                const nextDateStr = nextDate.toISOString().split('T')[0];
-                const todayStr = new Date().toISOString().split('T')[0];
+                const nextDateStr = getLocalYYYYMMDD(nextDate);
+                const todayStr = getTodayDateString();
 
                 revisionProgress[currentPlayerName][setName] = { currentStage: nextStage, lastCompletedDate: todayStr, nextDueDate: nextDateStr, success: true };
                 
@@ -1612,8 +1366,8 @@
             const today = getTodayDateString();
             const lastDate = profile.lastActiveDate;
             if (lastDate && /\d{4}-\d{2}-\d{2}/.test(lastDate) && lastDate < today) {
-                const last = new Date(lastDate);
-                const now = new Date(today);
+                const last = parseLocalDate(lastDate);
+                const now = parseLocalDate(today);
                 const diffTime = now - last;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 if (diffDays > 1) { 
@@ -1654,7 +1408,7 @@
                 }
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayString = yesterday.toISOString().split('T')[0];
+                const yesterdayString = getLocalYYYYMMDD(yesterday);
                 if (lastDate === yesterdayString) { profile.currentStreak = (profile.currentStreak || 0) + 1; } 
                 else { profile.currentStreak = 1; }
                 if (profile.currentStreak > 0) { streakXp = profile.currentStreak >= 7 ? 50 : (10 * (profile.currentStreak - 1)); }
@@ -1755,7 +1509,6 @@
             else { newNameGroup.style.display = 'none'; }
         }
 
-        // --- BUG FIX: TRIGGER SAVE WITH NAME ---
         function importBulkQuestions() {
             const select = document.getElementById('bulkSetSelect');
             const subject = document.getElementById('setSubject').value.trim();
@@ -1768,7 +1521,7 @@
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
                 const category = document.getElementById('setCategory').value;
-                const setData = { questions: [], uploadDate: uploadDate || new Date().toISOString().split('T')[0], type: 'questions', category: category, subject: subject };
+                const setData = { questions: [], uploadDate: uploadDate || getTodayDateString(), type: 'questions', category: category, subject: subject };
                 questionSets[setName] = setData;
             } else { questionSets[setName].subject = subject; }
             bulkText.split('\n').forEach(line => {
@@ -1781,7 +1534,6 @@
                 }
             });
             
-            // Pass the set name so it saves to Firebase properly!
             saveQuestionSets(setName);
             
             showNotification(`${imported} questions imported.`);
@@ -1791,22 +1543,19 @@
             document.getElementById('setSubject').value = '';
         }
 
-        // --- BUG FIX: DELETE FROM FIREBASE EXPLICITLY ---
         function deleteQuestionSet(setName) {
             const confirmed = confirm(`Delete "${setName}"?`);
             if (confirmed) {
-                // Delete from Firebase if online/admin
                 if (isAdminLoggedIn && isFirebaseConnected) {
                      db.ref(`questionSets/${setName}`).remove();
                 }
                 delete questionSets[setName];
-                saveQuestionSets(); // Saves the deletion to local storage
+                saveQuestionSets(); 
                 showNotification(`Set deleted.`, 'error');
                 loadQuestionSets(); 
             }
         }
         
-        // --- BUG FIX: OPTIMIZED RENAME ---
         function renameSet(oldName) {
             const newName = prompt("New name:", oldName);
             if (!newName || newName.trim() === '') return;
@@ -1827,11 +1576,10 @@
                 });
             });
             
-            // Only update what changed in Firebase (Optimization)
             if (isAdminLoggedIn && isFirebaseConnected) {
                  const updates = {};
-                 updates[`questionSets/${oldName}`] = null; // Delete old
-                 updates[`questionSets/${newName}`] = questionSets[newName]; // Add new
+                 updates[`questionSets/${oldName}`] = null; 
+                 updates[`questionSets/${newName}`] = questionSets[newName]; 
                  db.ref().update(updates);
             }
 
@@ -1980,7 +1728,7 @@
             if (!targetPlayer) return { dueToday: [], backlog: [], all: [] };
             const dueTodayItems = []; const backlogItems = [];
             const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
-            const todayStr = todayDate.toISOString().split('T')[0];
+            const todayStr = getLocalYYYYMMDD(todayDate);
 
             for (const setName in questionSets) {
                 const set = questionSets[setName];
@@ -1995,12 +1743,15 @@
                         if (revisionProgress[targetPlayer] && revisionProgress[targetPlayer][legacyKey] && revisionProgress[targetPlayer][legacyKey].success) maxStage = index;
                     });
                     if (maxStage === -1) {
-                        const upload = new Date(set.uploadDate); upload.setDate(upload.getDate() + 1);
-                        progress = { currentStage: 0, nextDueDate: upload.toISOString().split('T')[0] };
+                        const upload = parseLocalDate(set.uploadDate);
+                        upload.setDate(upload.getDate() + 1);
+                        progress = { currentStage: 0, nextDueDate: getLocalYYYYMMDD(upload) };
                     } else { progress = { currentStage: maxStage + 1, nextDueDate: todayStr }; }
                 }
                 const nextDueDateStr = progress.nextDueDate;
-                const nextDueDate = new Date(nextDueDateStr); nextDueDate.setHours(0,0,0,0);
+                const nextDueDate = parseLocalDate(nextDueDateStr); 
+                nextDueDate.setHours(0,0,0,0);
+                
                 const displayDay = SRS_INTERVALS[progress.currentStage] || 90;
                 const itemData = { setName: setName, day: displayDay, stage: progress.currentStage, type: set.type || 'questions', revisionDate: nextDueDate, revisionDateStr: nextDueDateStr };
                 if (nextDueDateStr === todayStr) dueTodayItems.push(itemData);
@@ -2150,14 +1901,14 @@
             const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div style="font-weight:bold; text-align:center;">${day}</div>`; });
             for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div></div>`; }
-            const today = new Date();
+            const todayStr = getTodayDateString();
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayCell = document.createElement('div');
                 dayCell.classList.add('calendar-day'); dayCell.textContent = day;
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 if (attendance.includes(dateKey)) { dayCell.classList.add('present'); }
                 if (revisionSchedule[dateKey]) { dayCell.style.border = "1px solid var(--primary-color)"; dayCell.style.cursor = "pointer"; dayCell.onclick = () => showAdminRevisionDetailsForDate(dateKey, revisionSchedule[dateKey], playerName); }
-                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) { dayCell.classList.add('today'); }
+                if (dateKey === todayStr) { dayCell.classList.add('today'); }
                 calendarBody.appendChild(dayCell);
             }
         }
@@ -2294,7 +2045,7 @@
                 const nextStage = (prog.currentStage || 0) + 1;
                 const daysToAdd = SRS_INTERVALS[prog.currentStage || 0] || 90;
                 const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + daysToAdd);
-                revisionProgress[playerName][setName] = { currentStage: nextStage, lastCompletedDate: new Date().toISOString().split('T')[0], nextDueDate: nextDate.toISOString().split('T')[0], clearedByAdmin: true };
+                revisionProgress[playerName][setName] = { currentStage: nextStage, lastCompletedDate: getTodayDateString(), nextDueDate: getLocalYYYYMMDD(nextDate), clearedByAdmin: true };
                 savePlayerDataToLocalStorage();
                 if (isFirebaseConnected) db.ref(`revisionProgress/${playerName}/${setName}`).set(revisionProgress[playerName][setName]);
                 showNotification('Skipped.', 'success');
