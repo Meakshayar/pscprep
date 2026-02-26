@@ -402,7 +402,6 @@
     <div id="adminAuthModal" class="modal"><div class="modal-content"><h3 id="adminModalTitle">Admin</h3><p id="adminModalPrompt"></p><input type="text" id="adminUsername" placeholder="Username"><input type="password" id="adminPassword" placeholder="Password"><div id="adminPasswordConfirmGroup" class="hidden"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div><button id="adminSubmitBtn" class="btn-primary" style="margin-top: 10px;">Submit</button><button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button></div></div>
 
     <script>
-        // --- LOCAL TIMEZONE HELPERS ADDED TO FIX SRS DATE BUGS ---
         function getLocalYYYYMMDD(dateObj) {
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -420,7 +419,6 @@
             return getLocalYYYYMMDD(new Date()); 
         }
 
-        // --- REST OF THE CODE ---
         function clearLocalStorageProfiles() {
             localStorage.removeItem('pscPlayerProfiles');
             const allKeys = Object.keys(localStorage);
@@ -1742,11 +1740,17 @@
                         const legacyKey = `${setName}_RevDay${day}`;
                         if (revisionProgress[targetPlayer] && revisionProgress[targetPlayer][legacyKey] && revisionProgress[targetPlayer][legacyKey].success) maxStage = index;
                     });
+                    
                     if (maxStage === -1) {
                         const upload = parseLocalDate(set.uploadDate);
                         upload.setDate(upload.getDate() + 1);
                         progress = { currentStage: 0, nextDueDate: getLocalYYYYMMDD(upload) };
-                    } else { progress = { currentStage: maxStage + 1, nextDueDate: todayStr }; }
+                    } else { 
+                        // LEGACY FIX: Put old unresolved legacy items into the Backlog by assigning them a date in the past
+                        const pastDate = new Date();
+                        pastDate.setDate(pastDate.getDate() - 1);
+                        progress = { currentStage: maxStage + 1, nextDueDate: getLocalYYYYMMDD(pastDate) }; 
+                    }
                 }
                 const nextDueDateStr = progress.nextDueDate;
                 const nextDueDate = parseLocalDate(nextDueDateStr); 
@@ -1754,6 +1758,7 @@
                 
                 const displayDay = SRS_INTERVALS[progress.currentStage] || 90;
                 const itemData = { setName: setName, day: displayDay, stage: progress.currentStage, type: set.type || 'questions', revisionDate: nextDueDate, revisionDateStr: nextDueDateStr };
+                
                 if (nextDueDateStr === todayStr) dueTodayItems.push(itemData);
                 else if (nextDueDate < todayDate) backlogItems.push(itemData);
             }
