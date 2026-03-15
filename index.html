@@ -36,35 +36,47 @@
             justify-content: center; transition: all 0.3s; padding: 20px;
         }
 
-        body.practice-active { padding: 0 !important; margin: 0 !important; height: 100vh; width: 100vw; overflow: hidden; align-items: flex-start; background: #fff; }
+        body.practice-active { 
+            padding: 0 !important; margin: 0 !important; 
+            height: 100vh; height: 100dvh; /* Dynamic viewport fix */
+            width: 100vw; overflow: hidden; 
+            overscroll-behavior-y: none; /* Prevent pull-to-refresh freeze */
+            align-items: flex-start; background: #fff; 
+        }
         body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #fff; padding: 0; margin: 0; }
         body.practice-active header, body.practice-active nav { display: none !important; }
         body.practice-active main { height: 100%; padding: 0 !important; }
         body.practice-active .tab-content { padding: 0; height: 100%; display: block; }
 
-        #practiceSessionView { height: 100vh; width: 100vw; display: flex; flex-direction: column; background: #fdfdfd; }
-        #topProgressIndicator { flex: 0 0 50px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 20; }
-        #practiceSessionViewContentWrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        #practiceSessionView { 
+            height: 100vh; height: 100dvh; 
+            width: 100vw; display: flex; flex-direction: column; background: #fdfdfd; 
+        }
+        #topProgressIndicator { flex: 0 0 50px; min-height: 50px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 20; }
+        #practiceSessionViewContentWrapper { 
+            flex: 1 1 auto; min-height: 0; /* min-height: 0 fixes flexbox scroll blowing out bounds */
+            display: flex; flex-direction: column; overflow: hidden; position: relative; 
+        }
 
         @media screen and (min-width: 1024px) {
             #practiceSessionViewContentWrapper { flex-direction: row; }
-            #questionScrollContainer { flex: 1; height: 100%; overflow-y: auto; padding: 40px; background: #f8f9fa; border-right: 1px solid #e0e0e0; }
+            #questionScrollContainer { flex: 1 1 auto; min-height: 0; height: 100%; overflow-y: auto; padding: 40px; background: #f8f9fa; border-right: 1px solid #e0e0e0; -webkit-overflow-scrolling: touch; }
             #practiceQuestion { background: white; padding: 30px; border-radius: var(--border-radius); box-shadow: 0 2px 10px rgba(0,0,0,0.05); font-size: 1.3em; line-height: 1.8; max-width: 900px; margin: 0 auto; }
-            #optionsGridContainer { flex: 0 0 400px; height: 100%; overflow-y: auto; background: white; padding: 20px; display: flex; flex-direction: column; justify-content: center; border-top: none; position: static !important; }
+            #optionsGridContainer { flex: 0 0 400px; min-height: 0; height: 100%; overflow-y: auto; background: white; padding: 20px; display: flex; flex-direction: column; justify-content: center; border-top: none; position: static !important; -webkit-overflow-scrolling: touch; }
             #optionsGrid { display: flex; flex-direction: column; gap: 15px; height: auto; }
             .option-grid-item { width: 100%; padding: 20px; font-size: 1.1em; justify-content: flex-start; text-align: left; }
         }
 
         @media screen and (max-width: 1023px) {
             #practiceSessionViewContentWrapper { flex-direction: column; }
-            #questionScrollContainer { flex: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; }
+            #questionScrollContainer { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 15px; background: #f8f9fa; -webkit-overflow-scrolling: touch; }
             #practiceQuestion { padding: 15px; font-size: 1.1em; }
-            #optionsGridContainer { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px; background: white; border-top: 1px solid #ddd; position: static !important; }
+            #optionsGridContainer { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px; background: white; border-top: 1px solid #ddd; position: static !important; -webkit-overflow-scrolling: touch; }
             #optionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
             .option-grid-item { padding: 12px 5px; font-size: 0.9em; height: 100%; min-height: 50px; }
         }
 
-        #examFooter { flex: 0 0 60px; background: white; border-top: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 15px; z-index: 20; position: static !important; }
+        #examFooter { flex: 0 0 60px; min-height: 60px; background: white; border-top: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 15px; z-index: 20; position: static !important; }
 
         .container, #adminPanel { width: 100%; max-width: 1000px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s; min-height: 80vh; }
         header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 15px; text-align: center; position: relative; }
@@ -477,7 +489,15 @@
         const quotes = ["The secret to getting ahead is getting started.", "Believe you can and you're halfway there.", "Success is the sum of small efforts, repeated day in and day out.", "The mind is everything. What you think you become.", "Strive for progress, not perfection."];
         let audioCtx;
 
-        let firebaseConfig = { apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs", authDomain: "pscprep-6bb66.firebaseapp.com", databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com", projectId: "pscprep-6bb66", storageBucket: "pscprep-6bb66.firebasestorage.app", messagingSenderId: "926517422096", appId: "1:926517422096:web:ec706c3d125877c74d4295" };
+        let firebaseConfig = {
+  apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs",
+  authDomain: "pscprep-6bb66.firebaseapp.com",
+  databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com",
+  projectId: "pscprep-6bb66",
+  storageBucket: "pscprep-6bb66.firebasestorage.app",
+  messagingSenderId: "926517422096",
+  appId: "1:926517422096:web:ec706c3d125877c74d4295"
+};
 
         function initializeFirebase() {
             if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
@@ -1142,14 +1162,14 @@
             else {
                 let totalTimeLimitCalculation = 0;
                 const setCategory = questionSets[setName].category;
-                if (setCategory === 'math') { totalTimeLimitCalculation = currentSet.length * 60; } 
+                if (setCategory === 'math') { totalTimeLimitCalculation = currentSet.length * 120; } 
                 else {
                     let statementCount = 0;
                     let regularCount = 0;
                     currentSet.forEach(q => { if (q.type === 'statement') { statementCount++; } else { regularCount++; } });
-                    totalTimeLimitCalculation = (statementCount * 45) + (regularCount * 10);
+                    totalTimeLimitCalculation = (statementCount * 60) + (regularCount * 30); 
                 }
-                totalTimeLimit = totalTimeLimitCalculation;
+                totalTimeLimit = totalTimeLimitCalculation || 300; 
             }
             currentAttempt = { playerName: currentPlayerName, setName: setName, startTime: new Date().toISOString(), localDateStr: getTodayDateString(), answers: [], score: 0, totalQuestions: currentSet.length, timeLimit: totalTimeLimit, isRevision: isRevisionMode, revisionKey: isRevisionMode ? currentRevisionKey : null };
             document.getElementById('examFooter').style.display = 'flex'; 
@@ -1184,15 +1204,18 @@
             document.getElementById('totalQuestions').textContent = currentSet.length;
             
             const question = currentSet[currentQuestionIndex];
+            const qText = question.question || "Missing question text"; 
             let questionHTML = '';
+            
             if (question.type === 'statement') {
-                let cleanedQuestion = question.question.replace(/1\./g, '<br><br>1.').replace(/2\./g, '<br><br>2.').replace(/3\./g, '<br><br>3.').replace(/4\./g, '<br><br>4.').replace(/<br><br><br>/g, '<br><br>');
+                let cleanedQuestion = qText.replace(/1\./g, '<br><br>1.').replace(/2\./g, '<br><br>2.').replace(/3\./g, '<br><br>3.').replace(/4\./g, '<br><br>4.').replace(/<br><br><br>/g, '<br><br>');
                 questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
             } else {
-                questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${question.question}</strong></div>`;
+                questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${qText}</strong></div>`;
             }
             document.getElementById('practiceQuestion').innerHTML = questionHTML;
             
+            const qOptions = question.options || []; 
             const optionIds = ['optionGridA', 'optionGridB', 'optionGridC', 'optionGridD'];
             optionIds.forEach((id, index) => {
                 const optionDiv = document.getElementById(id);
@@ -1201,7 +1224,7 @@
                     optionDiv.style.cursor = 'pointer';
                     optionDiv.onclick = () => selectOption(index);
                     const optionTextSpan = optionDiv.querySelector('.option-text');
-                    if (optionTextSpan) { optionTextSpan.textContent = question.options[index] || ''; }
+                    if (optionTextSpan) { optionTextSpan.textContent = qOptions[index] || ''; }
                 }
             });
             if (isRevisionMode) {
@@ -1214,7 +1237,8 @@
         }
 
         function handleRevisionAnswer(selectedIndex, question) {
-            const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
+            const correctAns = question.correctAnswer ? String(question.correctAnswer).toUpperCase() : 'A';
+            const correctIndex = correctAns.charCodeAt(0) - 65;
             const isCorrect = selectedIndex === correctIndex;
             const optionIds = ['optionGridA', 'optionGridB', 'optionGridC', 'optionGridD'];
             optionIds.forEach(id => {
@@ -1229,9 +1253,14 @@
                 }
             });
             playSound(isCorrect ? 'correct' : 'wrong');
-            currentAttempt.answers.push({ isCorrect, questionText: question.question, selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: question.correctAnswer, viewedAnswer: true });
-            if (isCorrect) { setTimeout(() => { currentQuestionIndex++; showNextQuestion(); }, 500); } 
-            else { document.getElementById('endPracticeBtn').style.display = 'none'; document.getElementById('nextQuestionBtn').style.display = 'inline-block'; document.getElementById('nextQuestionBtn').onclick = function() { currentQuestionIndex++; showNextQuestion(); }; }
+            const qText = question.question || "Missing question text";
+            currentAttempt.answers.push({ isCorrect, questionText: qText, selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: correctAns, viewedAnswer: true });
+            if (isCorrect) { 
+                setTimeout(() => { currentQuestionIndex++; showNextQuestion(); }, 500); 
+            } else { 
+                document.getElementById('endPracticeBtn').style.display = 'none'; 
+                document.getElementById('nextQuestionBtn').style.display = 'inline-block'; 
+            }
         }     
         
         function selectAnswer(selectedIndex) {
@@ -1242,7 +1271,8 @@
                 if (optionDiv) { optionDiv.onclick = null; optionDiv.style.cursor = 'default'; }
             });
             const question = currentSet[currentQuestionIndex];
-            const correctIndex = question.correctAnswer.charCodeAt(0) - 65;
+            const correctAns = question.correctAnswer ? String(question.correctAnswer).toUpperCase() : 'A';
+            const correctIndex = correctAns.charCodeAt(0) - 65;
             const isCorrect = selectedIndex === correctIndex;
             optionIds.forEach((id, index) => {
                 const optionDiv = document.getElementById(id);
@@ -1253,10 +1283,15 @@
             });
             const lastAnswerTime = currentAttempt.answers.length > 0 ? currentAttempt.answers[currentAttempt.answers.length - 1].timeAtAnswer : 0;
             const timeForThisQuestion = timeElapsed - lastAnswerTime;
-            currentAttempt.answers.push({ isCorrect, questionText: question.question, questionOptions: question.options, selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: question.correctAnswer, timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: false });
+            const qText = question.question || "Missing question text";
+            currentAttempt.answers.push({ isCorrect, questionText: qText, questionOptions: question.options || [], selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: correctAns, timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: false });
             playSound(isCorrect ? 'correct' : 'wrong');
-            if (isCorrect) { setTimeout(() => { currentQuestionIndex++; showNextQuestion(); }, 250); } 
-            else { document.getElementById('endPracticeBtn').style.display = 'none'; document.getElementById('nextQuestionBtn').style.display = 'inline-block'; }
+            if (isCorrect) { 
+                setTimeout(() => { currentQuestionIndex++; showNextQuestion(); }, 250); 
+            } else { 
+                document.getElementById('endPracticeBtn').style.display = 'none'; 
+                document.getElementById('nextQuestionBtn').style.display = 'inline-block'; 
+            }
         }
 
         function nextQuestionManual() {
@@ -1278,7 +1313,7 @@
                 switchPracticeView('practiceSetupView');
                 return;
             }
-            document.getElementById('examFooter').style.display = 'none'; 
+            document.getElementById('examFooter').style.display = 'flex'; 
             const totalQuestions = currentAttempt.totalQuestions;
             const questionsViewed = currentAttempt.answers.length;
             const setName = currentAttempt.setName;
@@ -1286,7 +1321,10 @@
             if (isRevisionMode) {
                 if (questionsViewed < totalQuestions && currentQuestionIndex < totalQuestions) {
                     const confirmEnd = confirm(`You have viewed ${questionsViewed} of ${totalQuestions} questions.\n\nEnd session?`);
-                    if (!confirmEnd) return;
+                    if (!confirmEnd) {
+                        document.getElementById('examFooter').style.display = 'flex'; 
+                        return;
+                    }
                 }
                 clearInterval(timer);
                 practiceInProgress = false;
@@ -1603,7 +1641,7 @@
             const questions = set.questions || [];
             questionsListDiv.innerHTML = questions.map((q, index) => `
                 <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-                    <p style="flex-grow: 1;"><strong>${index + 1}.</strong> ${q.question.substring(0, 80)}...</p>
+                    <p style="flex-grow: 1;"><strong>${index + 1}.</strong> ${(q.question || "Empty Question").substring(0, 80)}...</p>
                     <div><button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning">Edit</button><button onclick="deleteSpecificQuestion('${setName}', ${index})" class="btn-danger">Delete</button></div>
                 </div>`).join('') || '<p>No questions.</p>';
         }
@@ -1651,11 +1689,11 @@
             currentEditingSet = setName;
             const question = questionSets[setName].questions[qIndex];
             document.getElementById('currentQuestionIndexDisplay').textContent = `${qIndex + 1}`;
-            let questionText = question.question.replace(/\n\s*\n/g, '\n\n').replace(/\s+/g, ' ').trim();
+            let questionText = (question.question || "").replace(/\n\s*\n/g, '\n\n').replace(/\s+/g, ' ').trim();
             if (question.type === 'statement') { questionText = questionText.replace(/(\d\.)/g, '\n\n$1').trim(); }
             document.getElementById('editQuestionText').value = questionText;
-            document.getElementById('editQuestionOptions').value = question.options.join('\n');
-            document.getElementById('editCorrectAnswer').value = question.correctAnswer;
+            document.getElementById('editQuestionOptions').value = (question.options || []).join('\n');
+            document.getElementById('editCorrectAnswer').value = question.correctAnswer || 'A';
             document.getElementById('questionsToEditList').classList.add('hidden');
             document.getElementById('questionEditForm').classList.remove('hidden');
         }
@@ -1746,7 +1784,6 @@
                         upload.setDate(upload.getDate() + 1);
                         progress = { currentStage: 0, nextDueDate: getLocalYYYYMMDD(upload) };
                     } else { 
-                        // LEGACY FIX: Put old unresolved legacy items into the Backlog by assigning them a date in the past
                         const pastDate = new Date();
                         pastDate.setDate(pastDate.getDate() - 1);
                         progress = { currentStage: maxStage + 1, nextDueDate: getLocalYYYYMMDD(pastDate) }; 
@@ -1932,17 +1969,19 @@
             const body = document.getElementById('wrongAnswersBody');
             body.innerHTML = wrongAnswers.map((ans, index) => {
                 const qOptions = ans.questionOptions || [];
-                const correctIndex = ans.correctAnswer.charCodeAt(0) - 65;
+                const correctAns = ans.correctAnswer ? String(ans.correctAnswer).toUpperCase() : 'A';
+                const correctIndex = correctAns.charCodeAt(0) - 65;
                 const correctText = qOptions[correctIndex] || 'N/A';
                 let yourAnswerText = "Skipped";
-                if (!ans.isSkipped) {
+                if (!ans.isSkipped && ans.selectedAnswer) {
                     const selectedIndex = ans.selectedAnswer.charCodeAt(0) - 65;
                     yourAnswerText = qOptions[selectedIndex] || 'N/A';
                 }
-                let questionText = ans.questionText.replace(/1\./g, '<br>1.').replace(/2\./g, '<br><br>2.').replace(/3\./g, '<br><br>3.').replace(/4\./g, '<br><br>4.');
+                const qText = ans.questionText || "";
+                let questionText = qText.replace(/1\./g, '<br>1.').replace(/2\./g, '<br><br>2.').replace(/3\./g, '<br><br>3.').replace(/4\./g, '<br><br>4.');
                 return `<div class="history-item" style="border-left-color: var(--danger-color);"><div class="statement-question"><strong>${index + 1}. ${questionText}</strong></div>
-                        <p style="color: var(--danger-color);">Your Answer: ${ans.selectedAnswer}. ${yourAnswerText}</p>
-                        <p style="color: var(--success-color);">Correct Answer: ${ans.correctAnswer}. ${correctText}</p></div>`;
+                        <p style="color: var(--danger-color);">Your Answer: ${ans.selectedAnswer || 'None'}. ${yourAnswerText}</p>
+                        <p style="color: var(--success-color);">Correct Answer: ${correctAns}. ${correctText}</p></div>`;
             }).join('');
             openModal('wrongAnswersModal');
         }
@@ -2201,9 +2240,10 @@
             const set = questionSets[setName];
             if (!set || !set.questions) return;
             const formattedQuestions = set.questions.map(q => {
-            const questionText = q.question.replace(/\n/g, ' ').trim();
-            const options = q.options.map(opt => opt.replace(/\n/g, ' ').trim());
-            return `${questionText}|${options[0]}|${options[1]}|${options[2]}|${options[3]}|${q.correctAnswer.toUpperCase()}`;
+            const questionText = (q.question || "").replace(/\n/g, ' ').trim();
+            const options = (q.options || []).map(opt => opt.replace(/\n/g, ' ').trim());
+            const correctAns = q.correctAnswer || "A";
+            return `${questionText}|${options[0] || ''}|${options[1] || ''}|${options[2] || ''}|${options[3] || ''}|${correctAns.toUpperCase()}`;
             }).join('\n');
             navigator.clipboard.writeText(formattedQuestions).then(() => { showNotification(`Copied to clipboard!`, 'success'); });
         }
