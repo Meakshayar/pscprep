@@ -54,7 +54,7 @@
         }
         #topProgressIndicator { flex: 0 0 50px; min-height: 50px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 20; }
         #practiceSessionViewContentWrapper { 
-            flex: 1 1 auto; min-height: 0; /* min-height: 0 fixes flexbox scroll blowing out bounds */
+            flex: 1 1 auto; min-height: 0; 
             display: flex; flex-direction: column; overflow: hidden; position: relative; 
         }
 
@@ -129,7 +129,8 @@
         .dropdown-content button:hover { background: #f1f1f1; }
         .show { display: block; }
 
-        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
+        /* Increased Z-Index to put confetti over modals */
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4000; }
 
         .login-container { max-width: 400px; margin: 40px auto; padding: 20px; }
         .login-form { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
@@ -416,13 +417,15 @@
         </main>
     </div>
 
-    <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore" style="font-size: 1.5em; font-weight: bold; margin: 10px 0;"></p><p id="modalTime"></p><p id="modalXPGained" style="color: var(--primary-color); font-weight: bold;"></p><button onclick="closeModal('resultsModal')">Close</button></div></div>
+    <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore" style="font-size: 1.5em; font-weight: bold; margin: 10px 0;"></p><p id="modalTime"></p><p id="modalXPGained" style="color: var(--primary-color); font-weight: bold;"></p><button onclick="handleResultsClose()" class="btn-success">Continue &rarr;</button></div></div>
     
+    <div id="wrongAnswersModal" class="modal"><div class="modal-content" style="max-width: 800px; text-align: left;"><h2>Review Missed Questions</h2><div id="wrongAnswersBody" style="max-height: 60vh; overflow-y: auto;"></div><button onclick="handleWrongAnswersClose()" class="btn-primary" style="margin-top: 20px;">Finish Review</button></div></div>
+    
+    <div id="progressModal" class="modal"><div class="modal-content"><h2>🎉 Fantastic Progress!</h2><p id="progressModalText" style="font-size: 1.3em; margin: 20px 0;"></p><button onclick="closeProgressModal()" class="btn-success" style="width:100%; padding:15px; font-size:1.1em;">Awesome!</button></div></div>
+
     <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><div id="passwordConfirmGroup" class="hidden"><input type="password" id="passwordConfirmInput" placeholder="Confirm"></div><button id="passwordSubmitBtn" class="btn-primary" style="margin-top: 10px;">Submit</button><button onclick="closeModal('passwordModal')" class="btn-danger" style="margin-top: 10px;">Cancel</button></div></div>
     
     <div id="viewDetailsModal" class="modal"><div class="modal-content" id="viewDetailsModalContent"></div></div>
-    
-    <div id="wrongAnswersModal" class="modal"><div class="modal-content" style="max-width: 800px; text-align: left;"><h2>Review Missed Questions</h2><div id="wrongAnswersBody" style="max-height: 60vh; overflow-y: auto;"></div><button onclick="closeModal('wrongAnswersModal')" style="margin-top: 20px;">Close</button></div></div>
     
     <div id="avatarModal" class="modal"><div class="modal-content"><h3>Choose Avatar</h3><div id="modalAvatarSelection" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;"></div><button onclick="confirmAvatar()" class="btn-success" style="margin-top: 20px;">Confirm</button></div></div>
     
@@ -805,24 +808,12 @@
                 setTimeout(() => window.location.reload(), 1500);
             } catch (e) { showNotification('Invalid JSON format', 'error'); }
         }
-
-        function resetFirebaseConfig() {
-            localStorage.removeItem('firebaseConfig');
-            document.getElementById('firebaseConfig').value = '';
-            showNotification('Config reset. Reloading...');
-            setTimeout(() => window.location.reload(), 1500);
-        }
         
         function testFirebaseConnection() {
             if (!db) { showNotification('Firebase not initialized', 'error'); return; }
             db.ref('testConnection').set({ timestamp: Date.now() })
               .then(() => showNotification('Firebase connection test successful!'))
               .catch(err => showNotification(`Connection test failed: ${err.message}`, 'error'));
-        }
-
-        function loadFromFirebase() {
-            if (!isFirebaseConnected) { showNotification('Firebase not connected', 'error'); return; }
-            showNotification('Using optimized data loading strategy');
         }
 
         function exportData() {
@@ -1271,7 +1262,7 @@
             });
             playSound(isCorrect ? 'correct' : 'wrong');
             const qText = question.question || "Missing question text";
-            currentAttempt.answers.push({ isCorrect, questionText: qText, selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: correctAns, viewedAnswer: true });
+            currentAttempt.answers.push({ isCorrect, questionText: qText, questionOptions: question.options || [], selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: correctAns, viewedAnswer: true });
             if (isCorrect) { 
                 setTimeout(() => { currentQuestionIndex++; showNextQuestion(); }, 500); 
             } else { 
@@ -1323,6 +1314,7 @@
             else { selectAnswer(selectedIndex); }
         }
 
+        // --- UPDATED EXAM FLOW & DOPAMINE SEQUENCING ---
         function endPractice() {
             if (!practiceInProgress || !currentAttempt) {
                 practiceInProgress = false; clearInterval(timer);
@@ -1334,19 +1326,23 @@
             const totalQuestions = currentAttempt.totalQuestions;
             const questionsViewed = currentAttempt.answers.length;
             const setName = currentAttempt.setName;
+            const todayStr = getTodayDateString();
 
             if (isRevisionMode) {
                 if (questionsViewed < totalQuestions && currentQuestionIndex < totalQuestions) {
                     const confirmEnd = confirm(`You have viewed ${questionsViewed} of ${totalQuestions} questions.\n\nEnd session?`);
-                    if (!confirmEnd) {
-                        document.getElementById('examFooter').style.display = 'flex'; 
-                        return;
-                    }
+                    if (!confirmEnd) return;
                 }
-                clearInterval(timer);
-                practiceInProgress = false;
+            }
+            
+            practiceInProgress = false;
+            clearInterval(timer);
+            
+            const score = currentAttempt.answers.filter(ans => ans.isCorrect).length; 
+            const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+
+            if (isRevisionMode) {
                 if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
-                
                 let setProgress = revisionProgress[currentPlayerName][setName];
                 if (!setProgress || !setProgress.nextDueDate) { setProgress = { currentStage: 0 }; }
 
@@ -1355,53 +1351,100 @@
                 const daysToAdd = SRS_INTERVALS[currentStage] || 90; 
                 const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + daysToAdd);
                 const nextDateStr = getLocalYYYYMMDD(nextDate);
-                const todayStr = getTodayDateString();
 
                 revisionProgress[currentPlayerName][setName] = { currentStage: nextStage, lastCompletedDate: todayStr, nextDueDate: nextDateStr, success: true };
                 
-                savePlayerDataToLocalStorage();
-                if (isFirebaseConnected && currentPlayerName) { db.ref(`revisionProgress/${currentPlayerName}/${setName}`).set(revisionProgress[currentPlayerName][setName]); }
+                // Track Daily Revision Scores properly
+                if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
+                dailyRevisionScores[todayStr][currentPlayerName] = (dailyRevisionScores[todayStr][currentPlayerName] || 0) + score;
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+
+                if (isFirebaseConnected && currentPlayerName) { 
+                    db.ref(`revisionProgress/${currentPlayerName}/${setName}`).set(revisionProgress[currentPlayerName][setName]);
+                    db.ref('dailyRevisionScores').set(dailyRevisionScores);
+                }
                 
-                setTimeout(() => {
-                    document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
-                    document.getElementById('modalScore').textContent = `Next due: ${nextDateStr}`;
-                    document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
-                    document.getElementById('modalXPGained').textContent = 'SRS Interval Increased 📈';
-                    openModal('resultsModal');
-                    document.body.classList.remove('practice-active');
-                    switchPracticeView('practiceSetupView');
-                    renderRevisionPage();
-                    renderBacklogPage();
-                    updateAllBadges();
-                }, 300);
-                return;
+                document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
+                document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
+                document.getElementById('modalTime').textContent = `Next due: ${nextDateStr}`;
+                document.getElementById('modalXPGained').textContent = 'SRS Interval Increased 📈';
+            } else {
+                const xpEarned = calculateAndApplyXP(score);
+                const xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP!` : 'Keep practicing!';
+                document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
+                document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
+                document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
+                document.getElementById('modalXPGained').textContent = xpMessage;
             }
-            
-            const score = currentAttempt.answers.filter(ans => ans.isCorrect).length; 
-            practiceInProgress = false;
-            clearInterval(timer);
-            const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-            const xpEarned = calculateAndApplyXP(score);
-            const xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP!` : 'Keep practicing!';
+
+            // Save attempt to history
             currentAttempt = {...currentAttempt, endTime: new Date().toISOString(), score, percentage, timeSpent: timeElapsed};
             const attemptId = `attempt-${Date.now()}`;
             practiceHistory[attemptId] = currentAttempt;
             localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
-            document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
-            document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
-            document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
-            document.getElementById('modalXPGained').textContent = xpMessage;
+            savePlayerDataToLocalStorage();
+            
+            // Dopamine Sequence 1: Confetti Shower
+            if (percentage >= 50 || isRevisionMode) startConfetti();
+
+            // Dopamine Sequence 2: Display Marks via Results Modal
             openModal('resultsModal');
-            if (percentage > 70) startConfetti();
+        }
+
+        // Chaining functions for the post-exam flow
+        function handleResultsClose() {
+            closeModal('resultsModal');
             const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
-            if (wrongAnswers.length > 0) { showWrongAnswersPopup(wrongAnswers); }
+            if (wrongAnswers.length > 0) {
+                showWrongAnswersPopup(wrongAnswers); // Flow into Sequence 3
+            } else {
+                finishExamFlow(); // Jump to end sequence
+            }
+        }
+
+        function handleWrongAnswersClose() {
+            closeModal('wrongAnswersModal');
+            finishExamFlow(); // Final sequence
+        }
+
+        function closeProgressModal() {
+            closeModal('progressModal');
             document.body.classList.remove('practice-active');
-            switchPracticeView('practiceSetupView'); 
+            switchPracticeView('practiceSetupView');
+        }
+
+        function finishExamFlow() {
+            if (isRevisionMode) {
+                // Calculate total finished vs remaining for today's revisions
+                let completedTodayCount = 0;
+                const todayStr = getTodayDateString();
+                for (const set in revisionProgress[currentPlayerName]) {
+                    if (revisionProgress[currentPlayerName][set].lastCompletedDate === todayStr) {
+                        completedTodayCount++;
+                    }
+                }
+                const { dueToday } = getRevisionItems(currentPlayerName);
+                const zToGo = dueToday.length;
+                const totalToday = completedTodayCount + zToGo;
+
+                // Dopamine Sequence 4: Detailed Progress Hit
+                document.getElementById('progressModalText').innerHTML = `You have finished <strong style="color:var(--primary-color)">${completedTodayCount}</strong> out of <strong>${totalToday}</strong> revision exams today.<br><br><span style="color:var(--danger-color)"><strong>${zToGo}</strong> to go!</span>`;
+                openModal('progressModal');
+                startConfetti(); // Extra confetti for the milestone
+            } else {
+                document.body.classList.remove('practice-active');
+                switchPracticeView('practiceSetupView'); 
+            }
+
+            // Reset States
             isRevisionMode = false; 
             currentRevisionKey = null; 
             currentSet = [];
+            renderRevisionPage();
+            renderBacklogPage();
+            updateAllBadges();
             setTimeout(() => { savePlayerProfiles(); syncRevisionProgressOnly(); }, 500);
-        }        
+        }
 
         function handleDailyLogin() {
             if (!currentPlayerName) return;
@@ -1562,6 +1605,7 @@
             const bulkText = document.getElementById('bulkQuestions').value.trim();
             if (!setName || !bulkText || !subject) { showNotification('Missing info for import.', 'error'); return; }
             let imported = 0;
+            
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
                 const category = document.getElementById('setCategory').value;
@@ -1570,7 +1614,11 @@
             } else { 
                 questionSets[setName].subject = subject; 
                 if(notes) questionSets[setName].notes = notes;
+                // BUG FIX: Ensure new date is saved to an existing set if provided!
+                const uploadDate = document.getElementById('setUploadDate').value;
+                if (uploadDate) questionSets[setName].uploadDate = uploadDate;
             }
+
             bulkText.split('\n').forEach(line => {
                 const parts = line.split('|').map(p => p.trim());
                 if(parts.length === 6) {
@@ -1779,6 +1827,7 @@
             }).join('') || '<tr><td colspan="3">No scores today.</td></tr>';
         }
 
+        // BUG FIX: Enhanced date fallback so sets without a proper date never get trapped.
         function getRevisionItems(playerName = null) {
             const targetPlayer = playerName || currentPlayerName;
             if (!targetPlayer) return { dueToday: [], backlog: [], all: [] };
@@ -1788,8 +1837,12 @@
 
             for (const setName in questionSets) {
                 const set = questionSets[setName];
-                if (!set || typeof set.uploadDate === 'undefined' || set.type === 'pdf') continue;
+                if (!set || set.type === 'pdf') continue;
                 if (!set.questions || set.questions.length === 0) continue;
+
+                // Fallback to today string if the set misses an upload date (catches older bugged states)
+                let uploadDateStr = set.uploadDate;
+                if (!uploadDateStr) uploadDateStr = getTodayDateString(); 
 
                 let progress = revisionProgress[targetPlayer] && revisionProgress[targetPlayer][setName];
                 if (!progress || !progress.nextDueDate) {
@@ -1800,7 +1853,7 @@
                     });
                     
                     if (maxStage === -1) {
-                        const upload = parseLocalDate(set.uploadDate);
+                        const upload = parseLocalDate(uploadDateStr);
                         upload.setDate(upload.getDate() + 1);
                         progress = { currentStage: 0, nextDueDate: getLocalYYYYMMDD(upload) };
                     } else { 
