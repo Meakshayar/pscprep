@@ -212,6 +212,13 @@
                     <button onclick="syncQuestionSetsFromFirebase()" class="btn-warning" style="width: 100%; margin-top: 10px; font-size: 0.9em;">Sync Latest Questions</button>
                 </div>
 
+                <div id="revisionNotesView" class="view-stage hidden" style="padding: 10px;">
+                    <button onclick="switchPracticeView('practiceSetupView')" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Setup</button>
+                    <h2 id="revisionNotesTitle" style="color: var(--primary-color);">Study Notes</h2>
+                    <div id="revisionNotesContent" style="background: white; padding: 25px; border-radius: 8px; margin: 20px 0; white-space: pre-wrap; line-height: 1.8; max-height: 55vh; overflow-y: auto; border: 2px solid #e0e6ed; font-size: 1.05em; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02);"></div>
+                    <button id="startPracticeFromNotesBtn" class="btn-success" style="width: 100%; padding: 15px; font-size: 1.2em; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);">I'm ready. Start Practice &rarr;</button>
+                </div>
+
                 <div id="practiceSessionView" class="view-stage hidden">
                     <div id="topProgressIndicator">
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -322,6 +329,9 @@
                     <datalist id="existingSubjectsList"></datalist>
                     <select id="bulkSetSelect" onchange="toggleNewBulkSetName()"></select>
                     <div id="newBulkSetNameGroup" style="display:none;"><input type="text" id="bulkSetName" placeholder="New Set Name"></div>
+                    
+                    <textarea id="setNotes" rows="4" placeholder="Paste study notes here... (Optional, shown to users before revision exams)" style="margin-bottom: 10px; border: 1px solid #ccc;"></textarea>
+                    
                     <textarea id="bulkQuestions" rows="6" placeholder="Paste questions here..."></textarea>
                     <button onclick="importBulkQuestions()">Import</button>
                 </div>
@@ -382,6 +392,13 @@
                 <h3 id="editQuestionsTitle">Edit Set</h3>
                 <input type="text" id="editSetSubject" placeholder="Subject" onchange="updateSetSubject()">
                 <select id="editSetCategory" onchange="updateSetCategory()"><option value="gk">GK</option><option value="math">Math</option></select>
+                
+                <div style="margin-top: 15px; margin-bottom: 25px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ccc;">
+                    <h4 style="margin-bottom: 10px;">Edit Study Notes</h4>
+                    <textarea id="editSetNotes" rows="4" placeholder="Edit the study notes for this set..."></textarea>
+                    <button onclick="updateSetNotes()" class="btn-success" style="margin-top: 5px;">Save Notes Update</button>
+                </div>
+
                 <div id="questionsToEditList"></div>
                 
                 <div id="questionEditForm" class="hidden" style="background: #fff; padding: 20px; border: 1px solid #ccc; margin-top: 20px;">
@@ -1346,26 +1363,16 @@
                 if (isFirebaseConnected && currentPlayerName) { db.ref(`revisionProgress/${currentPlayerName}/${setName}`).set(revisionProgress[currentPlayerName][setName]); }
                 
                 setTimeout(() => {
-                    const proceedToPractice = confirm(`Revision Completed!\nNext due: ${nextDateStr}\n\nDo practice exam now?`);
-                    if (proceedToPractice) {
-                        document.body.classList.remove('practice-active');
-                        switchPracticeView('practiceSetupView');
-                        document.getElementById('subjectSelect').value = questionSets[setName]?.subject || '';
-                        updatePracticeSetSelect(document.getElementById('subjectSelect').value);
-                        document.getElementById('practiceSetSelect').value = setName;
-                        setTimeout(() => { startPracticeWrapper(setName, false, null); }, 300);
-                    } else {
-                        document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
-                        document.getElementById('modalScore').textContent = `Next due: ${nextDateStr}`;
-                        document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
-                        document.getElementById('modalXPGained').textContent = 'SRS Interval Increased 📈';
-                        openModal('resultsModal');
-                        document.body.classList.remove('practice-active');
-                        switchPracticeView('practiceSetupView');
-                        renderRevisionPage();
-                        renderBacklogPage();
-                        updateAllBadges();
-                    }
+                    document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
+                    document.getElementById('modalScore').textContent = `Next due: ${nextDateStr}`;
+                    document.getElementById('modalTime').textContent = `Time: ${formatTime(timeElapsed)}`;
+                    document.getElementById('modalXPGained').textContent = 'SRS Interval Increased 📈';
+                    openModal('resultsModal');
+                    document.body.classList.remove('practice-active');
+                    switchPracticeView('practiceSetupView');
+                    renderRevisionPage();
+                    renderBacklogPage();
+                    updateAllBadges();
                 }, 300);
                 return;
             }
@@ -1548,6 +1555,7 @@
         function importBulkQuestions() {
             const select = document.getElementById('bulkSetSelect');
             const subject = document.getElementById('setSubject').value.trim();
+            const notes = document.getElementById('setNotes').value.trim();
             let setName;
             if (select.value === '_new_') { setName = document.getElementById('bulkSetName').value.trim(); } 
             else { setName = select.value; }
@@ -1557,9 +1565,12 @@
             if(!questionSets[setName]) {
                 const uploadDate = document.getElementById('setUploadDate').value;
                 const category = document.getElementById('setCategory').value;
-                const setData = { questions: [], uploadDate: uploadDate || getTodayDateString(), type: 'questions', category: category, subject: subject };
+                const setData = { questions: [], uploadDate: uploadDate || getTodayDateString(), type: 'questions', category: category, subject: subject, notes: notes };
                 questionSets[setName] = setData;
-            } else { questionSets[setName].subject = subject; }
+            } else { 
+                questionSets[setName].subject = subject; 
+                if(notes) questionSets[setName].notes = notes;
+            }
             bulkText.split('\n').forEach(line => {
                 const parts = line.split('|').map(p => p.trim());
                 if(parts.length === 6) {
@@ -1577,6 +1588,7 @@
             document.getElementById('bulkQuestions').value = '';
             document.getElementById('bulkSetName').value = '';
             document.getElementById('setSubject').value = '';
+            document.getElementById('setNotes').value = '';
         }
 
         function deleteQuestionSet(setName) {
@@ -1637,6 +1649,7 @@
             const set = questionSets[setName];
             document.getElementById('editSetCategory').value = set.category || 'gk';
             document.getElementById('editSetSubject').value = set.subject || '';
+            document.getElementById('editSetNotes').value = set.notes || '';
             const questionsListDiv = document.getElementById('questionsToEditList');
             const questions = set.questions || [];
             questionsListDiv.innerHTML = questions.map((q, index) => `
@@ -1658,6 +1671,13 @@
                 questionSets[currentEditingSet].subject = document.getElementById('editSetSubject').value;
                 saveQuestionSets(currentEditingSet);
                 showNotification(`Subject updated.`, 'success');
+            }
+        }
+        function updateSetNotes() {
+            if (currentEditingSet && questionSets[currentEditingSet]) {
+                questionSets[currentEditingSet].notes = document.getElementById('editSetNotes').value;
+                saveQuestionSets(currentEditingSet);
+                showNotification(`Study Notes updated successfully.`, 'success');
             }
         }
 
@@ -1830,10 +1850,34 @@
             backlogDiv.innerHTML = backlog.length > 0 ? backlog.map(item => renderRevisionItem(item, true)).join('') : '<p>Backlog clear!</p>';
         }
 
+        // --- NEW REVISION WORKFLOW ---
         function startRevisionPractice(setName, revisionKey) { 
             if (!currentPlayerName) { showNotification('Select a player.', 'error'); switchTab('practice'); return; };
-            switchTab('practice');
-            setTimeout(() => startPracticeWrapper(setName, true, setName), 100); 
+            switchTab('practice'); 
+            
+            switchPracticeView('revisionNotesView');
+            
+            document.getElementById('revisionNotesTitle').textContent = `Study Notes: ${setName}`;
+            const setNotes = questionSets[setName]?.notes;
+            
+            const contentDiv = document.getElementById('revisionNotesContent');
+            if (setNotes && setNotes.trim() !== '') {
+                contentDiv.textContent = setNotes;
+                contentDiv.style.fontStyle = 'normal';
+                contentDiv.style.color = '#333';
+            } else {
+                contentDiv.textContent = "No study notes were provided for this set. You can proceed directly to the practice exam.";
+                contentDiv.style.fontStyle = 'italic';
+                contentDiv.style.color = '#777';
+            }
+            
+            const startBtn = document.getElementById('startPracticeFromNotesBtn');
+            startBtn.onclick = () => {
+                document.getElementById('subjectSelect').value = questionSets[setName]?.subject || '';
+                updatePracticeSetSelect(document.getElementById('subjectSelect').value);
+                document.getElementById('practiceSetSelect').value = setName;
+                setTimeout(() => startPracticeWrapper(setName, true, revisionKey), 100); 
+            };
         }
 
         function updateAllBadges() {
