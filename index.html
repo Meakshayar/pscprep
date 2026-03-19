@@ -459,7 +459,7 @@
         }
         
         const MIN_SCORE_FOR_REVISION_SUCCESS = 70; 
-        const SRS_INTERVALS = [1, 3, 7, 14, 30, 60, 90];
+        const SRS_INTERVALS = [1, 3, 7, 14, 21, 30];
         const DESTRUCTIVE_ACTION_PASSWORD = "2525"; 
         const QUESTION_SETS_VERSION = '1.0'; 
         
@@ -1348,7 +1348,7 @@
 
                 const currentStage = setProgress.currentStage || 0;
                 const nextStage = currentStage + 1;
-                const daysToAdd = SRS_INTERVALS[currentStage] || 90; 
+                const daysToAdd = SRS_INTERVALS[currentStage] || 30; 
                 const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + daysToAdd);
                 const nextDateStr = getLocalYYYYMMDD(nextDate);
 
@@ -1847,7 +1847,7 @@
                 let progress = revisionProgress[targetPlayer] && revisionProgress[targetPlayer][setName];
                 if (!progress || !progress.nextDueDate) {
                     let maxStage = -1;
-                    [1, 3, 7, 14, 30, 60, 90].forEach((day, index) => {
+                    [1, 3, 7, 14, 21, 30].forEach((day, index) => {
                         const legacyKey = `${setName}_RevDay${day}`;
                         if (revisionProgress[targetPlayer] && revisionProgress[targetPlayer][legacyKey] && revisionProgress[targetPlayer][legacyKey].success) maxStage = index;
                     });
@@ -1866,7 +1866,7 @@
                 const nextDueDate = parseLocalDate(nextDueDateStr); 
                 nextDueDate.setHours(0,0,0,0);
                 
-                const displayDay = SRS_INTERVALS[progress.currentStage] || 90;
+                const displayDay = SRS_INTERVALS[progress.currentStage] || 30;
                 const itemData = { setName: setName, day: displayDay, stage: progress.currentStage, type: set.type || 'questions', revisionDate: nextDueDate, revisionDateStr: nextDueDateStr };
                 
                 if (nextDueDateStr === todayStr) dueTodayItems.push(itemData);
@@ -1973,7 +1973,7 @@
                 if (data && data.nextDueDate) {
                      const dateKey = data.nextDueDate;
                      if (!schedule[dateKey]) schedule[dateKey] = [];
-                     const currentInterval = SRS_INTERVALS[data.currentStage] || 90;
+                     const currentInterval = SRS_INTERVALS[data.currentStage] || 30;
                      schedule[dateKey].push({ setName, day: currentInterval });
                 }
             });
@@ -2184,7 +2184,7 @@
                 if (!revisionProgress[playerName]) revisionProgress[playerName] = {};
                 let prog = revisionProgress[playerName][setName] || { currentStage: 0 };
                 const nextStage = (prog.currentStage || 0) + 1;
-                const daysToAdd = SRS_INTERVALS[prog.currentStage || 0] || 90;
+                const daysToAdd = SRS_INTERVALS[prog.currentStage || 0] || 30;
                 const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + daysToAdd);
                 revisionProgress[playerName][setName] = { currentStage: nextStage, lastCompletedDate: getTodayDateString(), nextDueDate: getLocalYYYYMMDD(nextDate), clearedByAdmin: true };
                 savePlayerDataToLocalStorage();
