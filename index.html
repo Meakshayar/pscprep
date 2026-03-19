@@ -84,7 +84,7 @@
         .container, #adminPanel { width: 100%; max-width: 1000px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s; min-height: 80vh; }
         header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 15px; text-align: center; position: relative; }
         nav { display: flex; background: var(--dark-color); flex-wrap: wrap; justify-content: center; }
-        nav button { background: none; border: none; color: var(--light-color); padding: 15px 20px; cursor: pointer; font-size: 14px; font-family: var(--font-family); transition: all 0.3s; font-weight: 600; flex-grow: 1; }
+        nav button { background: none; border: none; color: var(--light-color); padding: 15px 15px; cursor: pointer; font-size: 13px; font-family: var(--font-family); transition: all 0.3s; font-weight: 600; flex-grow: 1; text-align: center; }
         nav button:hover { background: rgba(255,255,255,0.1); }
         nav button.active { background: var(--primary-color); }
 
@@ -98,6 +98,10 @@
         .btn-success { background: linear-gradient(135deg, var(--success-color), #27ae60); }
         .btn-danger { background: linear-gradient(135deg, var(--danger-color), #c0392b); }
         .btn-warning { background: linear-gradient(135deg, var(--warning-color), #d35400); }
+        
+        .btn-bookmark { background: transparent; border: 1px solid #f1c40f; color: #f1c40f; padding: 4px 10px; font-size: 0.8em; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
+        .btn-bookmark:hover { background: rgba(241, 196, 15, 0.1); }
+        .btn-bookmark.active { background: #f1c40f; color: var(--dark-color); border-color: #f1c40f; }
 
         input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; }
 
@@ -132,7 +136,6 @@
         .dropdown-content button:hover { background: #f1f1f1; }
         .show { display: block; }
 
-        /* Increased Z-Index to put confetti over modals */
         #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4000; }
 
         .login-container { max-width: 400px; margin: 40px auto; padding: 20px; }
@@ -176,8 +179,9 @@
         <nav id="tab-nav" class="hidden">
             <button onclick="switchTab('study')">Study Notes</button>
             <button onclick="switchTab('practice')" class="active">Practice</button>
-            <button onclick="switchTab('revision')">Revision Plan</button>
+            <button onclick="switchTab('revision')">Revision</button>
             <button onclick="switchTab('backlog')">Backlog</button>
+            <button onclick="switchTab('bookmarks')">Bookmarks</button>
             <button onclick="switchTab('leaderboard')">Leaderboard</button>
             <button onclick="switchTab('attendance')">Attendance</button>
         </nav>
@@ -251,7 +255,10 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <div>Q: <span id="currentQuestionNum">1</span>/<span id="totalQuestions">0</span></div>
                             <div id="practiceTimer" style="font-weight: bold;">Time: 00:00</div>
-                            <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="padding: 4px 10px; font-size: 0.8em; border: 1px solid white;">Report</button>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="toggleBookmarkCurrentQuestion()" id="bookmarkQuestionBtn" class="btn-bookmark">☆ Save</button>
+                                <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="padding: 4px 10px; font-size: 0.8em; border: 1px solid white;">Report</button>
+                            </div>
                         </div>
                     </div>
                     
@@ -292,6 +299,12 @@
                 <h2>Backlog</h2>
                 <p>Missed revisions appear here.</p>
                 <div id="fullBacklogList"></div>
+            </div>
+
+            <div id="bookmarks" class="tab-content">
+                <h2>Starred Questions</h2>
+                <p style="margin-bottom: 20px;">Review questions you saved during practice or revision.</p>
+                <div id="bookmarksList"></div>
             </div>
 
             <div id="leaderboard" class="tab-content">
@@ -583,6 +596,7 @@
                 }
                 
                 if (currentPlayerName) {
+                    // Sync Revision Progress
                     db.ref(`revisionProgress/${currentPlayerName}`).once('value').then(revSnapshot => {
                         const firebaseRevision = revSnapshot.val() || {};
                         if (Object.keys(firebaseRevision).length > 0) {
@@ -591,6 +605,15 @@
                             localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
                             renderRevisionPage();
                             renderBacklogPage();
+                        }
+                    });
+                    
+                    // Sync Bookmarks
+                    db.ref(`bookmarkedQuestions/${currentPlayerName}`).once('value').then(snap => {
+                        if (snap.val()) {
+                            bookmarkedQuestions[currentPlayerName] = snap.val();
+                            localStorage.setItem('pscBookmarkedQuestions', JSON.stringify(bookmarkedQuestions));
+                            if(document.getElementById('bookmarks').classList.contains('active')) renderBookmarksPage();
                         }
                     });
                 }
@@ -640,6 +663,7 @@
             revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
             dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
             reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
+            bookmarkedQuestions = JSON.parse(localStorage.getItem('pscBookmarkedQuestions')) || {};
             loadQuestionSets();
             updateSubjectSelect();
             console.log('Loaded cached data from localStorage');
@@ -663,6 +687,7 @@
             const updates = {};
             if (playerProfiles[currentPlayerName]) updates[`/playerProfiles/${currentPlayerName}`] = playerProfiles[currentPlayerName];
             if (revisionProgress[currentPlayerName]) updates[`/revisionProgress/${currentPlayerName}`] = revisionProgress[currentPlayerName];
+            if (bookmarkedQuestions[currentPlayerName]) updates[`/bookmarkedQuestions/${currentPlayerName}`] = bookmarkedQuestions[currentPlayerName];
             const todayStr = getTodayDateString();
             if (dailyRevisionScores[todayStr]) updates['/dailyRevisionScores'] = dailyRevisionScores;
             if (Object.keys(updates).length > 0) db.ref().update(updates).then(() => { console.log("Player progress synced to cloud."); });
@@ -678,6 +703,7 @@
         let reportedQuestions = JSON.parse(localStorage.getItem('pscReportedQuestions')) || [];
         let dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
         let adminCredentials = JSON.parse(localStorage.getItem('pscAdminCredentials')) || null;
+        let bookmarkedQuestions = JSON.parse(localStorage.getItem('pscBookmarkedQuestions')) || {};
 
         let isAdminLoggedIn = false;
         
@@ -846,6 +872,7 @@
             revisionProgress = JSON.parse(localStorage.getItem('pscRevisionProgress')) || {};
             practiceHistory = JSON.parse(localStorage.getItem('pscPracticeHistory')) || {};
             dailyRevisionScores = JSON.parse(localStorage.getItem('pscDailyRevisionScores')) || {};
+            bookmarkedQuestions = JSON.parse(localStorage.getItem('pscBookmarkedQuestions')) || {};
             loadQuestionSets();
             updateSubjectSelect();
             updatePlayerSelects();  
@@ -914,7 +941,7 @@
         }
 
         function exportData() {
-            const data = { questionSets, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials };
+            const data = { questionSets, revisionProgress, playerProfiles, reportedQuestions, dailyRevisionScores, adminCredentials, bookmarkedQuestions };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -936,6 +963,7 @@
                         if(data.reportedQuestions) reportedQuestions = data.reportedQuestions;
                         if(data.dailyRevisionScores) dailyRevisionScores = data.dailyRevisionScores;
                         if(data.adminCredentials) adminCredentials = data.adminCredentials;
+                        if(data.bookmarkedQuestions) bookmarkedQuestions = data.bookmarkedQuestions;
                         
                         localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                         localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
@@ -944,6 +972,7 @@
                         localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
                         localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
                         localStorage.setItem('pscAdminCredentials', JSON.stringify(adminCredentials));
+                        localStorage.setItem('pscBookmarkedQuestions', JSON.stringify(bookmarkedQuestions));
                         
                         init();
                         showNotification('Data imported successfully!');
@@ -956,10 +985,10 @@
 
         function clearAllData() {
             promptForAdminPassword(() => {
-                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {}; adminCredentials = null;
+                questionSets = {}; practiceHistory = {}; revisionProgress = {}; playerProfiles = {}; reportedQuestions = []; dailyRevisionScores = {}; adminCredentials = null; bookmarkedQuestions = {};
                 localStorage.clear();
                 if (isFirebaseConnected) { 
-                    db.ref('questionSets').remove(); db.ref('playerProfiles').remove(); db.ref('revisionProgress').remove(); db.ref('reportedQuestions').remove(); db.ref('dailyRevisionScores').remove(); db.ref('adminCredentials').remove();
+                    db.ref('questionSets').remove(); db.ref('playerProfiles').remove(); db.ref('revisionProgress').remove(); db.ref('reportedQuestions').remove(); db.ref('dailyRevisionScores').remove(); db.ref('adminCredentials').remove(); db.ref('bookmarkedQuestions').remove();
                 }
                 window.location.reload();
             });
@@ -977,10 +1006,13 @@
                 delete playerProfiles[playerToRemove];
                 localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                 localStorage.removeItem(`pscPlayerPFP_${playerToRemove}`);
+                delete bookmarkedQuestions[playerToRemove];
+                localStorage.setItem('pscBookmarkedQuestions', JSON.stringify(bookmarkedQuestions));
                 Object.keys(dailyRevisionScores).forEach(date => { if (dailyRevisionScores[date][playerToRemove]) delete dailyRevisionScores[date][playerToRemove]; });
                 localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                
                 if (isFirebaseConnected) {
-                    db.ref(`revisionProgress/${playerToRemove}`).remove(); db.ref(`playerProfiles/${playerToRemove}`).remove(); db.ref('dailyRevisionScores').set(dailyRevisionScores);
+                    db.ref(`revisionProgress/${playerToRemove}`).remove(); db.ref(`playerProfiles/${playerToRemove}`).remove(); db.ref(`bookmarkedQuestions/${playerToRemove}`).remove(); db.ref('dailyRevisionScores').set(dailyRevisionScores);
                 }
                 if (currentPlayerName === playerToRemove) { logout(); } 
                 else { updatePlayerSelects(); }
@@ -1100,11 +1132,8 @@
             
             if (dailyScoresListener) { dailyScoresListener.off(); dailyScoresListener = null; }
             
-            // New Study Tab Handling
-            if(tabName === 'study') {
-                initStudyTab();
-                closeStudyNote(); 
-            }
+            if(tabName === 'study') { initStudyTab(); closeStudyNote(); }
+            if(tabName === 'bookmarks') { renderBookmarksPage(); }
             
             if(tabName === 'leaderboard') {
                 showLeaderboards(); 
@@ -1308,6 +1337,18 @@
             showNextQuestion();
         }
         
+        function updateBookmarkButtonState() {
+            if(!currentPlayerName) return;
+            const q = currentSet[currentQuestionIndex];
+            if (!q) return;
+            const isBookmarked = (bookmarkedQuestions[currentPlayerName] || []).some(b => b.question === q.question && b.setName === currentAttempt.setName);
+            const btn = document.getElementById('bookmarkQuestionBtn');
+            if(btn) {
+                if(isBookmarked) { btn.classList.add('active'); btn.innerHTML = '★ Saved'; }
+                else { btn.classList.remove('active'); btn.innerHTML = '☆ Save'; }
+            }
+        }
+
         function showNextQuestion() {
             document.getElementById('questionScrollContainer').scrollTop = 0; 
             const statementDiv = document.querySelector('.statement-question');
@@ -1319,6 +1360,8 @@
             document.getElementById('nextQuestionBtn').style.display = 'none';
             document.getElementById('currentQuestionNum').textContent = currentQuestionIndex + 1;
             document.getElementById('totalQuestions').textContent = currentSet.length;
+            
+            updateBookmarkButtonState();
             
             const question = currentSet[currentQuestionIndex];
             const qText = question.question || "Missing question text"; 
@@ -1351,6 +1394,71 @@
                 document.getElementById('reportQuestionBtn').style.display = 'none';
                 document.getElementById('endPracticeBtn').style.display = 'inline-block';
             }
+        }
+
+        // --- NEW BOOKMARKS FEATURE LOGIC ---
+        function toggleBookmarkCurrentQuestion() {
+            if (!currentPlayerName) return;
+            if (!bookmarkedQuestions[currentPlayerName]) bookmarkedQuestions[currentPlayerName] = [];
+            
+            const q = currentSet[currentQuestionIndex];
+            const setName = currentAttempt.setName;
+            const existingIndex = bookmarkedQuestions[currentPlayerName].findIndex(b => b.question === q.question && b.setName === setName);
+            
+            if (existingIndex >= 0) {
+                bookmarkedQuestions[currentPlayerName].splice(existingIndex, 1);
+                showNotification('Removed from Bookmarks', 'info');
+            } else {
+                bookmarkedQuestions[currentPlayerName].push({
+                    setName: setName,
+                    question: q.question,
+                    options: q.options,
+                    correctAnswer: q.correctAnswer,
+                    type: q.type,
+                    savedAt: new Date().toISOString()
+                });
+                showNotification('Saved to Bookmarks! ⭐', 'success');
+            }
+            
+            localStorage.setItem('pscBookmarkedQuestions', JSON.stringify(bookmarkedQuestions));
+            if (isFirebaseConnected) db.ref(`bookmarkedQuestions/${currentPlayerName}`).set(bookmarkedQuestions[currentPlayerName]);
+            updateBookmarkButtonState();
+        }
+
+        function renderBookmarksPage() {
+            const listDiv = document.getElementById('bookmarksList');
+            if (!currentPlayerName) { listDiv.innerHTML = '<p style="color:var(--danger-color);">Select a player in the Practice tab first.</p>'; return; }
+            
+            const userBookmarks = bookmarkedQuestions[currentPlayerName] || [];
+            if (userBookmarks.length === 0) {
+                listDiv.innerHTML = '<div class="dashboard-card" style="background: #f0f4f8; color: #333;"><p>No starred questions yet.</p><p style="font-size: 0.9em; margin-top: 10px;">When taking an exam, click the <strong>☆ Save</strong> button to bookmark tricky questions. They will appear here for quick review!</p></div>';
+                return;
+            }
+            
+            listDiv.innerHTML = userBookmarks.map((bm, index) => {
+                const correctOpt = bm.options ? bm.options[bm.correctAnswer.charCodeAt(0) - 65] : '';
+                let cleanedQuestion = bm.question.replace(/1\./g, '<br>1.').replace(/2\./g, '<br>2.').replace(/3\./g, '<br>3.').replace(/4\./g, '<br>4.');
+                
+                return `<div class="history-item" style="border-left-color: #f1c40f; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <span style="font-size: 0.8em; background: #eee; padding: 4px 8px; border-radius: 4px; margin-bottom: 5px; display:inline-block; font-weight: bold; color: #555;">📁 ${bm.setName}</span>
+                        <button onclick="removeBookmark(${index})" class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;">Remove</button>
+                    </div>
+                    <div class="statement-question" style="margin-top: 10px; font-size: 1.05em; line-height: 1.6;"><strong>${cleanedQuestion}</strong></div>
+                    <div style="margin-top: 15px; background: #e8f5e9; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-color);">
+                        <strong style="color: var(--success-color);">Answer: ${bm.correctAnswer}. ${correctOpt}</strong>
+                    </div>
+                </div>`;
+            }).reverse().join(''); // Reverse to show newest bookmarks at the top
+        }
+
+        function removeBookmark(index) {
+            if (!currentPlayerName || !bookmarkedQuestions[currentPlayerName]) return;
+            const reversedIndex = bookmarkedQuestions[currentPlayerName].length - 1 - index; // Adjust because we reverse() the display array
+            bookmarkedQuestions[currentPlayerName].splice(reversedIndex, 1);
+            localStorage.setItem('pscBookmarkedQuestions', JSON.stringify(bookmarkedQuestions));
+            if (isFirebaseConnected) db.ref(`bookmarkedQuestions/${currentPlayerName}`).set(bookmarkedQuestions[currentPlayerName]);
+            renderBookmarksPage();
         }
 
         function handleRevisionAnswer(selectedIndex, question) {
@@ -1423,7 +1531,6 @@
             else { selectAnswer(selectedIndex); }
         }
 
-        // --- UPDATED EXAM FLOW & DOPAMINE SEQUENCING ---
         function endPractice() {
             if (!practiceInProgress || !currentAttempt) {
                 practiceInProgress = false; clearInterval(timer);
@@ -1493,27 +1600,24 @@
             localStorage.setItem('pscPracticeHistory', JSON.stringify(practiceHistory));
             savePlayerDataToLocalStorage();
             
-            // Dopamine Sequence 1: Confetti Shower
             if (percentage >= 50 || isRevisionMode) startConfetti();
 
-            // Dopamine Sequence 2: Display Marks via Results Modal
             openModal('resultsModal');
         }
 
-        // Chaining functions for the post-exam flow
         function handleResultsClose() {
             closeModal('resultsModal');
             const wrongAnswers = currentAttempt.answers.filter(ans => !ans.isCorrect);
             if (wrongAnswers.length > 0) {
-                showWrongAnswersPopup(wrongAnswers); // Flow into Sequence 3
+                showWrongAnswersPopup(wrongAnswers); 
             } else {
-                finishExamFlow(); // Jump to end sequence
+                finishExamFlow(); 
             }
         }
 
         function handleWrongAnswersClose() {
             closeModal('wrongAnswersModal');
-            finishExamFlow(); // Final sequence
+            finishExamFlow();
         }
 
         function closeProgressModal() {
@@ -1536,16 +1640,14 @@
                 const zToGo = dueToday.length;
                 const totalToday = completedTodayCount + zToGo;
 
-                // Dopamine Sequence 4: Detailed Progress Hit
                 document.getElementById('progressModalText').innerHTML = `You have finished <strong style="color:var(--primary-color)">${completedTodayCount}</strong> out of <strong>${totalToday}</strong> revision exams today.<br><br><span style="color:var(--danger-color)"><strong>${zToGo}</strong> to go!</span>`;
                 openModal('progressModal');
-                startConfetti(); // Extra confetti for the milestone
+                startConfetti();
             } else {
                 document.body.classList.remove('practice-active');
                 switchPracticeView('practiceSetupView'); 
             }
 
-            // Reset States
             isRevisionMode = false; 
             currentRevisionKey = null; 
             currentSet = [];
@@ -1725,7 +1827,6 @@
             } else { 
                 questionSets[setName].subject = subject; 
                 if(notes) questionSets[setName].notes = notes;
-                // BUG FIX: Ensure new date is saved to an existing set if provided!
                 const uploadDate = document.getElementById('setUploadDate').value;
                 if (uploadDate) questionSets[setName].uploadDate = uploadDate;
             }
@@ -1938,7 +2039,6 @@
             }).join('') || '<tr><td colspan="3">No scores today.</td></tr>';
         }
 
-        // BUG FIX: Enhanced date fallback so sets without a proper date never get trapped.
         function getRevisionItems(playerName = null) {
             const targetPlayer = playerName || currentPlayerName;
             if (!targetPlayer) return { dueToday: [], backlog: [], all: [] };
@@ -1951,7 +2051,6 @@
                 if (!set || set.type === 'pdf') continue;
                 if (!set.questions || set.questions.length === 0) continue;
 
-                // Fallback to today string if the set misses an upload date (catches older bugged states)
                 let uploadDateStr = set.uploadDate;
                 if (!uploadDateStr) uploadDateStr = getTodayDateString(); 
 
@@ -2014,7 +2113,6 @@
             backlogDiv.innerHTML = backlog.length > 0 ? backlog.map(item => renderRevisionItem(item, true)).join('') : '<p>Backlog clear!</p>';
         }
 
-        // --- NEW REVISION WORKFLOW ---
         function startRevisionPractice(setName, revisionKey) { 
             if (!currentPlayerName) { showNotification('Select a player.', 'error'); switchTab('practice'); return; };
             switchTab('practice'); 
