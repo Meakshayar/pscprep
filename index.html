@@ -46,7 +46,10 @@
         body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #fff; padding: 0; margin: 0; }
         body.practice-active header, body.practice-active nav { display: none !important; }
         body.practice-active main { height: 100%; padding: 0 !important; }
-        body.practice-active .tab-content { padding: 0; height: 100%; display: block; }
+        
+        /* FIX: Ensure only the active tab is displayed during practice mode */
+        body.practice-active .tab-content { padding: 0; height: 100%; display: none; }
+        body.practice-active .tab-content.active { display: block; }
 
         #practiceSessionView { 
             height: 100vh; height: 100dvh; 
@@ -134,6 +137,12 @@
 
         .login-container { max-width: 400px; margin: 40px auto; padding: 20px; }
         .login-form { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+
+        /* --- STUDY TAB CSS --- */
+        .note-reading-area { background: #fff; padding: 25px; border-radius: var(--border-radius); line-height: 1.8; font-size: 1.1em; color: #2c3e50; box-shadow: var(--shadow); white-space: pre-wrap; word-wrap: break-word; max-width: 900px; margin: 0 auto; border: 1px solid #e0e6ed; }
+        .study-card { background: #fdfdfd; border: 1px solid #ddd; padding: 20px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .study-card:hover { border-color: var(--primary-color); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        @media screen and (max-width: 768px) { .note-reading-area { padding: 15px; font-size: 1em; } }
     </style>
 </head>
 <body>
@@ -165,6 +174,7 @@
         </header>
 
         <nav id="tab-nav" class="hidden">
+            <button onclick="switchTab('study')">Study Notes</button>
             <button onclick="switchTab('practice')" class="active">Practice</button>
             <button onclick="switchTab('revision')">Revision Plan</button>
             <button onclick="switchTab('backlog')">Backlog</button>
@@ -173,6 +183,22 @@
         </nav>
         
         <main>
+            <div id="study" class="tab-content">
+                <div id="studyListView">
+                    <h2>Study Notes Library</h2>
+                    <p style="margin-bottom: 20px;">Select a subject to read its uploaded notes and materials.</p>
+                    <div class="form-group">
+                        <select id="studySubjectFilter" onchange="renderStudyNotes()"><option value="">-- Select a Subject --</option></select>
+                    </div>
+                    <div id="studyNotesList" style="display: grid; gap: 15px; margin-top: 20px;"></div>
+                </div>
+                <div id="studyReadingView" class="hidden">
+                    <button onclick="closeStudyNote()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Subjects</button>
+                    <h2 id="studyNoteTitle" style="color: var(--primary-color); margin-bottom: 15px;"></h2>
+                    <div id="studyNoteContent" class="note-reading-area"></div>
+                </div>
+            </div>
+
             <div id="practice" class="tab-content active">
                 <div id="loginGatewayView" class="view-stage">
                     <div class="login-container">
@@ -544,10 +570,18 @@
             db.ref('playerProfiles').once('value').then(snapshot => {
                 const firebaseProfiles = snapshot.val() || {};
                 if (Object.keys(firebaseProfiles).length > 0) {
-                    playerProfiles = firebaseProfiles;
+                    Object.keys(firebaseProfiles).forEach(playerName => {
+                        if (!playerProfiles[playerName]) {
+                            playerProfiles[playerName] = firebaseProfiles[playerName];
+                        } else {
+                            playerProfiles[playerName] = { ...playerProfiles[playerName], ...firebaseProfiles[playerName] };
+                        }
+                    });
                     localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
                     updatePlayerSelects();
+                    if (document.getElementById('playerNameDisplay') && currentPlayerName) updateProgressUI();
                 }
+                
                 if (currentPlayerName) {
                     db.ref(`revisionProgress/${currentPlayerName}`).once('value').then(revSnapshot => {
                         const firebaseRevision = revSnapshot.val() || {};
@@ -730,6 +764,69 @@
                     }
                 }
             }
+        }
+
+        // --- NEW STUDY TAB LOGIC ---
+        function initStudyTab() {
+            const studySubjectFilter = document.getElementById('studySubjectFilter');
+            if (!studySubjectFilter) return;
+            
+            const subjectsWithNotes = new Set();
+            Object.values(questionSets).forEach(set => {
+                if (set.notes && set.notes.trim() !== '') {
+                    subjectsWithNotes.add(set.subject || 'Uncategorized');
+                }
+            });
+            
+            const sortedSubjects = Array.from(subjectsWithNotes).sort();
+            const currentVal = studySubjectFilter.value;
+            studySubjectFilter.innerHTML = '<option value="">-- Select a Subject --</option>' + 
+                                           sortedSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (sortedSubjects.includes(currentVal)) { studySubjectFilter.value = currentVal; }
+            renderStudyNotes();
+        }
+
+        function renderStudyNotes() {
+            const subject = document.getElementById('studySubjectFilter').value;
+            const listDiv = document.getElementById('studyNotesList');
+            listDiv.innerHTML = '';
+            
+            if (!subject) {
+                listDiv.innerHTML = '<p>Please select a subject to view its notes.</p>';
+                return;
+            }
+            
+            const setsWithNotes = Object.keys(questionSets).filter(setName => {
+                const set = questionSets[setName];
+                return (set.subject || 'Uncategorized') === subject && set.notes && set.notes.trim() !== '';
+            }).sort();
+            
+            if (setsWithNotes.length === 0) {
+                listDiv.innerHTML = '<p>No notes available for this subject.</p>';
+                return;
+            }
+            
+            listDiv.innerHTML = setsWithNotes.map(setName => `
+                <div class="study-card" onclick="openStudyNote('${setName}')">
+                    <div>
+                        <h3 style="margin-bottom: 5px; color: var(--dark-color);">${setName}</h3>
+                        <p style="font-size: 0.9em; color: #666;">Click to read notes</p>
+                    </div>
+                    <div style="color: var(--primary-color); font-size: 1.5em;">&rarr;</div>
+                </div>
+            `).join('');
+        }
+
+        function openStudyNote(setName) {
+            document.getElementById('studyListView').classList.add('hidden');
+            document.getElementById('studyReadingView').classList.remove('hidden');
+            document.getElementById('studyNoteTitle').textContent = setName;
+            document.getElementById('studyNoteContent').textContent = questionSets[setName].notes || "No content available.";
+        }
+
+        function closeStudyNote() {
+            document.getElementById('studyReadingView').classList.add('hidden');
+            document.getElementById('studyListView').classList.remove('hidden');
         }
 
         function savePlayerDataToLocalStorage() {
@@ -1000,14 +1097,26 @@
             if(mainTabButton) mainTabButton.classList.add('active');
             document.querySelectorAll('main > .tab-content').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
+            
             if (dailyScoresListener) { dailyScoresListener.off(); dailyScoresListener = null; }
+            
+            // New Study Tab Handling
+            if(tabName === 'study') {
+                initStudyTab();
+                closeStudyNote(); 
+            }
+            
             if(tabName === 'leaderboard') {
                 showLeaderboards(); 
                 if (db && isFirebaseConnected) {
                     dailyScoresListener = db.ref('dailyRevisionScores');
                     dailyScoresListener.on('value', snapshot => {
                         const data = snapshot.val();
-                        if (data) { dailyRevisionScores = data; localStorage.setItem('pscDailyRevisionScores', JSON.stringify(data)); showLeaderboards(); }
+                        if (data) { 
+                            dailyRevisionScores = { ...dailyRevisionScores, ...data }; 
+                            localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores)); 
+                            showLeaderboards(); 
+                        }
                     });
                 }
             }
@@ -1546,6 +1655,8 @@
                 const existingSubjects = [...new Set(Object.values(questionSets).map(s => s.subject || ''))].filter(Boolean).sort();
                 existingSubjects.forEach(subj => { const option = document.createElement('option'); option.value = subj; subjectList.appendChild(option); });
             }
+            // Init Study Tab data dynamically
+            initStudyTab();
         }
 
        function updateSubjectSelect() {
