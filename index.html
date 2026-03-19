@@ -165,6 +165,7 @@
         </header>
 
         <nav id="tab-nav" class="hidden">
+            <button onclick="switchTab('study')">Study</button>
             <button onclick="switchTab('practice')" class="active">Practice</button>
             <button onclick="switchTab('revision')">Revision Plan</button>
             <button onclick="switchTab('backlog')">Backlog</button>
@@ -173,6 +174,23 @@
         </nav>
         
         <main>
+            <div id="study" class="tab-content">
+                <h2>Study Notes</h2>
+                <div id="studyViewSelector">
+                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid var(--secondary-color);">
+                        <p>Select a subject to read through the uploaded study notes offline.</p>
+                    </div>
+                    <select id="studySubjectSelect" onchange="renderStudySets()"><option value="">-- Select a Subject --</option></select>
+                    <div id="studySetsList" style="margin-top: 15px;"></div>
+                </div>
+                
+                <div id="studyNotesReader" class="hidden">
+                    <button onclick="closeStudyNotes()" class="btn-warning" style="margin-bottom: 15px;">&larr; Back to Subjects</button>
+                    <h3 id="studyNotesTitle" style="color: var(--primary-color);"></h3>
+                    <div id="studyNotesText" style="background: white; padding: 25px; border-radius: 8px; margin: 10px 0; white-space: pre-wrap; line-height: 1.8; max-height: 60vh; overflow-y: auto; border: 2px solid #e0e6ed; font-size: 1.05em; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02);"></div>
+                </div>
+            </div>
+
             <div id="practice" class="tab-content active">
                 <div id="loginGatewayView" class="view-stage">
                     <div class="login-container">
@@ -510,14 +528,14 @@
         let audioCtx;
 
         let firebaseConfig = {
-  apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs",
-  authDomain: "pscprep-6bb66.firebaseapp.com",
-  databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com",
-  projectId: "pscprep-6bb66",
-  storageBucket: "pscprep-6bb66.firebasestorage.app",
-  messagingSenderId: "926517422096",
-  appId: "1:926517422096:web:ec706c3d125877c74d4295"
-};
+          apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs",
+          authDomain: "pscprep-6bb66.firebaseapp.com",
+          databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com",
+          projectId: "pscprep-6bb66",
+          storageBucket: "pscprep-6bb66.firebasestorage.app",
+          messagingSenderId: "926517422096",
+          appId: "1:926517422096:web:ec706c3d125877c74d4295"
+        };
 
         function initializeFirebase() {
             if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
@@ -1001,6 +1019,7 @@
             document.querySelectorAll('main > .tab-content').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             if (dailyScoresListener) { dailyScoresListener.off(); dailyScoresListener = null; }
+            if (tabName === 'study') renderStudyPage();
             if(tabName === 'leaderboard') {
                 showLeaderboards(); 
                 if (db && isFirebaseConnected) {
@@ -1370,6 +1389,15 @@
                 document.getElementById('modalXPGained').textContent = 'SRS Interval Increased 📈';
             } else {
                 const xpEarned = calculateAndApplyXP(score);
+                
+                // LEADERBOARD FIX: Count regular practice scores for the daily leaderboard
+                if (!dailyRevisionScores[todayStr]) dailyRevisionScores[todayStr] = {};
+                dailyRevisionScores[todayStr][currentPlayerName] = (dailyRevisionScores[todayStr][currentPlayerName] || 0) + score;
+                localStorage.setItem('pscDailyRevisionScores', JSON.stringify(dailyRevisionScores));
+                if (isFirebaseConnected && currentPlayerName) {
+                    db.ref('dailyRevisionScores').set(dailyRevisionScores);
+                }
+                
                 const xpMessage = xpEarned > 0 ? `You earned ${xpEarned} XP!` : 'Keep practicing!';
                 document.getElementById('modalTitle').textContent = percentage >= 80 ? "Excellent!" : (percentage >= 50 ? "Good Job!" : "Keep Trying!");
                 document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
@@ -1545,6 +1573,11 @@
                 subjectList.innerHTML = ''; 
                 const existingSubjects = [...new Set(Object.values(questionSets).map(s => s.subject || ''))].filter(Boolean).sort();
                 existingSubjects.forEach(subj => { const option = document.createElement('option'); option.value = subj; subjectList.appendChild(option); });
+            }
+            
+            // Reload study page view when sets are updated
+            if (document.getElementById('study').classList.contains('active')) {
+                renderStudyPage();
             }
         }
 
@@ -1825,6 +1858,60 @@
                 const rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
                 return `<tr style="${highlightClass}"><td style="padding:10px;">${rankDisplay}</td><td style="padding:10px;">${player.name}</td><td style="padding:10px;">${player.score}</td></tr>`;
             }).join('') || '<tr><td colspan="3">No scores today.</td></tr>';
+        }
+
+        // --- NEW STUDY TAB WORKFLOW ---
+        function renderStudyPage() {
+            document.getElementById('studyViewSelector').classList.remove('hidden');
+            document.getElementById('studyNotesReader').classList.add('hidden');
+            
+            const studySubjectSelect = document.getElementById('studySubjectSelect');
+            const subjects = [...new Set(Object.values(questionSets)
+                                .filter(s => s.notes && s.notes.trim() !== '')
+                                .map(s => s.subject || 'Uncategorized'))].sort();
+            
+            const currentSelection = studySubjectSelect.value;
+            studySubjectSelect.innerHTML = '<option value="">-- Select a Subject to View Notes --</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (subjects.includes(currentSelection)) {
+                studySubjectSelect.value = currentSelection;
+            }
+            renderStudySets();
+        }
+
+        function renderStudySets() {
+            const subject = document.getElementById('studySubjectSelect').value;
+            const listDiv = document.getElementById('studySetsList');
+            listDiv.innerHTML = '';
+            if (!subject) return;
+
+            const setsForSubject = Object.keys(questionSets).filter(setName => {
+                const set = questionSets[setName];
+                return (set.subject || 'Uncategorized') === subject && set.notes && set.notes.trim() !== '';
+            }).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
+
+            if (setsForSubject.length === 0) {
+                listDiv.innerHTML = '<p>No study notes available for this subject.</p>';
+                return;
+            }
+
+            listDiv.innerHTML = setsForSubject.map(setName => `
+                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-left: 4px solid var(--secondary-color);" onclick="openStudyNotes('${setName}')">
+                    <h4>${setName}</h4>
+                    <span style="font-size: 1.2em;">📖</span>
+                </div>
+            `).join('');
+        }
+
+        function openStudyNotes(setName) {
+            document.getElementById('studyViewSelector').classList.add('hidden');
+            document.getElementById('studyNotesReader').classList.remove('hidden');
+            document.getElementById('studyNotesTitle').textContent = setName;
+            document.getElementById('studyNotesText').textContent = questionSets[setName].notes || "No notes available.";
+        }
+
+        function closeStudyNotes() {
+            document.getElementById('studyNotesReader').classList.add('hidden');
+            document.getElementById('studyViewSelector').classList.remove('hidden');
         }
 
         // BUG FIX: Enhanced date fallback so sets without a proper date never get trapped.
