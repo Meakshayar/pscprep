@@ -6,7 +6,7 @@
     <title>PSC Exam Prep - Gamified (Smart SRS)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -19,6 +19,7 @@
             --success-color: #2ecc71;
             --danger-color: #e74c3c;
             --warning-color: #f39c12;
+            --critical-color: #112240;
             --light-color: #ffffff;
             --dark-color: #2c3e50;
             --bg-color: #34495e;
@@ -36,51 +37,101 @@
             justify-content: center; transition: all 0.3s; padding: 20px;
         }
 
+        /* --- EXAM MODE FULLSCREEN LAYOUT --- */
         body.practice-active { 
             padding: 0 !important; margin: 0 !important; 
-            height: 100vh; height: 100dvh; /* Dynamic viewport fix */
+            height: 100vh; height: 100dvh; 
             width: 100vw; overflow: hidden; 
-            overscroll-behavior-y: none; /* Prevent pull-to-refresh freeze */
-            align-items: flex-start; background: #fff; 
+            overscroll-behavior-y: none; 
+            align-items: flex-start; background: #ffffff; 
         }
-        body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #fff; padding: 0; margin: 0; }
+        body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #ffffff; padding: 0; margin: 0; }
         body.practice-active header, body.practice-active nav { display: none !important; }
         body.practice-active main { height: 100%; padding: 0 !important; }
-        
-        /* FIX: Ensure only the active tab is displayed during practice mode */
         body.practice-active .tab-content { padding: 0; height: 100%; display: none; }
         body.practice-active .tab-content.active { display: block; }
 
         #practiceSessionView { 
             height: 100vh; height: 100dvh; 
-            width: 100vw; display: flex; flex-direction: column; background: #fdfdfd; 
+            width: 100vw; display: flex; flex-direction: column; background: #ffffff; 
         }
-        #topProgressIndicator { flex: 0 0 50px; min-height: 50px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 20; }
+        
+        /* Clean Header for Exam */
+        #topProgressIndicator { 
+            flex: 0 0 65px; min-height: 65px; background: #ffffff; border-bottom: 1px solid #f0f0f0; 
+            display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 20; 
+        }
+        .question-counter-pill {
+            background: #ffffff; border: 1px solid #e5e5e5; padding: 6px 20px; 
+            border-radius: 30px; font-weight: 500; font-size: 1.05em; color: #333;
+            display: inline-block;
+        }
+
         #practiceSessionViewContentWrapper { 
             flex: 1 1 auto; min-height: 0; 
             display: flex; flex-direction: column; overflow: hidden; position: relative; 
         }
 
+        #questionScrollContainer { 
+            flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 20px; 
+            background: #ffffff; -webkit-overflow-scrolling: touch; 
+        }
+        
+        /* Removed Bold Weight, Clean Font Style */
+        #practiceQuestion { 
+            font-size: 1.15em; font-weight: 400; line-height: 1.8; color: #222; 
+            max-width: 900px; margin: 0 auto;
+        }
+        
+        #optionsGridContainer { 
+            flex: 0 0 auto; background: #ffffff; padding: 15px 20px; 
+            border-top: 1px solid #f0f0f0; position: static !important; 
+            z-index: 10;
+        }
+
+        #optionsGrid { max-width: 900px; margin: 0 auto; }
+        
+        /* Clean Option Buttons (Pill/Rounded) */
+        .option-grid-item { 
+            display: flex; align-items: center; justify-content: flex-start; 
+            background: #f4f5f9; border: 2px solid transparent; border-radius: 16px; 
+            padding: 12px 15px; font-weight: 500; font-size: 1.05em; color: #333;
+            cursor: pointer; transition: all 0.2s; user-select: none; text-align: left; line-height: 1.4;
+        }
+        .option-grid-item:hover { background: #eaeef6; }
+        
+        /* Correct/Wrong State Colors */
+        .option-grid-item.correct { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .option-grid-item.correct .option-letter { background: #155724; color: white; border-color: #155724;}
+        .option-grid-item.wrong { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .option-grid-item.wrong .option-letter { background: #721c24; color: white; border-color: #721c24;}
+        
+        .option-letter { 
+            font-weight: 600; color: #888; background: white; border: 1px solid #e0e0e0; border-radius: 50%; 
+            width: 28px; height: 28px; display: inline-flex; align-items: center; 
+            justify-content: center; margin-right: 12px; flex-shrink: 0; transition: all 0.2s;
+        }
+
         @media screen and (min-width: 1024px) {
             #practiceSessionViewContentWrapper { flex-direction: row; }
-            #questionScrollContainer { flex: 1 1 auto; min-height: 0; height: 100%; overflow-y: auto; padding: 40px; background: #f8f9fa; border-right: 1px solid #e0e0e0; -webkit-overflow-scrolling: touch; }
-            #practiceQuestion { background: white; padding: 30px; border-radius: var(--border-radius); box-shadow: 0 2px 10px rgba(0,0,0,0.05); font-size: 1.3em; line-height: 1.8; max-width: 900px; margin: 0 auto; }
-            #optionsGridContainer { flex: 0 0 400px; min-height: 0; height: 100%; overflow-y: auto; background: white; padding: 20px; display: flex; flex-direction: column; justify-content: center; border-top: none; position: static !important; -webkit-overflow-scrolling: touch; }
-            #optionsGrid { display: flex; flex-direction: column; gap: 15px; height: auto; }
-            .option-grid-item { width: 100%; padding: 20px; font-size: 1.1em; justify-content: flex-start; text-align: left; }
+            #questionScrollContainer { height: 100%; border-right: 1px solid #f0f0f0; padding: 40px; }
+            #optionsGridContainer { flex: 0 0 450px; height: 100%; padding: 40px 20px; border-top: none; justify-content: center; overflow-y: auto;}
+            #optionsGrid { display: flex; flex-direction: column; gap: 15px; }
         }
 
         @media screen and (max-width: 1023px) {
             #practiceSessionViewContentWrapper { flex-direction: column; }
-            #questionScrollContainer { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 15px; background: #f8f9fa; -webkit-overflow-scrolling: touch; }
-            #practiceQuestion { padding: 15px; font-size: 1.1em; }
-            #optionsGridContainer { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px; background: white; border-top: 1px solid #ddd; position: static !important; -webkit-overflow-scrolling: touch; }
-            #optionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-            .option-grid-item { padding: 12px 5px; font-size: 0.9em; height: 100%; min-height: 50px; }
+            #practiceQuestion { padding: 5px 5px 20px 5px; font-size: 1.1em; }
+            #optionsGridContainer { padding: 15px 15px 25px 15px; }
+            /* Mobile Grid overrides - Keep original 2x2 style but updated looks */
+            #optionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+            .option-grid-item { padding: 10px; font-size: 0.95em; min-height: 60px; border-radius: 12px; }
+            .option-letter { width: 24px; height: 24px; font-size: 0.9em; margin-right: 8px; }
         }
 
-        #examFooter { flex: 0 0 60px; min-height: 60px; background: white; border-top: 1px solid #ddd; display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 15px; z-index: 20; position: static !important; }
+        #examFooter { flex: 0 0 60px; min-height: 60px; background: white; border-top: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 15px; z-index: 20; position: static !important; }
 
+        /* General UI Elements */
         .container, #adminPanel { width: 100%; max-width: 1000px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s; min-height: 80vh; }
         header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 15px; text-align: center; position: relative; }
         nav { display: flex; background: var(--dark-color); flex-wrap: wrap; justify-content: center; }
@@ -98,22 +149,16 @@
         .btn-success { background: linear-gradient(135deg, var(--success-color), #27ae60); }
         .btn-danger { background: linear-gradient(135deg, var(--danger-color), #c0392b); }
         .btn-warning { background: linear-gradient(135deg, var(--warning-color), #d35400); }
+        .btn-critical { background: linear-gradient(135deg, var(--critical-color), #1a2a6c); border: 1px solid #0f1b33; box-shadow: 0 4px 10px rgba(17,34,64,0.3); color: white; }
         
-        .btn-bookmark { background: transparent; border: 1px solid #f1c40f; color: #f1c40f; padding: 4px 10px; font-size: 0.8em; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
-        .btn-bookmark:hover { background: rgba(241, 196, 15, 0.1); }
-        .btn-bookmark.active { background: #f1c40f; color: var(--dark-color); border-color: #f1c40f; }
+        .btn-bookmark { background: #fff; border: 1px solid #e0e0e0; color: #555; padding: 6px 12px; font-size: 0.85em; border-radius: 20px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .btn-bookmark:hover { background: #f8f9fa; }
+        .btn-bookmark.active { background: #fff9c4; color: #f57f17; border-color: #fff59d; }
 
         input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; }
 
-        .statement-question { text-align: justify; line-height: 1.8; }
-        .statement-question strong { display: block; margin-bottom: 15px; color: #2c3e50; }
+        .statement-question { text-align: justify; line-height: 1.8; font-weight: 400; }
         .statement-question br { display: block; margin-bottom: 8px; content: ""; }
-
-        .option-grid-item { display: flex; align-items: center; justify-content: center; background: white; border: 2px solid #e9ecef; border-radius: var(--border-radius); font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }
-        .option-grid-item:hover { border-color: var(--primary-color); background: #fefefe; }
-        .option-grid-item.correct { background: var(--success-color); color: white; border-color: var(--success-color); }
-        .option-grid-item.wrong { background: var(--danger-color); color: white; border-color: var(--danger-color); }
-        .option-letter { font-weight: bold; margin-right: 10px; min-width: 20px; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes gradientAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
@@ -141,11 +186,18 @@
         .login-container { max-width: 400px; margin: 40px auto; padding: 20px; }
         .login-form { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
 
-        /* --- STUDY TAB CSS --- */
-        .note-reading-area { background: #fff; padding: 25px; border-radius: var(--border-radius); line-height: 1.8; font-size: 1.1em; color: #2c3e50; box-shadow: var(--shadow); white-space: pre-wrap; word-wrap: break-word; max-width: 900px; margin: 0 auto; border: 1px solid #e0e6ed; }
+        /* --- STUDY TAB & READING UI CSS --- */
+        .note-reading-area { background: #fff; padding: 25px; border-radius: var(--border-radius); line-height: 1.8; font-size: 1.1em; color: #2c3e50; box-shadow: var(--shadow); white-space: pre-wrap; word-wrap: break-word; flex-grow: 1; overflow-y: auto; border: 1px solid #e0e6ed; }
         .study-card { background: #fdfdfd; border: 1px solid #ddd; padding: 20px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
         .study-card:hover { border-color: var(--primary-color); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        @media screen and (max-width: 768px) { .note-reading-area { padding: 15px; font-size: 1em; } }
+        
+        .progress-track { width: 6px; background: #e0e6ed; border-radius: 4px; flex-shrink: 0; margin-left: 15px; position: relative; }
+        .progress-fill { width: 100%; height: 0%; background: var(--success-color); border-radius: 4px; transition: height 0.15s ease-out; }
+
+        @media screen and (max-width: 768px) { 
+            .note-reading-area { padding: 15px; font-size: 1em; } 
+            .progress-track { margin-left: 8px; width: 4px; }
+        }
     </style>
 </head>
 <body>
@@ -180,6 +232,7 @@
             <button onclick="switchTab('study')">Study Notes</button>
             <button onclick="switchTab('practice')" class="active">Practice</button>
             <button onclick="switchTab('revision')">Revision</button>
+            <button onclick="switchTab('analysis')">Analysis</button>
             <button onclick="switchTab('backlog')">Backlog</button>
             <button onclick="switchTab('bookmarks')">Bookmarks</button>
             <button onclick="switchTab('leaderboard')">Leaderboard</button>
@@ -196,10 +249,15 @@
                     </div>
                     <div id="studyNotesList" style="display: grid; gap: 15px; margin-top: 20px;"></div>
                 </div>
-                <div id="studyReadingView" class="hidden">
-                    <button onclick="closeStudyNote()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Subjects</button>
-                    <h2 id="studyNoteTitle" style="color: var(--primary-color); margin-bottom: 15px;"></h2>
-                    <div id="studyNoteContent" class="note-reading-area"></div>
+                <div id="studyReadingView" class="hidden" style="display: flex; flex-direction: column; height: 75vh;">
+                    <div>
+                        <button onclick="closeStudyNote()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Subjects</button>
+                        <h2 id="studyNoteTitle" style="color: var(--primary-color); margin-bottom: 15px;"></h2>
+                    </div>
+                    <div style="display: flex; flex: 1; min-height: 0;">
+                        <div id="studyNoteContent" class="note-reading-area" onscroll="updateReadProgress(this, 'studyProgressFill')"></div>
+                        <div class="progress-track"><div id="studyProgressFill" class="progress-fill"></div></div>
+                    </div>
                 </div>
             </div>
 
@@ -243,22 +301,29 @@
                     <button onclick="syncQuestionSetsFromFirebase()" class="btn-warning" style="width: 100%; margin-top: 10px; font-size: 0.9em;">Sync Latest Questions</button>
                 </div>
 
-                <div id="revisionNotesView" class="view-stage hidden" style="padding: 10px;">
-                    <button onclick="switchPracticeView('practiceSetupView')" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Setup</button>
-                    <h2 id="revisionNotesTitle" style="color: var(--primary-color);">Study Notes</h2>
-                    <div id="revisionNotesContent" style="background: white; padding: 25px; border-radius: 8px; margin: 20px 0; white-space: pre-wrap; line-height: 1.8; max-height: 55vh; overflow-y: auto; border: 2px solid #e0e6ed; font-size: 1.05em; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02);"></div>
-                    <button id="startPracticeFromNotesBtn" class="btn-success" style="width: 100%; padding: 15px; font-size: 1.2em; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);">I'm ready. Start Practice &rarr;</button>
+                <div id="revisionNotesView" class="view-stage hidden" style="padding: 20px; display: flex; flex-direction: column; height: 100vh;">
+                    <div>
+                        <button onclick="switchPracticeView('practiceSetupView')" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Setup</button>
+                        <h2 id="revisionNotesTitle" style="color: var(--primary-color); margin-bottom: 10px;">Study Notes</h2>
+                    </div>
+                    <div style="display: flex; flex: 1; min-height: 0; margin-bottom: 20px;">
+                        <div id="revisionNotesContent" class="note-reading-area" style="font-size: 1.15em;" onscroll="updateReadProgress(this, 'revProgressFill')"></div>
+                        <div class="progress-track"><div id="revProgressFill" class="progress-fill"></div></div>
+                    </div>
+                    <button id="startPracticeFromNotesBtn" class="btn-success" style="width: 100%; padding: 20px; font-size: 1.3em; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); margin-bottom: 20px;">I'm ready. Start Practice &rarr;</button>
                 </div>
 
                 <div id="practiceSessionView" class="view-stage hidden">
                     <div id="topProgressIndicator">
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <div>Q: <span id="currentQuestionNum">1</span>/<span id="totalQuestions">0</span></div>
-                            <div id="practiceTimer" style="font-weight: bold;">Time: 00:00</div>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="toggleBookmarkCurrentQuestion()" id="bookmarkQuestionBtn" class="btn-bookmark">☆ Save</button>
-                                <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="padding: 4px 10px; font-size: 0.8em; border: 1px solid white;">Report</button>
-                            </div>
+                        <div style="flex: 1; display: flex; justify-content: flex-start; gap: 8px;">
+                            <button onclick="toggleBookmarkCurrentQuestion()" id="bookmarkQuestionBtn" class="btn-bookmark">☆ Save</button>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <span class="question-counter-pill"><span id="currentQuestionNum">1</span>/<span id="totalQuestions">0</span></span>
+                        </div>
+                        <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+                            <span id="practiceTimer" style="font-weight: 500; color: #666; font-size: 0.95em;">00:00</span>
+                            <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="padding: 6px 12px; font-size: 0.8em; border-radius: 20px; background: transparent; color: #e74c3c; border: 1px solid #ffcccc;">Report</button>
                         </div>
                     </div>
                     
@@ -269,10 +334,10 @@
 
                         <div id="optionsGridContainer">
                             <div id="optionsGrid">
-                                <div class="option-grid-item" onclick="selectOption(0)" id="optionGridA"><span class="option-letter">A.</span> <span class="option-text"></span></div>
-                                <div class="option-grid-item" onclick="selectOption(1)" id="optionGridB"><span class="option-letter">B.</span> <span class="option-text"></span></div>
-                                <div class="option-grid-item" onclick="selectOption(2)" id="optionGridC"><span class="option-letter">C.</span> <span class="option-text"></span></div>
-                                <div class="option-grid-item" onclick="selectOption(3)" id="optionGridD"><span class="option-letter">D.</span> <span class="option-text"></span></div>
+                                <div class="option-grid-item" onclick="selectOption(0)" id="optionGridA"><span class="option-letter">A</span> <span class="option-text"></span></div>
+                                <div class="option-grid-item" onclick="selectOption(1)" id="optionGridB"><span class="option-letter">B</span> <span class="option-text"></span></div>
+                                <div class="option-grid-item" onclick="selectOption(2)" id="optionGridC"><span class="option-letter">C</span> <span class="option-text"></span></div>
+                                <div class="option-grid-item" onclick="selectOption(3)" id="optionGridD"><span class="option-letter">D</span> <span class="option-text"></span></div>
                             </div>
                         </div>
                     </div>
@@ -280,8 +345,8 @@
                     <div class="score" id="practiceScore" style="display: none;">Score: 0</div>
 
                     <div id="examFooter">
-                        <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn">End Session</button>
-                        <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none;">Next Question &rarr;</button>
+                        <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" style="background: transparent; border: 1px solid #ccc; color: #666; font-weight: 500;">End Session</button>
+                        <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none; padding: 12px 25px;">Next Question &rarr;</button>
                     </div>
                 </div>
             </div>
@@ -294,6 +359,15 @@
                 <p id="revisionUserPrompt" class="hidden" style="color: var(--danger-color);">Select a player in the Practice tab first.</p>
                 <div id="dueTodayList"></div>
             </div>
+
+            <div id="analysis" class="tab-content">
+                <h2>Revision Analysis</h2>
+                <p style="margin-bottom: 20px;">Track your subject-wise progress through the SRS intervals.</p>
+                <div id="analysisSubjectFilterContainer" class="form-group hidden">
+                    <select id="analysisSubjectFilter" onchange="renderAnalysisTopics()"></select>
+                </div>
+                <div id="analysisContent"></div>
+            </div>
             
             <div id="backlog" class="tab-content">
                 <h2>Backlog</h2>
@@ -304,6 +378,9 @@
             <div id="bookmarks" class="tab-content">
                 <h2>Starred Questions</h2>
                 <p style="margin-bottom: 20px;">Review questions you saved during practice or revision.</p>
+                <div id="bookmarkSubjectFilterContainer" class="form-group hidden">
+                    <select id="bookmarkSubjectFilter" onchange="renderBookmarksTopics()"></select>
+                </div>
                 <div id="bookmarksList"></div>
             </div>
 
@@ -489,6 +566,12 @@
         function getTodayDateString() { 
             return getLocalYYYYMMDD(new Date()); 
         }
+        
+        function updateReadProgress(element, indicatorId) {
+            const maxScroll = element.scrollHeight - element.clientHeight;
+            const percentage = maxScroll > 5 ? Math.min(100, (element.scrollTop / maxScroll) * 100) : 100;
+            document.getElementById(indicatorId).style.height = `${percentage}%`;
+        }
 
         function clearLocalStorageProfiles() {
             localStorage.removeItem('pscPlayerProfiles');
@@ -596,7 +679,6 @@
                 }
                 
                 if (currentPlayerName) {
-                    // Sync Revision Progress
                     db.ref(`revisionProgress/${currentPlayerName}`).once('value').then(revSnapshot => {
                         const firebaseRevision = revSnapshot.val() || {};
                         if (Object.keys(firebaseRevision).length > 0) {
@@ -608,7 +690,6 @@
                         }
                     });
                     
-                    // Sync Bookmarks
                     db.ref(`bookmarkedQuestions/${currentPlayerName}`).once('value').then(snap => {
                         if (snap.val()) {
                             bookmarkedQuestions[currentPlayerName] = snap.val();
@@ -792,7 +873,6 @@
             }
         }
 
-        // --- NEW STUDY TAB LOGIC ---
         function initStudyTab() {
             const studySubjectFilter = document.getElementById('studySubjectFilter');
             if (!studySubjectFilter) return;
@@ -847,7 +927,11 @@
             document.getElementById('studyListView').classList.add('hidden');
             document.getElementById('studyReadingView').classList.remove('hidden');
             document.getElementById('studyNoteTitle').textContent = setName;
-            document.getElementById('studyNoteContent').textContent = questionSets[setName].notes || "No content available.";
+            
+            const noteEl = document.getElementById('studyNoteContent');
+            noteEl.textContent = questionSets[setName].notes || "No content available.";
+            noteEl.scrollTop = 0; 
+            updateReadProgress(noteEl, 'studyProgressFill'); 
         }
 
         function closeStudyNote() {
@@ -1134,6 +1218,7 @@
             
             if(tabName === 'study') { initStudyTab(); closeStudyNote(); }
             if(tabName === 'bookmarks') { renderBookmarksPage(); }
+            if(tabName === 'analysis') { renderAnalysisPage(); }
             
             if(tabName === 'leaderboard') {
                 showLeaderboards(); 
@@ -1297,7 +1382,6 @@
             practiceInProgress = true;
             initAudio();
             isRevisionMode = isRev; currentRevisionKey = revisionKey; 
-            updateRevisionModeCSS();
             if (isRev) { currentSet = [...(questionSets[setName].questions || [])]; } 
             else { currentSet = [...(questionSets[setName].questions || [])].sort(() => Math.random() - 0.5); }
             if (currentSet.length === 0) { showNotification('Selected set is empty.', 'error'); practiceInProgress = false; switchPracticeView('practiceSetupView'); return; }
@@ -1365,13 +1449,13 @@
             
             const question = currentSet[currentQuestionIndex];
             const qText = question.question || "Missing question text"; 
-            let questionHTML = '';
             
+            let questionHTML = '';
             if (question.type === 'statement') {
                 let cleanedQuestion = qText.replace(/1\./g, '<br><br>1.').replace(/2\./g, '<br><br>2.').replace(/3\./g, '<br><br>3.').replace(/4\./g, '<br><br>4.').replace(/<br><br><br>/g, '<br><br>');
-                questionHTML = `<div class="statement-question"><strong>${currentQuestionIndex + 1}. ${cleanedQuestion}</strong></div>`;
+                questionHTML = `<div class="statement-question">${currentQuestionIndex + 1}. ${cleanedQuestion}</div>`;
             } else {
-                questionHTML = `<div><strong>${currentQuestionIndex + 1}. ${qText}</strong></div>`;
+                questionHTML = `<div>${currentQuestionIndex + 1}. ${qText}</div>`;
             }
             document.getElementById('practiceQuestion').innerHTML = questionHTML;
             
@@ -1387,13 +1471,9 @@
                     if (optionTextSpan) { optionTextSpan.textContent = qOptions[index] || ''; }
                 }
             });
-            if (isRevisionMode) {
-                document.getElementById('reportQuestionBtn').style.display = 'inline-block';
-                document.getElementById('endPracticeBtn').style.display = 'inline-block'; 
-            } else {
-                document.getElementById('reportQuestionBtn').style.display = 'none';
-                document.getElementById('endPracticeBtn').style.display = 'inline-block';
-            }
+            
+            document.getElementById('reportQuestionBtn').style.display = 'inline-block';
+            document.getElementById('endPracticeBtn').style.display = 'inline-block'; 
         }
 
         // --- NEW BOOKMARKS FEATURE LOGIC ---
@@ -1427,35 +1507,84 @@
 
         function renderBookmarksPage() {
             const listDiv = document.getElementById('bookmarksList');
-            if (!currentPlayerName) { listDiv.innerHTML = '<p style="color:var(--danger-color);">Select a player in the Practice tab first.</p>'; return; }
+            if (!currentPlayerName) { 
+                listDiv.innerHTML = '<p style="color:var(--danger-color);">Select a player in the Practice tab first.</p>'; 
+                document.getElementById('bookmarkSubjectFilterContainer').classList.add('hidden');
+                return; 
+            }
             
             const userBookmarks = bookmarkedQuestions[currentPlayerName] || [];
             if (userBookmarks.length === 0) {
                 listDiv.innerHTML = '<div class="dashboard-card" style="background: #f0f4f8; color: #333;"><p>No starred questions yet.</p><p style="font-size: 0.9em; margin-top: 10px;">When taking an exam, click the <strong>☆ Save</strong> button to bookmark tricky questions. They will appear here for quick review!</p></div>';
+                document.getElementById('bookmarkSubjectFilterContainer').classList.add('hidden');
                 return;
             }
+
+            const subjects = new Set();
+            userBookmarks.forEach(bm => {
+                subjects.add((questionSets[bm.setName] && questionSets[bm.setName].subject) ? questionSets[bm.setName].subject : 'Uncategorized');
+            });
             
-            listDiv.innerHTML = userBookmarks.map((bm, index) => {
-                const correctOpt = bm.options ? bm.options[bm.correctAnswer.charCodeAt(0) - 65] : '';
-                let cleanedQuestion = bm.question.replace(/1\./g, '<br>1.').replace(/2\./g, '<br>2.').replace(/3\./g, '<br>3.').replace(/4\./g, '<br>4.');
-                
-                return `<div class="history-item" style="border-left-color: #f1c40f; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <span style="font-size: 0.8em; background: #eee; padding: 4px 8px; border-radius: 4px; margin-bottom: 5px; display:inline-block; font-weight: bold; color: #555;">📁 ${bm.setName}</span>
-                        <button onclick="removeBookmark(${index})" class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;">Remove</button>
-                    </div>
-                    <div class="statement-question" style="margin-top: 10px; font-size: 1.05em; line-height: 1.6;"><strong>${cleanedQuestion}</strong></div>
-                    <div style="margin-top: 15px; background: #e8f5e9; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-color);">
-                        <strong style="color: var(--success-color);">Answer: ${bm.correctAnswer}. ${correctOpt}</strong>
-                    </div>
-                </div>`;
-            }).reverse().join(''); // Reverse to show newest bookmarks at the top
+            const sortedSubjects = Array.from(subjects).sort();
+            const filterSelect = document.getElementById('bookmarkSubjectFilter');
+            const currentVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + sortedSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (sortedSubjects.includes(currentVal)) { filterSelect.value = currentVal; }
+
+            document.getElementById('bookmarkSubjectFilterContainer').classList.remove('hidden');
+            renderBookmarksTopics();
+        }
+
+        function renderBookmarksTopics() {
+            const listDiv = document.getElementById('bookmarksList');
+            const subject = document.getElementById('bookmarkSubjectFilter').value;
+
+            if (!subject) {
+                listDiv.innerHTML = '<p>Please select a subject to view bookmarks.</p>';
+                return;
+            }
+
+            const userBookmarks = bookmarkedQuestions[currentPlayerName] || [];
+            const groupedBookmarks = {};
+
+            userBookmarks.forEach((bm, index) => {
+                const bmSubject = (questionSets[bm.setName] && questionSets[bm.setName].subject) ? questionSets[bm.setName].subject : 'Uncategorized';
+                if (bmSubject === subject) {
+                    if (!groupedBookmarks[bm.setName]) groupedBookmarks[bm.setName] = [];
+                    bm.originalIndex = index; 
+                    groupedBookmarks[bm.setName].push(bm);
+                }
+            });
+
+            let html = '';
+            for (const setName of Object.keys(groupedBookmarks).sort()) {
+                html += `<div style="margin-bottom: 25px;">
+                            <h4 style="margin-bottom: 10px; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 5px;">📁 ${setName}</h4>`;
+
+                const reversedSetBookmarks = [...groupedBookmarks[setName]].reverse();
+
+                html += reversedSetBookmarks.map(bm => {
+                    const correctOpt = bm.options ? bm.options[bm.correctAnswer.charCodeAt(0) - 65] : '';
+                    let cleanedQuestion = (bm.question || '').replace(/\s+/g, ' ').replace(/(\d\.)\s/g, '<br><br>$1 ').replace(/^(<br>)+/, '').trim();
+                    
+                    return `<div class="history-item" style="border-left-color: #f1c40f; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                        <div style="display:flex; justify-content:flex-end; align-items:flex-start;">
+                            <button onclick="removeBookmark(${bm.originalIndex})" class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;">Remove</button>
+                        </div>
+                        <div class="statement-question" style="margin-top: 5px; font-size: 1.05em; line-height: 1.6;">${cleanedQuestion}</div>
+                        <div style="margin-top: 15px; background: #e8f5e9; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-color);">
+                            <strong style="color: var(--success-color);">Answer: ${bm.correctAnswer}. ${correctOpt}</strong>
+                        </div>
+                    </div>`;
+                }).join('');
+                html += `</div>`;
+            }
+            listDiv.innerHTML = html || '<p>No bookmarks found for this subject.</p>';
         }
 
         function removeBookmark(index) {
             if (!currentPlayerName || !bookmarkedQuestions[currentPlayerName]) return;
-            const reversedIndex = bookmarkedQuestions[currentPlayerName].length - 1 - index; // Adjust because we reverse() the display array
-            bookmarkedQuestions[currentPlayerName].splice(reversedIndex, 1);
+            bookmarkedQuestions[currentPlayerName].splice(index, 1);
             localStorage.setItem('pscBookmarkedQuestions', JSON.stringify(bookmarkedQuestions));
             if (isFirebaseConnected) db.ref(`bookmarkedQuestions/${currentPlayerName}`).set(bookmarkedQuestions[currentPlayerName]);
             renderBookmarksPage();
@@ -1628,7 +1757,6 @@
 
         function finishExamFlow() {
             if (isRevisionMode) {
-                // Calculate total finished vs remaining for today's revisions
                 let completedTodayCount = 0;
                 const todayStr = getTodayDateString();
                 for (const set in revisionProgress[currentPlayerName]) {
@@ -1653,6 +1781,7 @@
             currentSet = [];
             renderRevisionPage();
             renderBacklogPage();
+            if(document.getElementById('analysis').classList.contains('active')) renderAnalysisPage();
             updateAllBadges();
             setTimeout(() => { savePlayerProfiles(); syncRevisionProgressOnly(); }, 500);
         }
@@ -1757,7 +1886,6 @@
                 const existingSubjects = [...new Set(Object.values(questionSets).map(s => s.subject || ''))].filter(Boolean).sort();
                 existingSubjects.forEach(subj => { const option = document.createElement('option'); option.value = subj; subjectList.appendChild(option); });
             }
-            // Init Study Tab data dynamically
             initStudyTab();
         }
 
@@ -2082,16 +2210,35 @@
                 if (nextDueDateStr === todayStr) dueTodayItems.push(itemData);
                 else if (nextDueDate < todayDate) backlogItems.push(itemData);
             }
-            const fullBacklog = [...dueTodayItems, ...backlogItems].sort((a, b) => a.revisionDate - b.revisionDate);
-            backlogItems.sort((a, b) => a.revisionDate - b.revisionDate);
+            
+            backlogItems.sort((a, b) => b.revisionDate - a.revisionDate);
+            const fullBacklog = [...dueTodayItems, ...backlogItems].sort((a, b) => b.revisionDate - a.revisionDate);
+            
             return { dueToday: dueTodayItems, backlog: backlogItems, all: fullBacklog };
         }
 
         function renderRevisionItem(item, isBacklog) {
-            let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? 'var(--danger-color)' : 'var(--primary-color)'};">
+            const todayDate = new Date();
+            todayDate.setHours(0,0,0,0);
+            const diffTime = todayDate - item.revisionDate;
+            const daysAgo = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            const isCritical = isBacklog && daysAgo > 0 && daysAgo <= 3;
+            const btnClass = isCritical ? 'btn-critical' : 'btn-warning';
+            
+            let overdueText = `Due Today`;
+            if (isBacklog) {
+                overdueText = `<span style="color:${isCritical ? 'var(--critical-color)' : 'var(--danger-color)'}; font-weight:bold;">${daysAgo === 1 ? '1 day ago' : daysAgo + ' days ago'}</span>`;
+            }
+
+            let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? (isCritical ? 'var(--critical-color)' : 'var(--danger-color)') : 'var(--primary-color)'}; position: relative;">
                 <div style="display:flex; justify-content:space-between; align-items:center;"><h4>${item.setName}</h4><span style="font-size: 0.8em; background: #eee; padding: 2px 6px; border-radius: 4px;">Interval: ${item.day} Days</span></div>`;
-            const overdueText = isBacklog ? `<span style="color:var(--danger-color); font-weight:bold;">Due: ${item.revisionDateStr}</span>` : `Due Today`;
-            itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p><p style="margin-bottom: 10px;">${overdueText}</p><button onclick="startRevisionPractice('${item.setName}', '${item.setName}')" class="btn-warning">Start Revision</button></div>`; 
+            
+            if (isCritical) {
+                itemHtml += `<span style="position: absolute; top: -10px; right: -5px; background: var(--danger-color); color: white; padding: 2px 8px; font-size: 0.7em; font-weight: bold; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">CRITICAL</span>`;
+            }
+
+            itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p><p style="margin-bottom: 10px;">${overdueText}</p><button onclick="startRevisionPractice('${item.setName}', '${item.setName}')" class="${btnClass}">${isCritical ? 'Recover Now' : 'Start Revision'}</button></div>`; 
             return itemHtml;
         }
 
@@ -2113,10 +2260,117 @@
             backlogDiv.innerHTML = backlog.length > 0 ? backlog.map(item => renderRevisionItem(item, true)).join('') : '<p>Backlog clear!</p>';
         }
 
+        // --- NEW ANALYSIS TAB LOGIC ---
+        function renderAnalysisPage() {
+            const analysisDiv = document.getElementById('analysisContent');
+            const filterContainer = document.getElementById('analysisSubjectFilterContainer');
+            
+            if (!currentPlayerName) {
+                analysisDiv.innerHTML = '<p style="color:var(--danger-color);">Select a player in the Practice tab first.</p>';
+                filterContainer.classList.add('hidden');
+                return;
+            }
+
+            const subjects = new Set();
+            for (const setName in questionSets) {
+                if (questionSets[setName].type !== 'pdf' && questionSets[setName].questions && questionSets[setName].questions.length > 0) {
+                    subjects.add(questionSets[setName].subject || 'Uncategorized');
+                }
+            }
+
+            if (subjects.size === 0) {
+                analysisDiv.innerHTML = '<p>No data available to analyze yet.</p>';
+                filterContainer.classList.add('hidden');
+                return;
+            }
+
+            const sortedSubjects = Array.from(subjects).sort();
+            const filterSelect = document.getElementById('analysisSubjectFilter');
+            const currentVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + sortedSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (sortedSubjects.includes(currentVal)) { filterSelect.value = currentVal; }
+
+            filterContainer.classList.remove('hidden');
+            renderAnalysisTopics();
+        }
+
+        function renderAnalysisTopics() {
+            const analysisDiv = document.getElementById('analysisContent');
+            const subject = document.getElementById('analysisSubjectFilter').value;
+            
+            if (!subject) {
+                analysisDiv.innerHTML = '<p>Please select a subject to view topics.</p>';
+                return;
+            }
+
+            const subjectData = [];
+            for (const setName in questionSets) {
+                const set = questionSets[setName];
+                if (!set || set.type === 'pdf' || !set.questions || set.questions.length === 0) continue;
+                
+                const setSubject = set.subject || 'Uncategorized';
+                if (setSubject !== subject) continue;
+
+                let stage = 0;
+                if (revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][setName]) {
+                    stage = revisionProgress[currentPlayerName][setName].currentStage || 0;
+                } else {
+                    let maxStage = -1;
+                    [1, 3, 7, 14, 21, 30].forEach((day, index) => {
+                        const legacyKey = `${setName}_RevDay${day}`;
+                        if (revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][legacyKey] && revisionProgress[currentPlayerName][legacyKey].success) maxStage = index;
+                    });
+                    if (maxStage !== -1) stage = maxStage + 1;
+                }
+
+                subjectData.push({ setName: setName, stage: stage, totalStages: SRS_INTERVALS.length });
+            }
+
+            if (subjectData.length === 0) {
+                analysisDiv.innerHTML = '<p>No topics found in this subject.</p>';
+                return;
+            }
+
+            let html = `<div class="dashboard-card" style="background: #f8f9fa; color: #333; margin-bottom: 20px; border-left: 5px solid var(--primary-color);">
+                            <h3 style="margin-bottom: 15px; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 5px;">${subject}</h3>
+                            <div style="display: grid; gap: 10px;">`;
+
+            subjectData.sort((a, b) => a.setName.localeCompare(b.setName)).forEach(item => {
+                const percent = Math.min(100, Math.round((item.stage / item.totalStages) * 100));
+                html += `<div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong>${item.setName}</strong>
+                                <span style="font-size: 0.85em; background: ${percent === 100 ? 'var(--success-color)' : '#eee'}; color: ${percent === 100 ? 'white' : '#555'}; padding: 3px 8px; border-radius: 12px;">Stage ${item.stage}/${item.totalStages}</span>
+                            </div>
+                            <div class="xp-bar" style="height: 6px; background: #eee; border-radius: 3px; width: 100%;">
+                                <div class="xp-bar-fill" style="height: 100%; background: ${percent === 100 ? 'var(--success-color)' : 'var(--secondary-color)'}; width: ${percent}%; border-radius: 3px;"></div>
+                            </div>
+                         </div>`;
+            });
+            html += `</div></div>`;
+            analysisDiv.innerHTML = html;
+        }
+
         function startRevisionPractice(setName, revisionKey) { 
             if (!currentPlayerName) { showNotification('Select a player.', 'error'); switchTab('practice'); return; };
+
+            let currentStage = 0;
+            if (revisionProgress[currentPlayerName] && revisionProgress[currentPlayerName][setName]) {
+                currentStage = revisionProgress[currentPlayerName][setName].currentStage || 0;
+            }
+
+            if (currentStage >= 3) {
+                const skip = confirm(`This is your ${currentStage + 1}th revision. Would you like to skip the notes and go directly to the exam?`);
+                if (skip) {
+                    document.getElementById('subjectSelect').value = questionSets[setName]?.subject || '';
+                    updatePracticeSetSelect(document.getElementById('subjectSelect').value);
+                    document.getElementById('practiceSetSelect').value = setName;
+                    setTimeout(() => startPracticeWrapper(setName, true, revisionKey), 100);
+                    return;
+                }
+            }
+
             switchTab('practice'); 
-            
             switchPracticeView('revisionNotesView');
             
             document.getElementById('revisionNotesTitle').textContent = `Study Notes: ${setName}`;
@@ -2132,6 +2386,8 @@
                 contentDiv.style.fontStyle = 'italic';
                 contentDiv.style.color = '#777';
             }
+            contentDiv.scrollTop = 0;
+            updateReadProgress(contentDiv, 'revProgressFill');
             
             const startBtn = document.getElementById('startPracticeFromNotesBtn');
             startBtn.onclick = () => {
@@ -2285,7 +2541,7 @@
                 }
                 const qText = ans.questionText || "";
                 let questionText = qText.replace(/1\./g, '<br>1.').replace(/2\./g, '<br><br>2.').replace(/3\./g, '<br><br>3.').replace(/4\./g, '<br><br>4.');
-                return `<div class="history-item" style="border-left-color: var(--danger-color);"><div class="statement-question"><strong>${index + 1}. ${questionText}</strong></div>
+                return `<div class="history-item" style="border-left-color: var(--danger-color);"><div class="statement-question" style="font-weight:400;">${index + 1}. ${questionText}</div>
                         <p style="color: var(--danger-color);">Your Answer: ${ans.selectedAnswer || 'None'}. ${yourAnswerText}</p>
                         <p style="color: var(--success-color);">Correct Answer: ${correctAns}. ${correctText}</p></div>`;
             }).join('');
@@ -2495,7 +2751,6 @@
         }
 
        function reportCurrentQuestion() {
-            if (!isRevisionMode) { showNotification('Only in revision mode.', 'warning'); return; }
             const question = currentSet[currentQuestionIndex];
             const isAlreadyReported = reportedQuestions.some(r => r.setName === currentAttempt.setName && r.question.question === question.question);
             if (isAlreadyReported) { showNotification('Already reported.', 'warning'); return; }
