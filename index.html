@@ -194,9 +194,32 @@
         .progress-track { width: 6px; background: #e0e6ed; border-radius: 4px; flex-shrink: 0; margin-left: 15px; position: relative; }
         .progress-fill { width: 100%; height: 0%; background: var(--success-color); border-radius: 4px; transition: height 0.15s ease-out; }
 
+        /* --- MOBILE FULLSCREEN NOTES ADDITION --- */
         @media screen and (max-width: 768px) { 
             .note-reading-area { padding: 15px; font-size: 1em; } 
             .progress-track { margin-left: 8px; width: 4px; }
+
+            body.notes-fullscreen-active {
+                padding: 0 !important; margin: 0 !important;
+                height: 100vh; height: 100dvh;
+                width: 100vw; overflow: hidden;
+                overscroll-behavior-y: none;
+                align-items: flex-start; background: #ffffff;
+            }
+            body.notes-fullscreen-active .container {
+                max-width: 100% !important; width: 100% !important; height: 100% !important;
+                border-radius: 0; box-shadow: none; border: none; margin: 0; padding: 0;
+            }
+            body.notes-fullscreen-active header,
+            body.notes-fullscreen-active nav {
+                display: none !important;
+            }
+            body.notes-fullscreen-active main { height: 100%; padding: 0 !important; }
+            body.notes-fullscreen-active .tab-content { padding: 0; height: 100%; }
+            body.notes-fullscreen-active #studyReadingView,
+            body.notes-fullscreen-active #revisionNotesView {
+                padding: 15px !important; height: 100% !important;
+            }
         }
     </style>
 </head>
@@ -303,7 +326,7 @@
 
                 <div id="revisionNotesView" class="view-stage hidden" style="padding: 20px; display: flex; flex-direction: column; height: 100vh;">
                     <div>
-                        <button onclick="switchPracticeView('practiceSetupView')" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Setup</button>
+                        <button onclick="closeRevisionNoteView()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Setup</button>
                         <h2 id="revisionNotesTitle" style="color: var(--primary-color); margin-bottom: 10px;">Study Notes</h2>
                     </div>
                     <div style="display: flex; flex: 1; min-height: 0; margin-bottom: 20px;">
@@ -632,14 +655,14 @@
         let audioCtx;
 
         let firebaseConfig = {
-  apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs",
-  authDomain: "pscprep-6bb66.firebaseapp.com",
-  databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com",
-  projectId: "pscprep-6bb66",
-  storageBucket: "pscprep-6bb66.firebasestorage.app",
-  messagingSenderId: "926517422096",
-  appId: "1:926517422096:web:ec706c3d125877c74d4295"
-};
+          apiKey: "AIzaSyAOY1tTJ1FLVByugT4BPZ2p67L2DwzO3cs",
+          authDomain: "pscprep-6bb66.firebaseapp.com",
+          databaseURL: "https://pscprep-6bb66-default-rtdb.firebaseio.com",
+          projectId: "pscprep-6bb66",
+          storageBucket: "pscprep-6bb66.firebasestorage.app",
+          messagingSenderId: "926517422096",
+          appId: "1:926517422096:web:ec706c3d125877c74d4295"
+        };
 
         function initializeFirebase() {
             if (firebase.apps.length === 0) firebase.initializeApp(firebaseConfig);
@@ -873,6 +896,17 @@
             }
         }
 
+        // --- HAPTIC FEEDBACK ADDITION ---
+        function triggerVibration(isCorrect) {
+            if ("vibrate" in navigator) {
+                if (isCorrect) {
+                    navigator.vibrate(50); // slight vibration
+                } else {
+                    navigator.vibrate(200); // slightly longer vibration
+                }
+            }
+        }
+
         function initStudyTab() {
             const studySubjectFilter = document.getElementById('studySubjectFilter');
             if (!studySubjectFilter) return;
@@ -924,6 +958,7 @@
         }
 
         function openStudyNote(setName) {
+            document.body.classList.add('notes-fullscreen-active'); // ADDED FOR FULLSCREEN
             document.getElementById('studyListView').classList.add('hidden');
             document.getElementById('studyReadingView').classList.remove('hidden');
             document.getElementById('studyNoteTitle').textContent = setName;
@@ -935,8 +970,14 @@
         }
 
         function closeStudyNote() {
+            document.body.classList.remove('notes-fullscreen-active'); // ADDED FOR FULLSCREEN
             document.getElementById('studyReadingView').classList.add('hidden');
             document.getElementById('studyListView').classList.remove('hidden');
+        }
+
+        function closeRevisionNoteView() {
+            document.body.classList.remove('notes-fullscreen-active'); // ADDED FOR FULLSCREEN
+            switchPracticeView('practiceSetupView');
         }
 
         function savePlayerDataToLocalStorage() {
@@ -1208,6 +1249,7 @@
 
        function switchTab(tabName) {
             document.body.classList.remove('practice-active');
+            document.body.classList.remove('notes-fullscreen-active');
             document.querySelectorAll('#tab-nav button').forEach(btn => btn.classList.remove('active'));
             const mainTabButton = document.querySelector(`#tab-nav button[onclick="switchTab('${tabName}')"]`);
             if(mainTabButton) mainTabButton.classList.add('active');
@@ -1607,6 +1649,7 @@
                 }
             });
             playSound(isCorrect ? 'correct' : 'wrong');
+            triggerVibration(isCorrect);
             const qText = question.question || "Missing question text";
             currentAttempt.answers.push({ isCorrect, questionText: qText, questionOptions: question.options || [], selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: correctAns, viewedAnswer: true });
             if (isCorrect) { 
@@ -1640,6 +1683,7 @@
             const qText = question.question || "Missing question text";
             currentAttempt.answers.push({ isCorrect, questionText: qText, questionOptions: question.options || [], selectedAnswer: String.fromCharCode(65 + selectedIndex), correctAnswer: correctAns, timeTaken: timeForThisQuestion, timeAtAnswer: timeElapsed, isSkipped: false });
             playSound(isCorrect ? 'correct' : 'wrong');
+            triggerVibration(isCorrect);
             if (isCorrect) { 
                 setTimeout(() => { currentQuestionIndex++; showNextQuestion(); }, 250); 
             } else { 
@@ -2372,6 +2416,7 @@
 
             switchTab('practice'); 
             switchPracticeView('revisionNotesView');
+            document.body.classList.add('notes-fullscreen-active'); // ADDED FOR FULLSCREEN
             
             document.getElementById('revisionNotesTitle').textContent = `Study Notes: ${setName}`;
             const setNotes = questionSets[setName]?.notes;
@@ -2391,6 +2436,7 @@
             
             const startBtn = document.getElementById('startPracticeFromNotesBtn');
             startBtn.onclick = () => {
+                document.body.classList.remove('notes-fullscreen-active'); // ADDED FOR FULLSCREEN
                 document.getElementById('subjectSelect').value = questionSets[setName]?.subject || '';
                 updatePracticeSetSelect(document.getElementById('subjectSelect').value);
                 document.getElementById('practiceSetSelect').value = setName;
