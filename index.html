@@ -150,6 +150,8 @@
         .btn-danger { background: linear-gradient(135deg, var(--danger-color), #c0392b); }
         .btn-warning { background: linear-gradient(135deg, var(--warning-color), #d35400); }
         .btn-critical { background: linear-gradient(135deg, var(--critical-color), #1a2a6c); border: 1px solid #0f1b33; box-shadow: 0 4px 10px rgba(17,34,64,0.3); color: white; }
+        .btn-telegram { background: #0088cc; color: white; border: none; }
+        .btn-telegram:hover { background: #006699; }
         
         .btn-bookmark { background: #fff; border: 1px solid #e0e0e0; color: #555; padding: 6px 12px; font-size: 0.85em; border-radius: 20px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .btn-bookmark:hover { background: #f8f9fa; }
@@ -311,6 +313,9 @@
                         <p id="motivationalQuoteLoggedIn" style="font-style: italic;">Ready to learn?</p>
                     </div>
                     
+                    <!-- Telegram Button -->
+                    <button onclick="linkTelegramReminders()" class="btn-telegram" style="width: 100%; padding: 12px; margin: 8px 0; font-size: 1.05em; border-radius: 12px;">🔔 Enable Telegram Reminders</button>
+
                     <div class="form-group" style="margin-top: 20px;">
                         <label>1. Select Subject:</label>
                         <select id="subjectSelect" onchange="updatePracticeSetSelect(this.value)"></select>
@@ -896,6 +901,19 @@
             }
         }
 
+        // --- TELEGRAM LINKING FUNCTION ---
+        function linkTelegramReminders() {
+            if (!currentPlayerName) {
+                showNotification('Please select a player first.', 'error');
+                return;
+            }
+            // Replace YOUR_BOT_USERNAME_HERE with your actual bot username
+            const botUsername = 'Pscprepbot';
+            const startParam = encodeURIComponent(currentPlayerName);
+            const telegramUrl = `https://t.me/${botUsername}?start=${startParam}`;
+            window.open(telegramUrl, '_blank');
+        }
+
         // --- HAPTIC FEEDBACK ADDITION ---
         function triggerVibration(isCorrect) {
             if ("vibrate" in navigator) {
@@ -1346,7 +1364,18 @@
             }
         }
 
-        function createNewProfile() { return { password: '', totalXP: 0, totalCorrect: 0, currentStreak: 0, lastActiveDate: null, consecutiveMissedDays: 0, attendance: [] }; }
+        function createNewProfile() { 
+            return { 
+                password: '', 
+                totalXP: 0, 
+                totalCorrect: 0, 
+                currentStreak: 0, 
+                lastActiveDate: null, 
+                consecutiveMissedDays: 0, 
+                attendance: [],
+                telegramChatId: '' 
+            }; 
+        }
 
         function createPlayer() {
             const input = document.getElementById('newPlayerName');
