@@ -89,7 +89,12 @@
             z-index: 10;
         }
 
-        #optionsGrid { max-width: 900px; margin: 0 auto; }
+        #optionsGrid { 
+            max-width: 900px; 
+            margin: 0 auto;
+            width: 100%; /* Mobile Overflow Fix */
+            box-sizing: border-box; /* Mobile Overflow Fix */
+        }
         
         /* Clean Option Buttons (Pill/Rounded) */
         .option-grid-item { 
@@ -97,6 +102,10 @@
             background: #f4f5f9; border: 2px solid transparent; border-radius: 16px; 
             padding: 12px 15px; font-weight: 500; font-size: 1.05em; color: #333;
             cursor: pointer; transition: all 0.2s; user-select: none; text-align: left; line-height: 1.4;
+            /* Mobile Overflow Fixes */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
         }
         .option-grid-item:hover { background: #eaeef6; }
         
@@ -150,8 +159,6 @@
         .btn-danger { background: linear-gradient(135deg, var(--danger-color), #c0392b); }
         .btn-warning { background: linear-gradient(135deg, var(--warning-color), #d35400); }
         .btn-critical { background: linear-gradient(135deg, var(--critical-color), #1a2a6c); border: 1px solid #0f1b33; box-shadow: 0 4px 10px rgba(17,34,64,0.3); color: white; }
-        .btn-telegram { background: #0088cc; color: white; border: none; }
-        .btn-telegram:hover { background: #006699; }
         
         .btn-bookmark { background: #fff; border: 1px solid #e0e0e0; color: #555; padding: 6px 12px; font-size: 0.85em; border-radius: 20px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .btn-bookmark:hover { background: #f8f9fa; }
@@ -279,9 +286,9 @@
                         <button onclick="closeStudyNote()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Subjects</button>
                         <h2 id="studyNoteTitle" style="color: var(--primary-color); margin-bottom: 15px;"></h2>
                     </div>
-                    <div style="display: flex; flex: 1; min-height: 0;">
-                        <div id="studyNoteContent" class="note-reading-area" onscroll="updateReadProgress(this, 'studyProgressFill')"></div>
-                        <div class="progress-track"><div id="studyProgressFill" class="progress-fill"></div></div>
+                    <!-- Google Drive Link Replaced Internal Content -->
+                    <div style="display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-height: 0;">
+                        <button id="openNotesGdriveBtnStudy" class="btn-primary" style="padding: 20px 40px; font-size: 1.2em;">📖 Read Notes (Google Drive)</button>
                     </div>
                 </div>
             </div>
@@ -312,9 +319,6 @@
                     <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid var(--primary-color);">
                         <p id="motivationalQuoteLoggedIn" style="font-style: italic;">Ready to learn?</p>
                     </div>
-                    
-                    <!-- Telegram Button -->
-                    <button onclick="linkTelegramReminders()" class="btn-telegram" style="width: 100%; padding: 12px; margin: 8px 0; font-size: 1.05em; border-radius: 12px;">🔔 Enable Telegram Reminders</button>
 
                     <div class="form-group" style="margin-top: 20px;">
                         <label>1. Select Subject:</label>
@@ -334,9 +338,9 @@
                         <button onclick="closeRevisionNoteView()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Setup</button>
                         <h2 id="revisionNotesTitle" style="color: var(--primary-color); margin-bottom: 10px;">Study Notes</h2>
                     </div>
-                    <div style="display: flex; flex: 1; min-height: 0; margin-bottom: 20px;">
-                        <div id="revisionNotesContent" class="note-reading-area" style="font-size: 1.15em;" onscroll="updateReadProgress(this, 'revProgressFill')"></div>
-                        <div class="progress-track"><div id="revProgressFill" class="progress-fill"></div></div>
+                    <div style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin-bottom: 20px; align-items: center; justify-content: center;">
+                        <button id="openNotesGdriveBtnRev" class="btn-primary" style="padding: 20px 40px; font-size: 1.2em; display: none;">📖 Read Notes (Google Drive)</button>
+                        <p id="noNotesMessageRev" style="font-style: italic; color: #777; display: none;">No study notes were provided for this set. You can proceed directly to the practice exam.</p>
                     </div>
                     <button id="startPracticeFromNotesBtn" class="btn-success" style="width: 100%; padding: 20px; font-size: 1.3em; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); margin-bottom: 20px;">I'm ready. Start Practice &rarr;</button>
                 </div>
@@ -475,13 +479,13 @@
                     <select id="bulkSetSelect" onchange="toggleNewBulkSetName()"></select>
                     <div id="newBulkSetNameGroup" style="display:none;"><input type="text" id="bulkSetName" placeholder="New Set Name"></div>
                     
-                    <textarea id="setNotes" rows="4" placeholder="Paste study notes here... (Optional, shown to users before revision exams)" style="margin-bottom: 10px; border: 1px solid #ccc;"></textarea>
+                    <input type="url" id="setNotes" placeholder="Google Drive Link for Study Notes (Optional)" style="margin-bottom: 10px; border: 1px solid #ccc; width: 100%; padding: 12px; border-radius: 8px;">
                     
                     <textarea id="bulkQuestions" rows="6" placeholder="Paste questions here..."></textarea>
                     <button onclick="importBulkQuestions()">Import</button>
                 </div>
                 
-                <select id="subjectFilter" onchange="filterQuestionSetsBySubject()"><option value="">All Subjects</option></select>
+                <select id="subjectFilter" onchange="filterQuestionSetsBySubject()"><option value="">Select a Subject...</option></select>
                 <div id="setsList"></div>
             </div>
 
@@ -511,6 +515,12 @@
 
             <div id="adminSystem" class="tab-content">
                 <h2>System</h2>
+
+                <h3>Custom Subject Sort Order</h3>
+                <input type="text" id="customSubjectSortOrder" placeholder="e.g., Math, English, GK">
+                <button onclick="saveCustomSortOrder()" class="btn-success">Save Sort Order</button>
+                <br><br>
+
                 <h3>Firebase</h3>
                 <textarea id="firebaseConfig" rows="4" placeholder="Config JSON"></textarea>
                 <button onclick="saveFirebaseConfig()" class="btn-success">Save</button>
@@ -539,8 +549,8 @@
                 <select id="editSetCategory" onchange="updateSetCategory()"><option value="gk">GK</option><option value="math">Math</option></select>
                 
                 <div style="margin-top: 15px; margin-bottom: 25px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ccc;">
-                    <h4 style="margin-bottom: 10px;">Edit Study Notes</h4>
-                    <textarea id="editSetNotes" rows="4" placeholder="Edit the study notes for this set..."></textarea>
+                    <h4 style="margin-bottom: 10px;">Edit Study Notes URL</h4>
+                    <input type="url" id="editSetNotes" placeholder="Google Drive Link for Study Notes..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
                     <button onclick="updateSetNotes()" class="btn-success" style="margin-top: 5px;">Save Notes Update</button>
                 </div>
 
@@ -594,11 +604,35 @@
         function getTodayDateString() { 
             return getLocalYYYYMMDD(new Date()); 
         }
+
+        let customSubjectSort = JSON.parse(localStorage.getItem('pscCustomSubjectSort')) || [];
+
+        function saveCustomSortOrder() {
+            const val = document.getElementById('customSubjectSortOrder').value;
+            customSubjectSort = val.split(',').map(s => s.trim()).filter(Boolean);
+            localStorage.setItem('pscCustomSubjectSort', JSON.stringify(customSubjectSort));
+            if (isFirebaseConnected) db.ref('systemSettings/customSubjectSort').set(customSubjectSort);
+            showNotification('Sort order saved!', 'success');
+            loadQuestionSets();
+            updateSubjectSelect();
+        }
+
+        function sortSubjectsArray(subjectsArray) {
+            return subjectsArray.sort((a, b) => {
+                let indexA = customSubjectSort.indexOf(a);
+                let indexB = customSubjectSort.indexOf(b);
+                if (indexA === -1) indexA = 9999;
+                if (indexB === -1) indexB = 9999;
+                if (indexA !== indexB) return indexA - indexB;
+                return a.localeCompare(b);
+            });
+        }
         
         function updateReadProgress(element, indicatorId) {
             const maxScroll = element.scrollHeight - element.clientHeight;
             const percentage = maxScroll > 5 ? Math.min(100, (element.scrollTop / maxScroll) * 100) : 100;
-            document.getElementById(indicatorId).style.height = `${percentage}%`;
+            const indicator = document.getElementById(indicatorId);
+            if (indicator) indicator.style.height = `${percentage}%`;
         }
 
         function clearLocalStorageProfiles() {
@@ -677,6 +711,15 @@
                 if (snapshot.val() === true) {
                     updateFirebaseStatus('Connected', true);
                     isFirebaseConnected = true;
+                    
+                    db.ref('systemSettings/customSubjectSort').once('value').then(snap => {
+                        if(snap.val()) {
+                            customSubjectSort = snap.val();
+                            localStorage.setItem('pscCustomSubjectSort', JSON.stringify(customSubjectSort));
+                            document.getElementById('customSubjectSortOrder').value = customSubjectSort.join(', ');
+                        }
+                    });
+
                     setTimeout(() => { loadPlayerProfilesFromFirebase(); }, 1000);
                     performSmartSync();
                     setupPlayerProgressListener();
@@ -833,6 +876,7 @@
         document.addEventListener('DOMContentLoaded', init);
         
         function init() {
+            document.getElementById('customSubjectSortOrder').value = customSubjectSort.join(', ');
             initializeFirebase();
             loadLocalDataImmediately();
             const lastPlayer = localStorage.getItem('pscLastPlayer');
@@ -901,19 +945,6 @@
             }
         }
 
-        // --- TELEGRAM LINKING FUNCTION ---
-        function linkTelegramReminders() {
-            if (!currentPlayerName) {
-                showNotification('Please select a player first.', 'error');
-                return;
-            }
-            // Replace YOUR_BOT_USERNAME_HERE with your actual bot username
-            const botUsername = 'Pscprepbot';
-            const startParam = encodeURIComponent(currentPlayerName);
-            const telegramUrl = `https://t.me/${botUsername}?start=${startParam}`;
-            window.open(telegramUrl, '_blank');
-        }
-
         // --- HAPTIC FEEDBACK ADDITION ---
         function triggerVibration(isCorrect) {
             if ("vibrate" in navigator) {
@@ -936,7 +967,7 @@
                 }
             });
             
-            const sortedSubjects = Array.from(subjectsWithNotes).sort();
+            const sortedSubjects = sortSubjectsArray(Array.from(subjectsWithNotes));
             const currentVal = studySubjectFilter.value;
             studySubjectFilter.innerHTML = '<option value="">-- Select a Subject --</option>' + 
                                            sortedSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
@@ -965,26 +996,14 @@
             }
             
             listDiv.innerHTML = setsWithNotes.map(setName => `
-                <div class="study-card" onclick="openStudyNote('${setName}')">
+                <div class="study-card" onclick="window.open('${questionSets[setName].notes}', '_blank')">
                     <div>
                         <h3 style="margin-bottom: 5px; color: var(--dark-color);">${setName}</h3>
-                        <p style="font-size: 0.9em; color: #666;">Click to read notes</p>
+                        <p style="font-size: 0.9em; color: #666;">Click to read notes via Google Drive</p>
                     </div>
                     <div style="color: var(--primary-color); font-size: 1.5em;">&rarr;</div>
                 </div>
             `).join('');
-        }
-
-        function openStudyNote(setName) {
-            document.body.classList.add('notes-fullscreen-active'); // ADDED FOR FULLSCREEN
-            document.getElementById('studyListView').classList.add('hidden');
-            document.getElementById('studyReadingView').classList.remove('hidden');
-            document.getElementById('studyNoteTitle').textContent = setName;
-            
-            const noteEl = document.getElementById('studyNoteContent');
-            noteEl.textContent = questionSets[setName].notes || "No content available.";
-            noteEl.scrollTop = 0; 
-            updateReadProgress(noteEl, 'studyProgressFill'); 
         }
 
         function closeStudyNote() {
@@ -1302,13 +1321,36 @@
             }
         }
 
+        function renderReportedQuestionsInner() {
+            const listDiv = document.getElementById('reportedQuestionsList');
+            if (reportedQuestions.length === 0) { listDiv.innerHTML = '<p>No reports.</p>'; return; }
+            listDiv.innerHTML = reportedQuestions.map(report => {
+                const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
+                return `<div class="history-item" style="border-left-color: var(--danger-color);"><p><strong>${report.question.question}</strong></p>
+                    <button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss</button></div>`;
+            }).join('');
+        }
+
         function switchAdminTab(tabName) {
             document.querySelectorAll('#admin-tab-nav button').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`#admin-tab-nav button[onclick="switchAdminTab('${tabName}')"]`).classList.add('active');
             document.querySelectorAll('#adminPanel > main > .tab-content').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             if (tabName === 'adminQuestionSets') { document.getElementById('editQuestionsSection').classList.add('hidden'); loadQuestionSets(); }
-            if (tabName === 'reportedQuestions') { document.getElementById('editQuestionsSection').classList.add('hidden'); renderReportedQuestions(); }
+            
+            if (tabName === 'reportedQuestions') { 
+                document.getElementById('editQuestionsSection').classList.add('hidden'); 
+                if (isFirebaseConnected) {
+                    db.ref('reportedQuestions').once('value').then(snap => {
+                        reportedQuestions = snap.val() || [];
+                        localStorage.setItem('pscReportedQuestions', JSON.stringify(reportedQuestions));
+                        renderReportedQuestionsInner();
+                    });
+                } else {
+                    renderReportedQuestionsInner();
+                }
+            }
+            
             if (tabName === 'adminBacklogManager') renderAdminBacklogManager();
             if (tabName === 'adminAttendance') {
                  currentAdminAttendanceDate = new Date();
@@ -1316,7 +1358,6 @@
                 const firstPlayer = document.getElementById('attendancePlayerSelect').value;
                 renderAdminAttendanceCalendar(firstPlayer);
             }
-            if (tabName === 'reportedQuestions') { renderReportedQuestions(); }
             if (tabName === 'adminSystem') { document.getElementById('editQuestionsSection').classList.add('hidden'); updatePlayerSelects(); }
         }
         
@@ -1372,8 +1413,7 @@
                 currentStreak: 0, 
                 lastActiveDate: null, 
                 consecutiveMissedDays: 0, 
-                attendance: [],
-                telegramChatId: '' 
+                attendance: []
             }; 
         }
 
@@ -1596,7 +1636,7 @@
                 subjects.add((questionSets[bm.setName] && questionSets[bm.setName].subject) ? questionSets[bm.setName].subject : 'Uncategorized');
             });
             
-            const sortedSubjects = Array.from(subjects).sort();
+            const sortedSubjects = sortSubjectsArray(Array.from(subjects));
             const filterSelect = document.getElementById('bookmarkSubjectFilter');
             const currentVal = filterSelect.value;
             filterSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + sortedSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
@@ -1762,13 +1802,20 @@
             if (isRevisionMode) {
                 if (!revisionProgress[currentPlayerName]) revisionProgress[currentPlayerName] = {};
                 let setProgress = revisionProgress[currentPlayerName][setName];
-                if (!setProgress || !setProgress.nextDueDate) { setProgress = { currentStage: 0 }; }
+                if (!setProgress) { setProgress = { currentStage: 0 }; }
 
                 const currentStage = setProgress.currentStage || 0;
                 const nextStage = currentStage + 1;
-                const daysToAdd = SRS_INTERVALS[currentStage] || 30; 
-                const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + daysToAdd);
-                const nextDateStr = getLocalYYYYMMDD(nextDate);
+                
+                const uploadDateStr = questionSets[setName].uploadDate || todayStr;
+                const uploadDate = parseLocalDate(uploadDateStr);
+                
+                let nextDateStr = "Completed";
+                if (nextStage < SRS_INTERVALS.length) {
+                    const nextDueDate = new Date(uploadDate);
+                    nextDueDate.setDate(nextDueDate.getDate() + SRS_INTERVALS[nextStage]);
+                    nextDateStr = getLocalYYYYMMDD(nextDueDate);
+                }
 
                 revisionProgress[currentPlayerName][setName] = { currentStage: nextStage, lastCompletedDate: todayStr, nextDueDate: nextDateStr, success: true };
                 
@@ -1784,7 +1831,7 @@
                 
                 document.getElementById('modalTitle').textContent = "✓ Revision Completed!";
                 document.getElementById('modalScore').textContent = `Score: ${score}/${totalQuestions} (${percentage}%)`;
-                document.getElementById('modalTime').textContent = `Next due: ${nextDateStr}`;
+                document.getElementById('modalTime').textContent = `Next revision due on: ${nextDateStr}`;
                 document.getElementById('modalXPGained').textContent = 'SRS Interval Increased 📈';
             } else {
                 const xpEarned = calculateAndApplyXP(score);
@@ -1944,19 +1991,24 @@
         function loadQuestionSets() {
             const setsList = document.getElementById('setsList');
             const subjectFilter = document.getElementById('subjectFilter');
-            if(!setsList) return;
+            
             if (subjectFilter) {
-                const allSubjects = [...new Set(Object.values(questionSets).map(set => set.subject || 'Uncategorized'))].sort();
+                const allSubjects = sortSubjectsArray([...new Set(Object.values(questionSets).map(set => set.subject || 'Uncategorized'))]);
                 const currentSelection = subjectFilter.value;
-                subjectFilter.innerHTML = '<option value="">All Subjects</option>' + allSubjects.map(subj => `<option value="${subj}">${subj}</option>`).join('');
+                subjectFilter.innerHTML = '<option value="">Select a Subject...</option>' + allSubjects.map(subj => `<option value="${subj}">${subj}</option>`).join('');
                 if (allSubjects.includes(currentSelection)) { subjectFilter.value = currentSelection; }
             }
-            filterQuestionSetsBySubject();
+            
+            if(setsList) {
+                setsList.innerHTML = '';
+                filterQuestionSetsBySubject();
+            }
+
             showAddQuestionsSection();
             const subjectList = document.getElementById('existingSubjectsList');
             if (subjectList) {
                 subjectList.innerHTML = ''; 
-                const existingSubjects = [...new Set(Object.values(questionSets).map(s => s.subject || ''))].filter(Boolean).sort();
+                const existingSubjects = sortSubjectsArray([...new Set(Object.values(questionSets).map(s => s.subject || ''))].filter(Boolean));
                 existingSubjects.forEach(subj => { const option = document.createElement('option'); option.value = subj; subjectList.appendChild(option); });
             }
             initStudyTab();
@@ -1966,7 +2018,7 @@
             validateAndSyncQuestionSets(() => {
                 const subjectSelect = document.getElementById('subjectSelect');
                 if (!subjectSelect) return;
-                const subjects = [...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))].sort();
+                const subjects = sortSubjectsArray([...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))]);
                 const currentSelection = subjectSelect.value;
                 subjectSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
                 if(subjects.includes(currentSelection)) { subjectSelect.value = currentSelection; }
@@ -2138,7 +2190,7 @@
             if (currentEditingSet && questionSets[currentEditingSet]) {
                 questionSets[currentEditingSet].notes = document.getElementById('editSetNotes').value;
                 saveQuestionSets(currentEditingSet);
-                showNotification(`Study Notes updated successfully.`, 'success');
+                showNotification(`Study Notes URL updated successfully.`, 'success');
             }
         }
 
@@ -2252,40 +2304,30 @@
                 if (!set || set.type === 'pdf') continue;
                 if (!set.questions || set.questions.length === 0) continue;
 
-                let uploadDateStr = set.uploadDate;
-                if (!uploadDateStr) uploadDateStr = getTodayDateString(); 
+                let uploadDateStr = set.uploadDate || getTodayDateString();
+                const uploadDate = parseLocalDate(uploadDateStr);
 
-                let progress = revisionProgress[targetPlayer] && revisionProgress[targetPlayer][setName];
-                if (!progress || !progress.nextDueDate) {
-                    let maxStage = -1;
-                    [1, 3, 7, 14, 21, 30].forEach((day, index) => {
-                        const legacyKey = `${setName}_RevDay${day}`;
-                        if (revisionProgress[targetPlayer] && revisionProgress[targetPlayer][legacyKey] && revisionProgress[targetPlayer][legacyKey].success) maxStage = index;
-                    });
-                    
-                    if (maxStage === -1) {
-                        const upload = parseLocalDate(uploadDateStr);
-                        upload.setDate(upload.getDate() + 1);
-                        progress = { currentStage: 0, nextDueDate: getLocalYYYYMMDD(upload) };
-                    } else { 
-                        const pastDate = new Date();
-                        pastDate.setDate(pastDate.getDate() - 1);
-                        progress = { currentStage: maxStage + 1, nextDueDate: getLocalYYYYMMDD(pastDate) }; 
-                    }
+                let currentStage = 0;
+                if (revisionProgress[targetPlayer] && revisionProgress[targetPlayer][setName]) {
+                    currentStage = revisionProgress[targetPlayer][setName].currentStage || 0;
                 }
-                const nextDueDateStr = progress.nextDueDate;
-                const nextDueDate = parseLocalDate(nextDueDateStr); 
-                nextDueDate.setHours(0,0,0,0);
                 
-                const displayDay = SRS_INTERVALS[progress.currentStage] || 30;
-                const itemData = { setName: setName, day: displayDay, stage: progress.currentStage, type: set.type || 'questions', revisionDate: nextDueDate, revisionDateStr: nextDueDateStr };
+                if (currentStage >= SRS_INTERVALS.length) continue; 
+
+                const daysToAdd = SRS_INTERVALS[currentStage];
+                const nextDueDate = new Date(uploadDate);
+                nextDueDate.setDate(nextDueDate.getDate() + daysToAdd);
+                nextDueDate.setHours(0,0,0,0);
+                const nextDueDateStr = getLocalYYYYMMDD(nextDueDate);
+
+                const itemData = { setName: setName, day: daysToAdd, stage: currentStage, type: set.type || 'questions', revisionDate: nextDueDate, revisionDateStr: nextDueDateStr };
                 
                 if (nextDueDateStr === todayStr) dueTodayItems.push(itemData);
                 else if (nextDueDate < todayDate) backlogItems.push(itemData);
             }
             
-            backlogItems.sort((a, b) => b.revisionDate - a.revisionDate);
-            const fullBacklog = [...dueTodayItems, ...backlogItems].sort((a, b) => b.revisionDate - a.revisionDate);
+            backlogItems.sort((a, b) => a.revisionDate - b.revisionDate);
+            const fullBacklog = [...dueTodayItems, ...backlogItems].sort((a, b) => a.revisionDate - b.revisionDate);
             
             return { dueToday: dueTodayItems, backlog: backlogItems, all: fullBacklog };
         }
@@ -2357,7 +2399,7 @@
                 return;
             }
 
-            const sortedSubjects = Array.from(subjects).sort();
+            const sortedSubjects = sortSubjectsArray(Array.from(subjects));
             const filterSelect = document.getElementById('analysisSubjectFilter');
             const currentVal = filterSelect.value;
             filterSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + sortedSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
@@ -2450,18 +2492,17 @@
             document.getElementById('revisionNotesTitle').textContent = `Study Notes: ${setName}`;
             const setNotes = questionSets[setName]?.notes;
             
-            const contentDiv = document.getElementById('revisionNotesContent');
+            const gDriveBtn = document.getElementById('openNotesGdriveBtnRev');
+            const noNotesMsg = document.getElementById('noNotesMessageRev');
+            
             if (setNotes && setNotes.trim() !== '') {
-                contentDiv.textContent = setNotes;
-                contentDiv.style.fontStyle = 'normal';
-                contentDiv.style.color = '#333';
+                gDriveBtn.style.display = 'inline-block';
+                noNotesMsg.style.display = 'none';
+                gDriveBtn.onclick = () => window.open(setNotes, '_blank');
             } else {
-                contentDiv.textContent = "No study notes were provided for this set. You can proceed directly to the practice exam.";
-                contentDiv.style.fontStyle = 'italic';
-                contentDiv.style.color = '#777';
+                gDriveBtn.style.display = 'none';
+                noNotesMsg.style.display = 'block';
             }
-            contentDiv.scrollTop = 0;
-            updateReadProgress(contentDiv, 'revProgressFill');
             
             const startBtn = document.getElementById('startPracticeFromNotesBtn');
             startBtn.onclick = () => {
@@ -2507,16 +2548,31 @@
         function getRevisionScheduleForPlayer(playerName) {
             const schedule = {};
             if (!playerName) return schedule;
-            const playerProg = revisionProgress[playerName] || {};
-            Object.keys(playerProg).forEach(setName => {
-                const data = playerProg[setName];
-                if (data && data.nextDueDate) {
-                     const dateKey = data.nextDueDate;
-                     if (!schedule[dateKey]) schedule[dateKey] = [];
-                     const currentInterval = SRS_INTERVALS[data.currentStage] || 30;
-                     schedule[dateKey].push({ setName, day: currentInterval });
+            
+            for (const setName in questionSets) {
+                const set = questionSets[setName];
+                if (!set || set.type === 'pdf') continue;
+                if (!set.questions || set.questions.length === 0) continue;
+
+                let uploadDateStr = set.uploadDate || getTodayDateString();
+                const uploadDate = parseLocalDate(uploadDateStr);
+
+                let currentStage = 0;
+                if (revisionProgress[playerName] && revisionProgress[playerName][setName]) {
+                    currentStage = revisionProgress[playerName][setName].currentStage || 0;
                 }
-            });
+                
+                if (currentStage >= SRS_INTERVALS.length) continue; 
+
+                const daysToAdd = SRS_INTERVALS[currentStage];
+                const nextDueDate = new Date(uploadDate);
+                nextDueDate.setDate(nextDueDate.getDate() + daysToAdd);
+                nextDueDate.setHours(0,0,0,0);
+                const nextDueDateStr = getLocalYYYYMMDD(nextDueDate);
+
+                if (!schedule[nextDueDateStr]) schedule[nextDueDateStr] = [];
+                schedule[nextDueDateStr].push({ setName, day: daysToAdd });
+            }
             return schedule;
         }
         
@@ -2724,9 +2780,13 @@
                 if (!revisionProgress[playerName]) revisionProgress[playerName] = {};
                 let prog = revisionProgress[playerName][setName] || { currentStage: 0 };
                 const nextStage = (prog.currentStage || 0) + 1;
-                const daysToAdd = SRS_INTERVALS[prog.currentStage || 0] || 30;
-                const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + daysToAdd);
-                revisionProgress[playerName][setName] = { currentStage: nextStage, lastCompletedDate: getTodayDateString(), nextDueDate: getLocalYYYYMMDD(nextDate), clearedByAdmin: true };
+                
+                const uploadDateStr = questionSets[setName].uploadDate || getTodayDateString();
+                const uploadDate = parseLocalDate(uploadDateStr);
+                const nextDueDate = new Date(uploadDate);
+                nextDueDate.setDate(nextDueDate.getDate() + (SRS_INTERVALS[nextStage] || 30));
+
+                revisionProgress[playerName][setName] = { currentStage: nextStage, lastCompletedDate: getTodayDateString(), nextDueDate: getLocalYYYYMMDD(nextDueDate), clearedByAdmin: true };
                 savePlayerDataToLocalStorage();
                 if (isFirebaseConnected) db.ref(`revisionProgress/${playerName}/${setName}`).set(revisionProgress[playerName][setName]);
                 showNotification('Skipped.', 'success');
@@ -2869,7 +2929,7 @@
             editingFromReport = { active: false, reportId: null };
             document.getElementById('editQuestionsSection').classList.add('hidden');
             switchAdminTab('reportedQuestions');
-            renderReportedQuestions();
+            renderReportedQuestionsInner();
         }
 
         function exportQuestionSet(setName) {
@@ -2903,10 +2963,14 @@
             const selectedSubject = document.getElementById('subjectFilter').value;
             const setsListDiv = document.getElementById('setsList');
             if (!setsListDiv) return;
-            let filteredSetNames;
-            if (selectedSubject) {
-                filteredSetNames = Object.keys(questionSets).filter(setName => (questionSets[setName].subject || 'Uncategorized') === selectedSubject).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
-            } else { filteredSetNames = Object.keys(questionSets).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0)); }
+            
+            if (!selectedSubject) {
+                setsListDiv.innerHTML = '<p>Please select a subject to view its sets.</p>';
+                return;
+            }
+            
+            let filteredSetNames = Object.keys(questionSets).filter(setName => (questionSets[setName].subject || 'Uncategorized') === selectedSubject).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
+            
             setsListDiv.innerHTML = filteredSetNames.map(setName => {
                 const set = questionSets[setName];
                 return `<div class="history-item" style="display: flex; justify-content: space-between; align-items: center;"><div><h4>${setName} (${set.questions.length})</h4></div><div><button onclick="editQuestionSet('${setName}')" class="btn-warning">Edit</button><button onclick="renameSet('${setName}')" class="btn-warning" style="background:#3498db;">Name</button><button onclick="exportQuestionSet('${setName}')" class="btn-success">Copy</button><button onclick="deleteQuestionSet('${setName}')" class="btn-danger">Del</button></div></div>`;
