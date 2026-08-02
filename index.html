@@ -6,36 +6,74 @@
     <title>PSC Exam Prep - Gamified (Smart SRS)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
-        /* --- GLOBAL VARIABLES & BASE STYLES --- */
+        /* --- MODERNIZED GLOBAL VARIABLES & BASE STYLES --- */
         :root {
-            --primary-color: #8e44ad;
-            --secondary-color: #3498db;
-            --success-color: #2ecc71;
-            --danger-color: #e74c3c;
-            --warning-color: #f39c12;
-            --critical-color: #112240;
-            --light-color: #ffffff;
-            --dark-color: #2c3e50;
-            --bg-color: #34495e;
-            --font-family: 'Poppins', sans-serif;
-            --border-radius: 12px;
-            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --primary-color: #4f46e5; /* Indigo 600 */
+            --primary-hover: #4338ca;
+            --secondary-color: #7c3aed; /* Violet 600 */
+            --success-color: #10b981; /* Emerald 500 */
+            --success-hover: #059669;
+            --danger-color: #ef4444; /* Red 500 */
+            --danger-hover: #dc2626;
+            --warning-color: #f59e0b; /* Amber 500 */
+            --warning-hover: #d97706;
+            --critical-color: #0f172a; /* Slate 900 */
+            
+            --light-color: #f8fafc; /* Slate 50 */
+            --dark-color: #1e293b; /* Slate 800 */
+            --text-muted: #64748b; /* Slate 500 */
+            --bg-color: #f1f5f9; /* Slate 100 */
+            --surface-color: #ffffff;
+            --border-color: #e2e8f0; /* Slate 200 */
+            
+            --font-primary: 'Inter', system-ui, sans-serif;
+            --font-heading: 'Poppins', sans-serif;
+            
+            --border-radius-sm: 8px;
+            --border-radius-md: 12px;
+            --border-radius-lg: 16px;
+            --border-radius-xl: 24px;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--light-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
         body {
-            font-family: var(--font-family); background: linear-gradient(135deg, #1d2b64, #f8cdda);
-            background-size: 400% 400%; animation: gradientAnimation 15s ease infinite;
-            min-height: 100vh; color: var(--dark-color); display: flex; align-items: center;
-            justify-content: center; transition: all 0.3s; padding: 20px;
+            font-family: var(--font-primary);
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,0.05) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.05) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.05) 0, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            line-height: 1.5;
         }
+
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 600; }
 
         /* --- EXAM MODE FULLSCREEN LAYOUT --- */
         body.practice-active { 
@@ -43,28 +81,29 @@
             height: 100vh; height: 100dvh; 
             width: 100vw; overflow: hidden; 
             overscroll-behavior-y: none; 
-            align-items: flex-start; background: #ffffff; 
+            align-items: flex-start; background: #f8fafc; 
         }
-        body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #ffffff; padding: 0; margin: 0; }
+        body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #f8fafc; padding: 0; margin: 0; border: none; }
         body.practice-active header, body.practice-active nav { display: none !important; }
         body.practice-active main { height: 100%; padding: 0 !important; }
-        body.practice-active .tab-content { padding: 0; height: 100%; display: none; }
+        body.practice-active .tab-content { padding: 0; height: 100%; display: none; background: transparent; box-shadow: none; border: none; }
         body.practice-active .tab-content.active { display: block; }
 
         #practiceSessionView { 
             height: 100vh; height: 100dvh; 
-            width: 100vw; display: flex; flex-direction: column; background: #ffffff; 
+            width: 100vw; display: flex; flex-direction: column; background: #f8fafc; 
         }
         
-        /* Clean Header for Exam */
         #topProgressIndicator { 
-            flex: 0 0 65px; min-height: 65px; background: #ffffff; border-bottom: 1px solid #f0f0f0; 
-            display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 20; 
+            flex: 0 0 70px; min-height: 70px; background: var(--surface-color); border-bottom: 1px solid var(--border-color); 
+            display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 20;
+            box-shadow: var(--shadow-sm);
         }
         .question-counter-pill {
-            background: #ffffff; border: 1px solid #e5e5e5; padding: 6px 20px; 
-            border-radius: 30px; font-weight: 500; font-size: 1.05em; color: #333;
-            display: inline-block;
+            background: var(--light-color); border: 1px solid var(--border-color); padding: 8px 24px; 
+            border-radius: 9999px; font-weight: 600; font-size: 1.05em; color: var(--dark-color);
+            display: inline-flex; align-items: center; justify-content: center;
+            box-shadow: var(--shadow-sm);
         }
 
         #practiceSessionViewContentWrapper { 
@@ -73,147 +112,254 @@
         }
 
         #questionScrollContainer { 
-            flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 20px; 
-            background: #ffffff; -webkit-overflow-scrolling: touch; 
+            flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 32px 24px; 
+            background: #f8fafc; -webkit-overflow-scrolling: touch; 
         }
         
-        /* Removed Bold Weight, Clean Font Style */
         #practiceQuestion { 
-            font-size: 1.15em; font-weight: 400; line-height: 1.8; color: #222; 
-            max-width: 900px; margin: 0 auto;
+            font-size: 1.2em; font-weight: 500; line-height: 1.7; color: var(--dark-color); 
+            max-width: 850px; margin: 0 auto;
         }
         
         #optionsGridContainer { 
-            flex: 0 0 auto; background: #ffffff; padding: 15px 20px; 
-            border-top: 1px solid #f0f0f0; position: static !important; 
-            z-index: 10;
+            flex: 0 0 auto; background: var(--surface-color); padding: 24px; 
+            border-top: 1px solid var(--border-color); position: static !important; 
+            z-index: 10; box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
         #optionsGrid { 
-            max-width: 900px; 
+            max-width: 850px; 
             margin: 0 auto;
-            width: 100%; /* Mobile Overflow Fix */
-            box-sizing: border-box; /* Mobile Overflow Fix */
+            width: 100%; box-sizing: border-box;
         }
         
-        /* Clean Option Buttons (Pill/Rounded) */
         .option-grid-item { 
             display: flex; align-items: center; justify-content: flex-start; 
-            background: #f4f5f9; border: 2px solid transparent; border-radius: 16px; 
-            padding: 12px 15px; font-weight: 500; font-size: 1.05em; color: #333;
-            cursor: pointer; transition: all 0.2s; user-select: none; text-align: left; line-height: 1.4;
-            /* Mobile Overflow Fixes */
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: normal;
+            background: var(--surface-color); border: 2px solid var(--border-color); border-radius: var(--border-radius-lg); 
+            padding: 16px 20px; font-weight: 500; font-size: 1.05em; color: var(--dark-color);
+            cursor: pointer; transition: var(--transition); user-select: none; text-align: left; line-height: 1.5;
+            word-wrap: break-word; overflow-wrap: break-word; white-space: normal;
+            box-shadow: var(--shadow-sm);
         }
-        .option-grid-item:hover { background: #eaeef6; }
+        .option-grid-item:hover { border-color: var(--primary-color); background: #f5f3ff; transform: translateY(-1px); }
         
-        /* Correct/Wrong State Colors */
-        .option-grid-item.correct { background: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .option-grid-item.correct .option-letter { background: #155724; color: white; border-color: #155724;}
-        .option-grid-item.wrong { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
-        .option-grid-item.wrong .option-letter { background: #721c24; color: white; border-color: #721c24;}
+        .option-grid-item.correct { background: #ecfdf5; color: #065f46; border-color: var(--success-color); box-shadow: 0 0 0 1px var(--success-color); }
+        .option-grid-item.correct .option-letter { background: var(--success-color); color: white; border-color: var(--success-color); }
+        .option-grid-item.wrong { background: #fef2f2; color: #991b1b; border-color: var(--danger-color); box-shadow: 0 0 0 1px var(--danger-color); }
+        .option-grid-item.wrong .option-letter { background: var(--danger-color); color: white; border-color: var(--danger-color); }
         
         .option-letter { 
-            font-weight: 600; color: #888; background: white; border: 1px solid #e0e0e0; border-radius: 50%; 
-            width: 28px; height: 28px; display: inline-flex; align-items: center; 
-            justify-content: center; margin-right: 12px; flex-shrink: 0; transition: all 0.2s;
+            font-family: var(--font-heading); font-weight: 600; color: var(--text-muted); background: var(--light-color); 
+            border: 2px solid var(--border-color); border-radius: 50%; 
+            width: 32px; height: 32px; display: inline-flex; align-items: center; 
+            justify-content: center; margin-right: 16px; flex-shrink: 0; transition: var(--transition);
         }
 
         @media screen and (min-width: 1024px) {
             #practiceSessionViewContentWrapper { flex-direction: row; }
-            #questionScrollContainer { height: 100%; border-right: 1px solid #f0f0f0; padding: 40px; }
-            #optionsGridContainer { flex: 0 0 450px; height: 100%; padding: 40px 20px; border-top: none; justify-content: center; overflow-y: auto;}
-            #optionsGrid { display: flex; flex-direction: column; gap: 15px; }
+            #questionScrollContainer { height: 100%; border-right: 1px solid var(--border-color); padding: 48px; }
+            #optionsGridContainer { flex: 0 0 450px; height: 100%; padding: 48px 32px; border-top: none; justify-content: center; overflow-y: auto; box-shadow: -4px 0 15px -3px rgba(0, 0, 0, 0.05); }
+            #optionsGrid { display: flex; flex-direction: column; gap: 16px; }
         }
 
         @media screen and (max-width: 1023px) {
             #practiceSessionViewContentWrapper { flex-direction: column; }
-            #practiceQuestion { padding: 5px 5px 20px 5px; font-size: 1.1em; }
-            #optionsGridContainer { padding: 15px 15px 25px 15px; }
-            /* Mobile Grid overrides - Keep original 2x2 style but updated looks */
-            #optionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-            .option-grid-item { padding: 10px; font-size: 0.95em; min-height: 60px; border-radius: 12px; }
-            .option-letter { width: 24px; height: 24px; font-size: 0.9em; margin-right: 8px; }
+            #practiceQuestion { padding: 0 0 20px 0; font-size: 1.1em; }
+            #optionsGridContainer { padding: 20px; }
+            #optionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+            .option-grid-item { padding: 12px 16px; font-size: 0.95em; min-height: 64px; }
+            .option-letter { width: 28px; height: 28px; font-size: 0.9em; margin-right: 12px; }
         }
 
-        #examFooter { flex: 0 0 60px; min-height: 60px; background: white; border-top: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: flex-end; padding: 0 20px; gap: 15px; z-index: 20; position: static !important; }
+        #examFooter { flex: 0 0 70px; min-height: 70px; background: var(--surface-color); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: flex-end; padding: 0 24px; gap: 16px; z-index: 20; position: static !important; }
 
-        /* General UI Elements */
-        .container, #adminPanel { width: 100%; max-width: 1000px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.3s; min-height: 80vh; }
-        header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 15px; text-align: center; position: relative; }
-        nav { display: flex; background: var(--dark-color); flex-wrap: wrap; justify-content: center; }
-        nav button { background: none; border: none; color: var(--light-color); padding: 15px 15px; cursor: pointer; font-size: 13px; font-family: var(--font-family); transition: all 0.3s; font-weight: 600; flex-grow: 1; text-align: center; }
-        nav button:hover { background: rgba(255,255,255,0.1); }
-        nav button.active { background: var(--primary-color); }
+        /* --- GENERAL UI ELEMENTS --- */
+        .container, #adminPanel { 
+            width: 100%; max-width: 1000px; margin: 0 auto; 
+            background: var(--surface-color); 
+            border-radius: var(--border-radius-xl); 
+            box-shadow: var(--shadow-xl); 
+            overflow: hidden; 
+            border: 1px solid rgba(255, 255, 255, 0.5); 
+            transition: var(--transition); 
+            min-height: 85vh; 
+            display: flex; flex-direction: column;
+        }
+        
+        header { 
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); 
+            color: white; padding: 32px 24px; text-align: center; position: relative; 
+        }
+        header h1 { font-size: 1.8em; margin-bottom: 4px; letter-spacing: -0.025em; }
+        header p { opacity: 0.9; font-weight: 400; }
+        
+        nav { 
+            display: flex; background: var(--light-color); flex-wrap: wrap; 
+            justify-content: center; padding: 8px; gap: 6px; border-bottom: 1px solid var(--border-color); 
+        }
+        nav button { 
+            background: transparent; border: none; color: var(--text-muted); 
+            padding: 12px 16px; cursor: pointer; font-size: 14px; font-family: var(--font-primary); 
+            transition: var(--transition); font-weight: 600; flex-grow: 1; text-align: center; 
+            border-radius: var(--border-radius-md); box-shadow: none;
+        }
+        nav button:hover { background: #e2e8f0; color: var(--dark-color); transform: none; }
+        nav button.active { 
+            background: var(--surface-color); color: var(--primary-color); 
+            box-shadow: var(--shadow-sm); 
+        }
 
-        .tab-content { display: none; padding: 25px; animation: fadeIn 0.5s; }
+        main { flex-grow: 1; display: flex; flex-direction: column; }
+        
+        .tab-content { display: none; padding: 32px; animation: fadeIn 0.4s ease-out; flex-grow: 1; background: var(--surface-color); }
         .tab-content.active { display: block; }
         .view-stage.hidden, .hidden { display: none !important; }
 
-        button { background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: transform 0.2s; }
-        button:hover { transform: translateY(-2px); }
-        button:active { transform: translateY(0); }
-        .btn-success { background: linear-gradient(135deg, var(--success-color), #27ae60); }
-        .btn-danger { background: linear-gradient(135deg, var(--danger-color), #c0392b); }
-        .btn-warning { background: linear-gradient(135deg, var(--warning-color), #d35400); }
-        .btn-critical { background: linear-gradient(135deg, var(--critical-color), #1a2a6c); border: 1px solid #0f1b33; box-shadow: 0 4px 10px rgba(17,34,64,0.3); color: white; }
+        /* Buttons */
+        button { 
+            background: var(--primary-color); color: white; border: none; 
+            padding: 12px 24px; border-radius: var(--border-radius-md); cursor: pointer; 
+            font-weight: 600; font-family: var(--font-primary); transition: var(--transition); 
+            box-shadow: var(--shadow-sm); font-size: 0.95em;
+        }
+        button:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        button:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
         
-        .btn-bookmark { background: #fff; border: 1px solid #e0e0e0; color: #555; padding: 6px 12px; font-size: 0.85em; border-radius: 20px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .btn-bookmark:hover { background: #f8f9fa; }
-        .btn-bookmark.active { background: #fff9c4; color: #f57f17; border-color: #fff59d; }
+        .btn-success { background: var(--success-color); }
+        .btn-success:hover { background: var(--success-hover); }
+        .btn-danger { background: var(--danger-color); }
+        .btn-danger:hover { background: var(--danger-hover); }
+        .btn-warning { background: var(--warning-color); }
+        .btn-warning:hover { background: var(--warning-hover); }
+        .btn-critical { background: var(--critical-color); color: white; }
+        .btn-critical:hover { background: #1e293b; }
+        
+        .btn-bookmark { 
+            background: var(--surface-color); border: 1px solid var(--border-color); color: var(--text-muted); 
+            padding: 8px 16px; font-size: 0.9em; border-radius: 9999px; cursor: pointer; 
+            transition: var(--transition); box-shadow: var(--shadow-sm); font-weight: 500; 
+        }
+        .btn-bookmark:hover { background: var(--light-color); color: var(--dark-color); transform: translateY(-1px); }
+        .btn-bookmark.active { background: #fef3c7; color: #d97706; border-color: #fde68a; }
 
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; }
+        /* Inputs */
+        input, select, textarea { 
+            width: 100%; padding: 14px 16px; margin: 8px 0 16px 0; 
+            background: var(--light-color); border: 1px solid var(--border-color); 
+            border-radius: var(--border-radius-md); font-family: inherit; font-size: 0.95em;
+            transition: var(--transition); color: var(--dark-color);
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); background: var(--surface-color);
+        }
+        label { font-weight: 500; color: var(--dark-color); font-size: 0.95em; margin-bottom: 4px; display: block; }
 
-        .statement-question { text-align: justify; line-height: 1.8; font-weight: 400; }
+        .statement-question { text-align: left; line-height: 1.7; font-weight: 500; }
         .statement-question br { display: block; margin-bottom: 8px; content: ""; }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes gradientAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .dashboard-card { background: #eee; padding: 20px; border-radius: 10px; margin-bottom: 15px; color: white; }
-        .history-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #ddd; }
+        /* Cards & Lists */
+        .dashboard-card { 
+            background: var(--surface-color); padding: 24px; border-radius: var(--border-radius-lg); 
+            margin-bottom: 20px; color: var(--dark-color); border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+        .history-item { 
+            background: var(--surface-color); padding: 20px; border-radius: var(--border-radius-lg); 
+            margin-bottom: 16px; border: 1px solid var(--border-color); border-left: 4px solid var(--border-color);
+            box-shadow: var(--shadow-sm); transition: var(--transition);
+        }
+        .history-item:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .history-item h4 { margin-bottom: 8px; color: var(--dark-color); }
         
-        .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px); align-items: center; justify-content: center; }
-        .modal-content { background-color: #fff; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
+        /* Modals */
+        .modal { 
+            display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; 
+            background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); 
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-content { 
+            background-color: var(--surface-color); padding: 32px; border-radius: var(--border-radius-xl); 
+            width: 100%; max-width: 500px; text-align: center; box-shadow: var(--shadow-xl); 
+            max-height: 90vh; overflow-y: auto; position: relative; animation: fadeIn 0.3s ease-out;
+        }
+        .modal-content h2, .modal-content h3 { margin-bottom: 16px; color: var(--dark-color); }
 
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-        .calendar-day { padding: 8px; text-align: center; border-radius: 5px; font-size: 0.9em; }
-        .calendar-day.present { background: var(--success-color); color: white; }
+        /* Calendar */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 16px; }
+        .calendar-day { 
+            padding: 10px 4px; text-align: center; border-radius: var(--border-radius-sm); 
+            font-size: 0.9em; font-weight: 500; background: var(--light-color); border: 1px solid transparent;
+        }
+        .calendar-day.present { background: #ecfdf5; color: var(--success-hover); border-color: #a7f3d0; font-weight: 600; }
         .calendar-day.today { border: 2px solid var(--primary-color); }
         
-        .header-menu { position: absolute; top: 15px; right: 15px; }
-        .menu-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; }
-        .dropdown-content { display: none; position: absolute; right: 0; top: 40px; background: white; min-width: 150px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; z-index: 100; }
-        .dropdown-content button { width: 100%; text-align: left; background: white; color: #333; border-radius: 0; }
-        .dropdown-content button:hover { background: #f1f1f1; }
-        .show { display: block; }
+        /* Dropdown */
+        .header-menu { position: absolute; top: 24px; right: 24px; }
+        .menu-btn { 
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; 
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2em;
+            backdrop-filter: blur(4px); transition: var(--transition); box-shadow: none;
+        }
+        .menu-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(0) scale(1.05); }
+        .dropdown-content { 
+            display: none; position: absolute; right: 0; top: 50px; background: var(--surface-color); 
+            min-width: 200px; box-shadow: var(--shadow-lg); border-radius: var(--border-radius-md); 
+            overflow: hidden; z-index: 100; border: 1px solid var(--border-color);
+        }
+        .dropdown-content button { 
+            width: 100%; text-align: left; background: transparent; color: var(--dark-color); 
+            border-radius: 0; padding: 12px 16px; font-weight: 500; box-shadow: none;
+        }
+        .dropdown-content button:hover { background: var(--light-color); color: var(--primary-color); transform: none; }
+        .dropdown-content button.btn-danger { color: var(--danger-color); }
+        .dropdown-content button.btn-danger:hover { background: #fef2f2; color: var(--danger-hover); }
+        .show { display: block; animation: fadeIn 0.2s ease-out; }
 
         #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4000; }
 
-        .login-container { max-width: 400px; margin: 40px auto; padding: 20px; }
-        .login-form { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        /* Login */
+        .login-container { max-width: 400px; margin: 40px auto; width: 100%; }
+        .login-form { 
+            background: var(--surface-color); padding: 32px; border-radius: var(--border-radius-xl); 
+            box-shadow: var(--shadow-md); border: 1px solid var(--border-color);
+        }
+        .login-form h3 { margin-bottom: 24px; text-align: center; }
 
         /* --- STUDY TAB & READING UI CSS --- */
-        .note-reading-area { background: #fff; padding: 25px; border-radius: var(--border-radius); line-height: 1.8; font-size: 1.1em; color: #2c3e50; box-shadow: var(--shadow); white-space: pre-wrap; word-wrap: break-word; flex-grow: 1; overflow-y: auto; border: 1px solid #e0e6ed; }
-        .study-card { background: #fdfdfd; border: 1px solid #ddd; padding: 20px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
-        .study-card:hover { border-color: var(--primary-color); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .note-reading-area { 
+            background: var(--surface-color); padding: 32px; border-radius: var(--border-radius-lg); 
+            line-height: 1.8; font-size: 1.1em; color: var(--dark-color); box-shadow: var(--shadow-sm); 
+            white-space: pre-wrap; word-wrap: break-word; flex-grow: 1; overflow-y: auto; border: 1px solid var(--border-color); 
+        }
+        .study-card { 
+            background: var(--surface-color); border: 1px solid var(--border-color); padding: 20px 24px; 
+            border-radius: var(--border-radius-lg); cursor: pointer; transition: var(--transition); 
+            display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);
+        }
+        .study-card:hover { border-color: var(--primary-color); transform: translateY(-3px); box-shadow: var(--shadow-md); }
         
-        .progress-track { width: 6px; background: #e0e6ed; border-radius: 4px; flex-shrink: 0; margin-left: 15px; position: relative; }
-        .progress-fill { width: 100%; height: 0%; background: var(--success-color); border-radius: 4px; transition: height 0.15s ease-out; }
+        .progress-track { width: 8px; background: var(--border-color); border-radius: 99px; flex-shrink: 0; margin-left: 20px; position: relative; overflow: hidden; }
+        .progress-fill { width: 100%; height: 0%; background: var(--success-color); border-radius: 99px; transition: height 0.3s ease-out; }
+
+        /* Tables */
+        .leaderboard-table th { font-weight: 600; color: var(--text-muted); border-bottom: 2px solid var(--border-color); background: var(--light-color); }
+        .leaderboard-table td { border-bottom: 1px solid var(--border-color); color: var(--dark-color); font-weight: 500; }
 
         /* --- MOBILE FULLSCREEN NOTES ADDITION --- */
         @media screen and (max-width: 768px) { 
-            .note-reading-area { padding: 15px; font-size: 1em; } 
-            .progress-track { margin-left: 8px; width: 4px; }
+            .container { border-radius: 0; min-height: 100vh; border: none; box-shadow: none; }
+            .note-reading-area { padding: 20px; font-size: 1.05em; } 
+            .progress-track { margin-left: 12px; width: 6px; }
 
             body.notes-fullscreen-active {
                 padding: 0 !important; margin: 0 !important;
                 height: 100vh; height: 100dvh;
                 width: 100vw; overflow: hidden;
                 overscroll-behavior-y: none;
-                align-items: flex-start; background: #ffffff;
+                align-items: flex-start; background: var(--surface-color);
             }
             body.notes-fullscreen-active .container {
                 max-width: 100% !important; width: 100% !important; height: 100% !important;
@@ -224,10 +370,10 @@
                 display: none !important;
             }
             body.notes-fullscreen-active main { height: 100%; padding: 0 !important; }
-            body.notes-fullscreen-active .tab-content { padding: 0; height: 100%; }
+            body.notes-fullscreen-active .tab-content { padding: 0; height: 100%; background: transparent; }
             body.notes-fullscreen-active #studyReadingView,
             body.notes-fullscreen-active #revisionNotesView {
-                padding: 15px !important; height: 100% !important;
+                padding: 20px !important; height: 100% !important;
             }
         }
     </style>
@@ -248,14 +394,14 @@
 
             <h1>PSC Exam Prep</h1>
             <p>Level Up Your Knowledge</p>
-            <img id="playerPFP" src="https://placehold.co/80x80/FFFFFF/333333?text=PFP" alt="Profile Picture" class="hidden" style="width: 80px; height: 80px; border-radius: 50%; margin: 10px auto; display: block; border: 3px solid white; cursor: pointer;" onclick="showPlayerStatsModal()">
+            <img id="playerPFP" src="https://placehold.co/80x80/FFFFFF/333333?text=PFP" alt="Profile Picture" class="hidden" style="width: 80px; height: 80px; border-radius: 50%; margin: 16px auto 8px; display: block; border: 3px solid rgba(255,255,255,0.8); box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s;" onclick="showPlayerStatsModal()" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
             <input type="file" id="pfpUploadHidden" accept="image/*" class="hidden">
             
-            <div id="playerStats" class="player-stats hidden" style="background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px; margin-top: 10px;">
-                <p id="playerNameDisplay" style="font-weight: bold;"></p>
-                <p>Title: <span id="playerTitle"></span> (<span id="playerXP">0</span> XP)</p>
-                <div class="xp-bar" style="height: 6px; background: rgba(255,255,255,0.3); border-radius: 3px; margin-top: 5px;">
-                    <div id="xpBarFill" class="xp-bar-fill" style="height: 100%; background: var(--warning-color); width: 0%; border-radius: 3px; transition: width 0.5s;"></div>
+            <div id="playerStats" class="player-stats hidden" style="background: rgba(0,0,0,0.2); padding: 12px 20px; border-radius: 12px; margin-top: 12px; display: inline-block; text-align: center; backdrop-filter: blur(4px);">
+                <p id="playerNameDisplay" style="font-weight: 600; font-size: 1.1em;"></p>
+                <p style="font-size: 0.9em; margin-top: 4px; opacity: 0.9;">Title: <span id="playerTitle" style="font-weight:600;"></span> (<span id="playerXP" style="font-weight:600;">0</span> XP)</p>
+                <div class="xp-bar" style="height: 6px; background: rgba(255,255,255,0.2); border-radius: 99px; margin-top: 10px; overflow: hidden;">
+                    <div id="xpBarFill" class="xp-bar-fill" style="height: 100%; background: var(--warning-color); width: 0%; border-radius: 99px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
                 </div>
             </div>
         </header>
@@ -275,20 +421,20 @@
             <div id="study" class="tab-content">
                 <div id="studyListView">
                     <h2>Study Notes Library</h2>
-                    <p style="margin-bottom: 20px;">Select a subject to read its uploaded notes and materials.</p>
+                    <p style="margin-bottom: 24px; color: var(--text-muted);">Select a subject to read its uploaded notes and materials.</p>
                     <div class="form-group">
                         <select id="studySubjectFilter" onchange="renderStudyNotes()"><option value="">-- Select a Subject --</option></select>
                     </div>
-                    <div id="studyNotesList" style="display: grid; gap: 15px; margin-top: 20px;"></div>
+                    <div id="studyNotesList" style="display: grid; gap: 16px; margin-top: 24px;"></div>
                 </div>
                 <div id="studyReadingView" class="hidden" style="display: flex; flex-direction: column; height: 75vh;">
                     <div>
-                        <button onclick="closeStudyNote()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Subjects</button>
-                        <h2 id="studyNoteTitle" style="color: var(--primary-color); margin-bottom: 15px;"></h2>
+                        <button onclick="closeStudyNote()" class="btn-warning" style="margin-bottom: 24px; padding: 8px 16px;">&larr; Back to Subjects</button>
+                        <h2 id="studyNoteTitle" style="color: var(--primary-color); margin-bottom: 16px;"></h2>
                     </div>
                     <!-- Google Drive Link Replaced Internal Content -->
                     <div style="display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-height: 0;">
-                        <button id="openNotesGdriveBtnStudy" class="btn-primary" style="padding: 20px 40px; font-size: 1.2em;">📖 Read Notes (Google Drive)</button>
+                        <button id="openNotesGdriveBtnStudy" class="btn-primary" style="padding: 16px 32px; font-size: 1.1em; border-radius: 99px; box-shadow: var(--shadow-md);">📖 Read Notes (Google Drive)</button>
                     </div>
                 </div>
             </div>
@@ -298,29 +444,29 @@
                     <div class="login-container">
                         <div class="login-form">
                             <h3>Login to Your Account</h3>
-                            <select id="playerSelect" class="styled-select" style="margin-bottom: 15px;"></select>
-                            <button onclick="handlePlayerSelection()" class="btn-primary" style="width: 100%;">Login</button>
-                            <button onclick="showCreatePlayerForm()" style="width: 100%; background: transparent; color: #555; margin-top: 10px;">Create New Player</button>
+                            <select id="playerSelect" class="styled-select" style="margin-bottom: 16px;"></select>
+                            <button onclick="handlePlayerSelection()" class="btn-primary" style="width: 100%; padding: 14px;">Login</button>
+                            <button onclick="showCreatePlayerForm()" style="width: 100%; background: transparent; color: var(--text-muted); margin-top: 12px; box-shadow: none;">Create New Player</button>
                             
-                            <div id="createPlayerForm" class="hidden" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                            <div id="createPlayerForm" class="hidden" style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 24px;">
                                 <input type="text" id="newPlayerName" placeholder="Enter your name">
-                                <button onclick="createPlayer()" class="btn-success" style="width: 100%;">Create & Start</button>
-                                <button onclick="hideCreatePlayerForm()" style="background: #eee; color: #333; margin-top: 5px; width: 100%;">Cancel</button>
+                                <button onclick="createPlayer()" class="btn-success" style="width: 100%; padding: 14px;">Create & Start</button>
+                                <button onclick="hideCreatePlayerForm()" style="background: var(--light-color); color: var(--dark-color); margin-top: 8px; width: 100%; box-shadow: none; border: 1px solid var(--border-color);">Cancel</button>
                             </div>
                         </div>
-                        <div style="text-align: center; margin-top: 20px;">
-                            <button onclick="handleAdminLogin()" style="background: transparent; color: #333; border: 1px solid #ddd;">Admin Login</button>
+                        <div style="text-align: center; margin-top: 24px;">
+                            <button onclick="handleAdminLogin()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 8px 16px; font-size: 0.9em; box-shadow: none;">Admin Login</button>
                         </div>
                     </div>
                 </div>
 
                 <div id="practiceSetupView" class="view-stage hidden">
                     <h2 id="setupWelcome">Welcome!</h2>
-                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid var(--primary-color);">
-                        <p id="motivationalQuoteLoggedIn" style="font-style: italic;">Ready to learn?</p>
+                    <div style="background: #f0fdf4; padding: 20px; border-radius: var(--border-radius-lg); margin: 24px 0; border-left: 4px solid var(--success-color);">
+                        <p id="motivationalQuoteLoggedIn" style="font-style: italic; color: #166534; font-weight: 500;">Ready to learn?</p>
                     </div>
 
-                    <div class="form-group" style="margin-top: 20px;">
+                    <div class="form-group" style="margin-top: 24px;">
                         <label>1. Select Subject:</label>
                         <select id="subjectSelect" onchange="updatePracticeSetSelect(this.value)"></select>
                     </div>
@@ -329,20 +475,20 @@
                         <select id="practiceSetSelect"></select>
                     </div>
                     
-                    <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled style="width: 100%; padding: 15px; font-size: 1.1em; margin-top: 20px;">Start Practice</button>
-                    <button onclick="syncQuestionSetsFromFirebase()" class="btn-warning" style="width: 100%; margin-top: 10px; font-size: 0.9em;">Sync Latest Questions</button>
+                    <button onclick="startPracticeWrapper()" id="startPracticeBtn" disabled style="width: 100%; padding: 16px; font-size: 1.1em; margin-top: 24px; border-radius: 99px; box-shadow: var(--shadow-md);">Start Practice</button>
+                    <button onclick="syncQuestionSetsFromFirebase()" class="btn-warning" style="width: 100%; margin-top: 12px; font-size: 0.95em; background: var(--light-color); color: var(--warning-color); border: 1px solid var(--warning-color); box-shadow: none;">Sync Latest Questions</button>
                 </div>
 
-                <div id="revisionNotesView" class="view-stage hidden" style="padding: 20px; display: flex; flex-direction: column; height: 100vh;">
+                <div id="revisionNotesView" class="view-stage hidden" style="padding: 24px; display: flex; flex-direction: column; height: 100vh;">
                     <div>
-                        <button onclick="closeRevisionNoteView()" class="btn-warning" style="margin-bottom: 20px;">&larr; Back to Setup</button>
-                        <h2 id="revisionNotesTitle" style="color: var(--primary-color); margin-bottom: 10px;">Study Notes</h2>
+                        <button onclick="closeRevisionNoteView()" class="btn-warning" style="margin-bottom: 24px; padding: 8px 16px; box-shadow: none;">&larr; Back to Setup</button>
+                        <h2 id="revisionNotesTitle" style="color: var(--primary-color); margin-bottom: 12px;">Study Notes</h2>
                     </div>
-                    <div style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin-bottom: 20px; align-items: center; justify-content: center;">
-                        <button id="openNotesGdriveBtnRev" class="btn-primary" style="padding: 20px 40px; font-size: 1.2em; display: none;">📖 Read Notes (Google Drive)</button>
-                        <p id="noNotesMessageRev" style="font-style: italic; color: #777; display: none;">No study notes were provided for this set. You can proceed directly to the practice exam.</p>
+                    <div style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin-bottom: 24px; align-items: center; justify-content: center;">
+                        <button id="openNotesGdriveBtnRev" class="btn-primary" style="padding: 16px 32px; font-size: 1.1em; border-radius: 99px; box-shadow: var(--shadow-md); display: none;">📖 Read Notes (Google Drive)</button>
+                        <p id="noNotesMessageRev" style="font-style: italic; color: var(--text-muted); display: none; text-align: center; max-width: 400px;">No study notes were provided for this set. You can proceed directly to the practice exam.</p>
                     </div>
-                    <button id="startPracticeFromNotesBtn" class="btn-success" style="width: 100%; padding: 20px; font-size: 1.3em; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); margin-bottom: 20px;">I'm ready. Start Practice &rarr;</button>
+                    <button id="startPracticeFromNotesBtn" class="btn-success" style="width: 100%; padding: 20px; font-size: 1.2em; border-radius: 99px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); margin-bottom: 24px;">I'm ready. Start Practice &rarr;</button>
                 </div>
 
                 <div id="practiceSessionView" class="view-stage hidden">
@@ -351,11 +497,11 @@
                             <button onclick="toggleBookmarkCurrentQuestion()" id="bookmarkQuestionBtn" class="btn-bookmark">☆ Save</button>
                         </div>
                         <div style="flex: 1; text-align: center;">
-                            <span class="question-counter-pill"><span id="currentQuestionNum">1</span>/<span id="totalQuestions">0</span></span>
+                            <span class="question-counter-pill"><span id="currentQuestionNum">1</span><span style="color:var(--text-muted); margin:0 4px;">/</span><span id="totalQuestions" style="color:var(--text-muted);">0</span></span>
                         </div>
-                        <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-                            <span id="practiceTimer" style="font-weight: 500; color: #666; font-size: 0.95em;">00:00</span>
-                            <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="padding: 6px 12px; font-size: 0.8em; border-radius: 20px; background: transparent; color: #e74c3c; border: 1px solid #ffcccc;">Report</button>
+                        <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
+                            <span id="practiceTimer" style="font-weight: 600; color: var(--text-muted); font-size: 0.95em; background: var(--light-color); padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border-color);">00:00</span>
+                            <button onclick="reportCurrentQuestion()" class="btn-warning" id="reportQuestionBtn" style="padding: 6px 12px; font-size: 0.85em; border-radius: 99px; background: #fef2f2; color: var(--danger-color); border: 1px solid #fecaca; box-shadow: none;">Report</button>
                         </div>
                     </div>
                     
@@ -377,24 +523,24 @@
                     <div class="score" id="practiceScore" style="display: none;">Score: 0</div>
 
                     <div id="examFooter">
-                        <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" style="background: transparent; border: 1px solid #ccc; color: #666; font-weight: 500;">End Session</button>
-                        <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none; padding: 12px 25px;">Next Question &rarr;</button>
+                        <button onclick="endPractice()" class="btn-danger" id="endPracticeBtn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); font-weight: 500; box-shadow: none;">End Session</button>
+                        <button onclick="nextQuestionManual()" class="btn-success" id="nextQuestionBtn" style="display: none; padding: 12px 28px; border-radius: 99px;">Next Question &rarr;</button>
                     </div>
                 </div>
             </div>
 
             <div id="revision" class="tab-content">
                 <h2>Revision Plan</h2>
-                <div style="background: #e0e6ed; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                    <p id="revisionSuccessInfo">Check here daily for items due for revision.</p>
+                <div style="background: #e0e7ff; padding: 20px; border-radius: var(--border-radius-lg); margin: 20px 0; border-left: 4px solid var(--primary-color);">
+                    <p id="revisionSuccessInfo" style="color: #3730a3; font-weight: 500;">Check here daily for items due for revision.</p>
                 </div>
-                <p id="revisionUserPrompt" class="hidden" style="color: var(--danger-color);">Select a player in the Practice tab first.</p>
+                <p id="revisionUserPrompt" class="hidden" style="color: var(--danger-color); font-weight: 500;">Select a player in the Practice tab first.</p>
                 <div id="dueTodayList"></div>
             </div>
 
             <div id="analysis" class="tab-content">
                 <h2>Revision Analysis</h2>
-                <p style="margin-bottom: 20px;">Track your subject-wise progress through the SRS intervals.</p>
+                <p style="margin-bottom: 24px; color: var(--text-muted);">Track your subject-wise progress through the SRS intervals.</p>
                 <div id="analysisSubjectFilterContainer" class="form-group hidden">
                     <select id="analysisSubjectFilter" onchange="renderAnalysisTopics()"></select>
                 </div>
@@ -403,13 +549,13 @@
             
             <div id="backlog" class="tab-content">
                 <h2>Backlog</h2>
-                <p>Missed revisions appear here.</p>
+                <p style="margin-bottom: 24px; color: var(--text-muted);">Missed revisions appear here.</p>
                 <div id="fullBacklogList"></div>
             </div>
 
             <div id="bookmarks" class="tab-content">
                 <h2>Starred Questions</h2>
-                <p style="margin-bottom: 20px;">Review questions you saved during practice or revision.</p>
+                <p style="margin-bottom: 24px; color: var(--text-muted);">Review questions you saved during practice or revision.</p>
                 <div id="bookmarkSubjectFilterContainer" class="form-group hidden">
                     <select id="bookmarkSubjectFilter" onchange="renderBookmarksTopics()"></select>
                 </div>
@@ -418,25 +564,29 @@
 
             <div id="leaderboard" class="tab-content">
                 <h2>Leaderboards</h2>
-                <h3>Today's Top Scores</h3>
-                <table class="leaderboard-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                    <thead><tr style="background: #f0f0f0;"><th style="padding:10px; text-align:left;">Rank</th><th style="padding:10px; text-align:left;">Player</th><th style="padding:10px; text-align:left;">Score</th></tr></thead>
-                    <tbody id="todayLeaderboardTableBody"></tbody>
-                </table>
-                <h3 style="margin-top: 30px;">All Time XP</h3>
-                <table class="leaderboard-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                    <thead><tr style="background: #f0f0f0;"><th style="padding:10px; text-align:left;">Rank</th><th style="padding:10px; text-align:left;">Player</th><th style="padding:10px; text-align:left;">XP</th><th style="padding:10px; text-align:left;">Title</th></tr></thead>
-                    <tbody id="xpLeaderboardTableBody"></tbody>
-                </table>
+                <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 1.2em;">Today's Top Scores</h3>
+                <div style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); overflow: hidden;">
+                    <table class="leaderboard-table" style="width: 100%; border-collapse: collapse;">
+                        <thead><tr><th style="padding:14px; text-align:left;">Rank</th><th style="padding:14px; text-align:left;">Player</th><th style="padding:14px; text-align:left;">Score</th></tr></thead>
+                        <tbody id="todayLeaderboardTableBody"></tbody>
+                    </table>
+                </div>
+                <h3 style="margin-top: 40px; margin-bottom: 12px; font-size: 1.2em;">All Time XP</h3>
+                <div style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); overflow: hidden;">
+                    <table class="leaderboard-table" style="width: 100%; border-collapse: collapse;">
+                        <thead><tr><th style="padding:14px; text-align:left;">Rank</th><th style="padding:14px; text-align:left;">Player</th><th style="padding:14px; text-align:left;">XP</th><th style="padding:14px; text-align:left;">Title</th></tr></thead>
+                        <tbody id="xpLeaderboardTableBody"></tbody>
+                    </table>
+                </div>
             </div>
             
             <div id="attendance" class="tab-content">
                 <h2>Attendance</h2>
-                <div class="calendar-container">
-                    <div class="calendar-header" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                        <button id="prevAttendanceMonthBtn">&lt;</button>
-                        <h3 id="attendanceCalendarMonthYear"></h3>
-                        <button id="nextAttendanceMonthBtn">&gt;</button>
+                <div class="calendar-container" style="margin-top: 24px;">
+                    <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 8px;">
+                        <button id="prevAttendanceMonthBtn" style="padding: 8px 16px; background: var(--light-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">&lt;</button>
+                        <h3 id="attendanceCalendarMonthYear" style="margin: 0; font-size: 1.2em;"></h3>
+                        <button id="nextAttendanceMonthBtn" style="padding: 8px 16px; background: var(--light-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">&gt;</button>
                     </div>
                     <div id="attendanceCalendarBody" class="calendar-grid"></div>
                 </div>
@@ -444,9 +594,9 @@
 
             <div id="help" class="tab-content">
                 <h2>About</h2>
-                <div class="dashboard-card" style="background: var(--primary-color);">
-                    <h3>Gamified Learning</h3>
-                    <p>Earn XP, maintain streaks, and unlock titles!</p>
+                <div class="dashboard-card" style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; border: none; box-shadow: var(--shadow-md);">
+                    <h3 style="color: white; margin-bottom: 8px;">Gamified Learning</h3>
+                    <p style="opacity: 0.9;">Earn XP, maintain streaks, and unlock titles!</p>
                 </div>
             </div>
         </main>
@@ -456,7 +606,7 @@
         <header>
             <h1>Admin Panel</h1>
             <p id="adminWelcome"></p>
-            <button onclick="adminLogout()" class="btn-danger" style="position: absolute; top: 20px; right: 20px;">Logout</button>
+            <button onclick="adminLogout()" class="btn-danger" style="position: absolute; top: 32px; right: 24px; padding: 8px 16px; box-shadow: none;">Logout</button>
         </header>
 
         <nav id="admin-tab-nav">
@@ -470,8 +620,8 @@
         <main>
             <div id="adminQuestionSets" class="tab-content active">
                 <h2>Manage Sets</h2>
-                <div id="addQuestionsContent" style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3>Bulk Import</h3>
+                <div id="addQuestionsContent" style="background: var(--light-color); padding: 24px; border-radius: var(--border-radius-lg); margin-bottom: 24px; border: 1px solid var(--border-color);">
+                    <h3 style="margin-bottom: 16px;">Bulk Import</h3>
                     <select id="setCategory"><option value="gk">GK</option><option value="math">Math</option></select>
                     <input type="date" id="setUploadDate">
                     <input type="text" id="setSubject" list="existingSubjectsList" placeholder="Subject" onchange="updateBulkSetDropdown()">
@@ -479,10 +629,10 @@
                     <select id="bulkSetSelect" onchange="toggleNewBulkSetName()"></select>
                     <div id="newBulkSetNameGroup" style="display:none;"><input type="text" id="bulkSetName" placeholder="New Set Name"></div>
                     
-                    <input type="url" id="setNotes" placeholder="Google Drive Link for Study Notes (Optional)" style="margin-bottom: 10px; border: 1px solid #ccc; width: 100%; padding: 12px; border-radius: 8px;">
+                    <input type="url" id="setNotes" placeholder="Google Drive Link for Study Notes (Optional)" style="margin-bottom: 16px;">
                     
                     <textarea id="bulkQuestions" rows="6" placeholder="Paste questions here..."></textarea>
-                    <button onclick="importBulkQuestions()">Import</button>
+                    <button onclick="importBulkQuestions()" class="btn-success" style="width: 100%; padding: 14px;">Import Questions</button>
                 </div>
                 
                 <select id="subjectFilter" onchange="filterQuestionSetsBySubject()"><option value="">Select a Subject...</option></select>
@@ -498,11 +648,11 @@
             <div id="adminAttendance" class="tab-content">
                 <h2>Player Attendance</h2>
                 <select id="attendancePlayerSelect" onchange="renderAdminAttendanceCalendar(this.value)"></select>
-                <div class="calendar-container">
-                    <div class="calendar-header" style="display: flex; justify-content: space-between;">
-                        <button id="adminPrevAttendanceMonthBtn">&lt;</button>
-                        <h3 id="adminAttendanceCalendarMonthYear"></h3>
-                        <button id="adminNextAttendanceMonthBtn">&gt;</button>
+                <div class="calendar-container" style="margin-top: 24px;">
+                    <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 8px;">
+                        <button id="adminPrevAttendanceMonthBtn" style="padding: 8px 16px; background: var(--light-color); border: 1px solid var(--border-color); box-shadow: none;">&lt;</button>
+                        <h3 id="adminAttendanceCalendarMonthYear" style="margin: 0; font-size: 1.2em;"></h3>
+                        <button id="adminNextAttendanceMonthBtn" style="padding: 8px 16px; background: var(--light-color); border: 1px solid var(--border-color); box-shadow: none;">&gt;</button>
                     </div>
                     <div id="adminAttendanceCalendarBody" class="calendar-grid"></div>
                 </div>
@@ -514,79 +664,169 @@
             </div>
 
             <div id="adminSystem" class="tab-content">
-                <h2>System</h2>
+                <h2>System Settings</h2>
 
-                <h3>Custom Subject Sort Order</h3>
+                <h3 style="margin-top: 24px;">Custom Subject Sort Order</h3>
                 <input type="text" id="customSubjectSortOrder" placeholder="e.g., Math, English, GK">
                 <button onclick="saveCustomSortOrder()" class="btn-success">Save Sort Order</button>
-                <br><br>
-
-                <h3>Firebase</h3>
+                
+                <h3 style="margin-top: 32px;">Firebase Configuration</h3>
                 <textarea id="firebaseConfig" rows="4" placeholder="Config JSON"></textarea>
-                <button onclick="saveFirebaseConfig()" class="btn-success">Save</button>
-                <p>Status: <span id="firebaseStatus">Checking...</span></p>
+                <button onclick="saveFirebaseConfig()" class="btn-primary">Save Configuration</button>
+                <p style="margin-top: 8px; font-weight: 500;">Status: <span id="firebaseStatus">Checking...</span></p>
                 
-                <h3>Data</h3>
-                <button onclick="exportData()">Export JSON</button>
-                <button onclick="importData()">Import JSON</button>
-                <button onclick="clearAllData()" class="btn-danger">Clear All Data</button>
+                <h3 style="margin-top: 32px;">Data Management</h3>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button onclick="exportData()" style="background: var(--light-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">Export JSON</button>
+                    <button onclick="importData()" style="background: var(--light-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">Import JSON</button>
+                    <button onclick="clearAllData()" class="btn-danger">Clear All Data</button>
+                </div>
                 
-                <h3>Users</h3>
-                <select id="passwordUserSelect"></select>
-                <input type="text" id="newUserPassword" placeholder="New Password">
-                <button onclick="updateUserPassword()" class="btn-success">Update Password</button>
-                
-                <select id="playerToRemoveSelect" style="margin-top: 20px;"></select>
-                <button onclick="removePlayer()" class="btn-danger">Remove Player</button>
-                
-                <button onclick="resetAllXP()" class="btn-danger" style="margin-top: 20px;">Reset All XP</button>
+                <h3 style="margin-top: 32px;">User Management</h3>
+                <div style="background: var(--light-color); padding: 20px; border-radius: var(--border-radius-lg); border: 1px solid var(--border-color);">
+                    <select id="passwordUserSelect"></select>
+                    <input type="text" id="newUserPassword" placeholder="New Password">
+                    <button onclick="updateUserPassword()" class="btn-success" style="margin-bottom: 24px;">Update Password</button>
+                    
+                    <hr style="border: none; border-top: 1px solid var(--border-color); margin-bottom: 24px;">
+                    
+                    <select id="playerToRemoveSelect"></select>
+                    <button onclick="removePlayer()" class="btn-danger">Remove Player</button>
+                    
+                    <hr style="border: none; border-top: 1px solid var(--border-color); margin: 24px 0;">
+                    
+                    <button onclick="resetAllXP()" class="btn-danger" style="width: 100%;">Reset All Player XP</button>
+                </div>
             </div>
 
             <div id="editQuestionsSection" class="hidden">
-                <button id="backToSetListBtn" class="btn-warning">&larr; Back</button>
-                <h3 id="editQuestionsTitle">Edit Set</h3>
+                <button id="backToSetListBtn" class="btn-warning" style="margin-bottom: 24px; padding: 8px 16px; box-shadow: none;">&larr; Back</button>
+                <h3 id="editQuestionsTitle" style="margin-bottom: 16px;">Edit Set</h3>
                 <input type="text" id="editSetSubject" placeholder="Subject" onchange="updateSetSubject()">
                 <select id="editSetCategory" onchange="updateSetCategory()"><option value="gk">GK</option><option value="math">Math</option></select>
                 
-                <div style="margin-top: 15px; margin-bottom: 25px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ccc;">
-                    <h4 style="margin-bottom: 10px;">Edit Study Notes URL</h4>
-                    <input type="url" id="editSetNotes" placeholder="Google Drive Link for Study Notes..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
-                    <button onclick="updateSetNotes()" class="btn-success" style="margin-top: 5px;">Save Notes Update</button>
+                <div style="margin-top: 24px; margin-bottom: 32px; background: var(--light-color); padding: 24px; border-radius: var(--border-radius-lg); border: 1px solid var(--border-color);">
+                    <h4 style="margin-bottom: 12px;">Edit Study Notes URL</h4>
+                    <input type="url" id="editSetNotes" placeholder="Google Drive Link for Study Notes...">
+                    <button onclick="updateSetNotes()" class="btn-success" style="margin-top: 8px;">Save Notes Update</button>
                 </div>
 
                 <div id="questionsToEditList"></div>
                 
-                <div id="questionEditForm" class="hidden" style="background: #fff; padding: 20px; border: 1px solid #ccc; margin-top: 20px;">
-                    <h4>Edit Question <span id="currentQuestionIndexDisplay"></span></h4>
+                <div id="questionEditForm" class="hidden" style="background: var(--surface-color); padding: 24px; border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); margin-top: 24px; box-shadow: var(--shadow-md);">
+                    <h4 style="margin-bottom: 16px;">Edit Question <span id="currentQuestionIndexDisplay"></span></h4>
+                    <label>Question Text</label>
                     <textarea id="editQuestionText" rows="3"></textarea>
+                    <label>Options (One per line)</label>
                     <textarea id="editQuestionOptions" rows="4"></textarea>
+                    <label>Correct Answer</label>
                     <select id="editCorrectAnswer"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
-                    <div style="margin-top: 10px;">
+                    <div style="margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;">
                         <button onclick="saveEditedQuestion()" class="btn-success">Save</button>
-                        <button onclick="cancelQuestionEdit()">Cancel</button>
-                        <button onclick="deleteCurrentEditedQuestion()" class="btn-danger">Delete</button>
+                        <button onclick="cancelQuestionEdit()" style="background: var(--light-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">Cancel</button>
+                        <button onclick="deleteCurrentEditedQuestion()" class="btn-danger" style="margin-left: auto;">Delete</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <div id="resultsModal" class="modal"><div class="modal-content"><h2 id="modalTitle"></h2><p id="modalScore" style="font-size: 1.5em; font-weight: bold; margin: 10px 0;"></p><p id="modalTime"></p><p id="modalXPGained" style="color: var(--primary-color); font-weight: bold;"></p><button onclick="handleResultsClose()" class="btn-success">Continue &rarr;</button></div></div>
+    <!-- Modals -->
+    <div id="resultsModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle"></h2>
+            <p id="modalScore" style="font-size: 1.8em; font-family: var(--font-heading); font-weight: 700; margin: 16px 0; color: var(--dark-color);"></p>
+            <p id="modalTime" style="color: var(--text-muted); font-weight: 500;"></p>
+            <p id="modalXPGained" style="color: var(--primary-color); font-weight: 700; font-size: 1.2em; margin: 16px 0 24px;"></p>
+            <button onclick="handleResultsClose()" class="btn-success" style="width: 100%; padding: 14px; border-radius: 99px;">Continue &rarr;</button>
+        </div>
+    </div>
     
-    <div id="wrongAnswersModal" class="modal"><div class="modal-content" style="max-width: 800px; text-align: left;"><h2>Review Missed Questions</h2><div id="wrongAnswersBody" style="max-height: 60vh; overflow-y: auto;"></div><button onclick="handleWrongAnswersClose()" class="btn-primary" style="margin-top: 20px;">Finish Review</button></div></div>
+    <div id="wrongAnswersModal" class="modal">
+        <div class="modal-content" style="max-width: 700px; text-align: left;">
+            <h2 style="text-align: center; margin-bottom: 24px;">Review Missed Questions</h2>
+            <div id="wrongAnswersBody" style="max-height: 60vh; overflow-y: auto; padding-right: 8px;"></div>
+            <button onclick="handleWrongAnswersClose()" class="btn-primary" style="margin-top: 24px; width: 100%; padding: 14px; border-radius: 99px;">Finish Review</button>
+        </div>
+    </div>
     
-    <div id="progressModal" class="modal"><div class="modal-content"><h2>🎉 Fantastic Progress!</h2><p id="progressModalText" style="font-size: 1.3em; margin: 20px 0;"></p><button onclick="closeProgressModal()" class="btn-success" style="width:100%; padding:15px; font-size:1.1em;">Awesome!</button></div></div>
+    <div id="progressModal" class="modal">
+        <div class="modal-content">
+            <h2>🎉 Fantastic Progress!</h2>
+            <p id="progressModalText" style="font-size: 1.15em; margin: 24px 0; line-height: 1.6;"></p>
+            <button onclick="closeProgressModal()" class="btn-success" style="width:100%; padding:14px; font-size:1.1em; border-radius: 99px;">Awesome!</button>
+        </div>
+    </div>
 
-    <div id="passwordModal" class="modal"><div class="modal-content"><h3 id="passwordModalTitle"></h3><p id="passwordModalPrompt"></p><input type="password" id="passwordInput"><div id="passwordConfirmGroup" class="hidden"><input type="password" id="passwordConfirmInput" placeholder="Confirm"></div><button id="passwordSubmitBtn" class="btn-primary" style="margin-top: 10px;">Submit</button><button onclick="closeModal('passwordModal')" class="btn-danger" style="margin-top: 10px;">Cancel</button></div></div>
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3 id="passwordModalTitle"></h3>
+            <p id="passwordModalPrompt" style="margin-bottom: 16px; color: var(--text-muted);"></p>
+            <input type="password" id="passwordInput">
+            <div id="passwordConfirmGroup" class="hidden">
+                <input type="password" id="passwordConfirmInput" placeholder="Confirm">
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <button id="passwordSubmitBtn" class="btn-primary" style="flex: 1;">Submit</button>
+                <button onclick="closeModal('passwordModal')" style="flex: 1; background: var(--light-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">Cancel</button>
+            </div>
+        </div>
+    </div>
     
-    <div id="viewDetailsModal" class="modal"><div class="modal-content" id="viewDetailsModalContent"></div></div>
+    <div id="viewDetailsModal" class="modal">
+        <div class="modal-content" id="viewDetailsModalContent" style="text-align: left;"></div>
+    </div>
     
-    <div id="avatarModal" class="modal"><div class="modal-content"><h3>Choose Avatar</h3><div id="modalAvatarSelection" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;"></div><button onclick="confirmAvatar()" class="btn-success" style="margin-top: 20px;">Confirm</button></div></div>
+    <div id="avatarModal" class="modal">
+        <div class="modal-content">
+            <h3>Choose Avatar</h3>
+            <div id="modalAvatarSelection" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin: 24px 0;"></div>
+            <button onclick="confirmAvatar()" class="btn-success" style="width: 100%;">Confirm</button>
+        </div>
+    </div>
     
-    <div id="statsModal" class="modal"><div class="modal-content"><h2>Statistics</h2><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"><div style="background:#f9f9f9; padding:10px;"><h4>XP</h4><p id="statsXP">0</p></div><div style="background:#f9f9f9; padding:10px;"><h4>Streak</h4><p id="statsStreak">0</p></div><div style="background:#f9f9f9; padding:10px;"><h4>Correct</h4><p id="statsCorrect">0</p></div><div style="background:#f9f9f9; padding:10px;"><h4>Title</h4><p id="statsTitle">-</p></div></div><button onclick="closeModal('statsModal')" style="margin-top: 20px;">Close</button></div></div>
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 24px;">Player Statistics</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div style="background:var(--light-color); padding:20px; border-radius:var(--border-radius-lg); border:1px solid var(--border-color);">
+                    <h4 style="color:var(--text-muted); font-size:0.9em; margin-bottom:8px;">Total XP</h4>
+                    <p id="statsXP" style="font-size:1.5em; font-weight:700; color:var(--primary-color);">0</p>
+                </div>
+                <div style="background:var(--light-color); padding:20px; border-radius:var(--border-radius-lg); border:1px solid var(--border-color);">
+                    <h4 style="color:var(--text-muted); font-size:0.9em; margin-bottom:8px;">Day Streak</h4>
+                    <p id="statsStreak" style="font-size:1.5em; font-weight:700; color:var(--warning-color);">0</p>
+                </div>
+                <div style="background:var(--light-color); padding:20px; border-radius:var(--border-radius-lg); border:1px solid var(--border-color);">
+                    <h4 style="color:var(--text-muted); font-size:0.9em; margin-bottom:8px;">Questions Correct</h4>
+                    <p id="statsCorrect" style="font-size:1.5em; font-weight:700; color:var(--success-color);">0</p>
+                </div>
+                <div style="background:var(--light-color); padding:20px; border-radius:var(--border-radius-lg); border:1px solid var(--border-color);">
+                    <h4 style="color:var(--text-muted); font-size:0.9em; margin-bottom:8px;">Current Title</h4>
+                    <p id="statsTitle" style="font-size:1.2em; font-weight:600; color:var(--dark-color);">-</p>
+                </div>
+            </div>
+            <button onclick="closeModal('statsModal')" style="margin-top: 24px; width: 100%; background: var(--surface-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">Close</button>
+        </div>
+    </div>
     
-    <div id="adminAuthModal" class="modal"><div class="modal-content"><h3 id="adminModalTitle">Admin</h3><p id="adminModalPrompt"></p><input type="text" id="adminUsername" placeholder="Username"><input type="password" id="adminPassword" placeholder="Password"><div id="adminPasswordConfirmGroup" class="hidden"><input type="password" id="adminPasswordConfirm" placeholder="Confirm Password"></div><button id="adminSubmitBtn" class="btn-primary" style="margin-top: 10px;">Submit</button><button onclick="closeModal('adminAuthModal')" class="btn-danger">Cancel</button></div></div>
+    <div id="adminAuthModal" class="modal">
+        <div class="modal-content">
+            <h3 id="adminModalTitle">Admin</h3>
+            <p id="adminModalPrompt" style="margin-bottom: 16px; color: var(--text-muted);"></p>
+            <input type="text" id="adminUsername" placeholder="Username">
+            <input type="password" id="adminPassword" placeholder="Password">
+            <div id="adminPasswordConfirmGroup" class="hidden">
+                <input type="password" id="adminPasswordConfirm" placeholder="Confirm Password">
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <button id="adminSubmitBtn" class="btn-primary" style="flex: 1;">Submit</button>
+                <button onclick="closeModal('adminAuthModal')" style="flex: 1; background: var(--light-color); color: var(--dark-color); border: 1px solid var(--border-color); box-shadow: none;">Cancel</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- JAVASCRIPT: UNTOUCHED FROM ORIGINAL CODE -->
     <script>
         function getLocalYYYYMMDD(dateObj) {
             const year = dateObj.getFullYear();
@@ -999,9 +1239,9 @@
                 <div class="study-card" onclick="window.open('${questionSets[setName].notes}', '_blank')">
                     <div>
                         <h3 style="margin-bottom: 5px; color: var(--dark-color);">${setName}</h3>
-                        <p style="font-size: 0.9em; color: #666;">Click to read notes via Google Drive</p>
+                        <p style="font-size: 0.9em; color: var(--text-muted);">Click to read notes via Google Drive</p>
                     </div>
-                    <div style="color: var(--primary-color); font-size: 1.5em;">&rarr;</div>
+                    <div style="color: var(--primary-color); font-size: 1.5em; font-weight: bold;">&rarr;</div>
                 </div>
             `).join('');
         }
@@ -1212,7 +1452,9 @@
                 const img = document.createElement('img');
                 const url = `https://api.dicebear.com/8.x/adventurer/svg?seed=${seed}`;
                 img.src = url; img.alt = `Avatar ${seed}`;
-                img.style.cssText = "width:60px; height:60px; border-radius:50%; cursor:pointer; border:3px solid transparent;";
+                img.style.cssText = "width:64px; height:64px; border-radius:50%; cursor:pointer; border:3px solid transparent; transition:transform 0.2s;";
+                img.onmouseover = () => img.style.transform = "scale(1.1)";
+                img.onmouseout = () => img.style.transform = "scale(1)";
                 img.onclick = () => {
                     document.querySelectorAll('.avatar-selection img').forEach(i => i.style.borderColor = 'transparent');
                     img.style.borderColor = 'var(--primary-color)';
@@ -1266,7 +1508,7 @@
         }
         
         function triggerPFPUpload() {
-            if (!currentPlayerName) { showNotification("Please select a player first.", "error"); return; }
+            if (!currentPlayerName) { showNotification("Please select a player first.", "warning"); return; }
             document.getElementById('pfpUploadHidden').click();
         }
 
@@ -1327,7 +1569,7 @@
             listDiv.innerHTML = reportedQuestions.map(report => {
                 const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
                 return `<div class="history-item" style="border-left-color: var(--danger-color);"><p><strong>${report.question.question}</strong></p>
-                    <button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss</button></div>`;
+                    <div style="margin-top: 12px; display: flex; gap: 8px;"><button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss</button></div></div>`;
             }).join('');
         }
 
@@ -1420,7 +1662,7 @@
         function createPlayer() {
             const input = document.getElementById('newPlayerName');
             const name = input.value.trim();
-            if (!name) { showNotification('Please enter a name.', 'error'); return; }
+            if (!name) { showNotification('Please enter a name.', 'warning'); return; }
             if (Object.keys(playerProfiles).some(pName => pName.toLowerCase() === name.toLowerCase())) { showNotification('Name already exists.', 'error'); return; }
             pendingPlayerName = name;
             openModal('avatarModal');
@@ -1626,7 +1868,7 @@
             
             const userBookmarks = bookmarkedQuestions[currentPlayerName] || [];
             if (userBookmarks.length === 0) {
-                listDiv.innerHTML = '<div class="dashboard-card" style="background: #f0f4f8; color: #333;"><p>No starred questions yet.</p><p style="font-size: 0.9em; margin-top: 10px;">When taking an exam, click the <strong>☆ Save</strong> button to bookmark tricky questions. They will appear here for quick review!</p></div>';
+                listDiv.innerHTML = '<div class="dashboard-card" style="background: var(--light-color); color: var(--text-muted);"><p style="font-weight:500;">No starred questions yet.</p><p style="font-size: 0.9em; margin-top: 8px;">When taking an exam, click the <strong>☆ Save</strong> button to bookmark tricky questions. They will appear here for quick review!</p></div>';
                 document.getElementById('bookmarkSubjectFilterContainer').classList.add('hidden');
                 return;
             }
@@ -1669,8 +1911,8 @@
 
             let html = '';
             for (const setName of Object.keys(groupedBookmarks).sort()) {
-                html += `<div style="margin-bottom: 25px;">
-                            <h4 style="margin-bottom: 10px; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 5px;">📁 ${setName}</h4>`;
+                html += `<div style="margin-bottom: 32px;">
+                            <h4 style="margin-bottom: 16px; color: var(--primary-color); border-bottom: 2px solid var(--border-color); padding-bottom: 8px;">📁 ${setName}</h4>`;
 
                 const reversedSetBookmarks = [...groupedBookmarks[setName]].reverse();
 
@@ -1678,13 +1920,13 @@
                     const correctOpt = bm.options ? bm.options[bm.correctAnswer.charCodeAt(0) - 65] : '';
                     let cleanedQuestion = (bm.question || '').replace(/\s+/g, ' ').replace(/(\d\.)\s/g, '<br><br>$1 ').replace(/^(<br>)+/, '').trim();
                     
-                    return `<div class="history-item" style="border-left-color: #f1c40f; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    return `<div class="history-item" style="border-left-color: var(--warning-color); margin-bottom: 16px;">
                         <div style="display:flex; justify-content:flex-end; align-items:flex-start;">
-                            <button onclick="removeBookmark(${bm.originalIndex})" class="btn-danger" style="padding: 4px 10px; font-size: 0.8em;">Remove</button>
+                            <button onclick="removeBookmark(${bm.originalIndex})" class="btn-danger" style="padding: 6px 12px; font-size: 0.85em; box-shadow: none;">Remove</button>
                         </div>
-                        <div class="statement-question" style="margin-top: 5px; font-size: 1.05em; line-height: 1.6;">${cleanedQuestion}</div>
-                        <div style="margin-top: 15px; background: #e8f5e9; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-color);">
-                            <strong style="color: var(--success-color);">Answer: ${bm.correctAnswer}. ${correctOpt}</strong>
+                        <div class="statement-question" style="margin-top: 8px; font-size: 1.05em;">${cleanedQuestion}</div>
+                        <div style="margin-top: 16px; background: #ecfdf5; padding: 16px; border-radius: var(--border-radius-md); border-left: 4px solid var(--success-color);">
+                            <strong style="color: #065f46;">Answer: ${bm.correctAnswer}. ${correctOpt}</strong>
                         </div>
                     </div>`;
                 }).join('');
@@ -2166,9 +2408,9 @@
             const questionsListDiv = document.getElementById('questionsToEditList');
             const questions = set.questions || [];
             questionsListDiv.innerHTML = questions.map((q, index) => `
-                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px;">
                     <p style="flex-grow: 1;"><strong>${index + 1}.</strong> ${(q.question || "Empty Question").substring(0, 80)}...</p>
-                    <div><button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning">Edit</button><button onclick="deleteSpecificQuestion('${setName}', ${index})" class="btn-danger">Delete</button></div>
+                    <div style="display:flex; gap:8px;"><button onclick="editSpecificQuestion('${setName}', ${index})" class="btn-warning" style="padding:6px 12px;">Edit</button><button onclick="deleteSpecificQuestion('${setName}', ${index})" class="btn-danger" style="padding:6px 12px;">Delete</button></div>
                 </div>`).join('') || '<p>No questions.</p>';
         }
 
@@ -2274,10 +2516,10 @@
             leaderboardData.sort((a, b) => b.totalXP - a.totalXP || b.totalCorrect - a.totalCorrect);
             const tbody = document.getElementById('xpLeaderboardTableBody');
             tbody.innerHTML = leaderboardData.map((player, i) => {
-                const highlightClass = player.name === currentPlayerName ? 'background-color: #e8dff5;' : '';
+                const highlightClass = player.name === currentPlayerName ? 'background-color: #f1f5f9; font-weight: 600;' : '';
                 const rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
-                return `<tr style="${highlightClass}"><td style="padding:10px;">${rankDisplay}</td><td style="padding:10px;">${player.name}</td><td style="padding:10px;">${player.totalXP}</td><td style="padding:10px;">${player.title}</td></tr>`;
-            }).join('') || '<tr><td colspan="4">No data.</td></tr>';
+                return `<tr style="${highlightClass}"><td style="padding:14px;">${rankDisplay}</td><td style="padding:14px;">${player.name}</td><td style="padding:14px; font-weight:600; color:var(--primary-color);">${player.totalXP}</td><td style="padding:14px;">${player.title}</td></tr>`;
+            }).join('') || '<tr><td colspan="4" style="padding: 16px;">No data.</td></tr>';
         }
 
         function showTodayLeaderboard() {
@@ -2286,10 +2528,10 @@
             const leaderboardData = Object.entries(todayScores).map(([name, score]) => ({ name, score })).sort((a, b) => b.score - a.score);
             const tbody = document.getElementById('todayLeaderboardTableBody');
             tbody.innerHTML = leaderboardData.map((player, i) => {
-                 const highlightClass = player.name === currentPlayerName ? 'background-color: #e8dff5;' : '';
+                 const highlightClass = player.name === currentPlayerName ? 'background-color: #f1f5f9; font-weight: 600;' : '';
                 const rankDisplay = i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1;
-                return `<tr style="${highlightClass}"><td style="padding:10px;">${rankDisplay}</td><td style="padding:10px;">${player.name}</td><td style="padding:10px;">${player.score}</td></tr>`;
-            }).join('') || '<tr><td colspan="3">No scores today.</td></tr>';
+                return `<tr style="${highlightClass}"><td style="padding:14px;">${rankDisplay}</td><td style="padding:14px;">${player.name}</td><td style="padding:14px; font-weight:600; color:var(--success-color);">${player.score}</td></tr>`;
+            }).join('') || '<tr><td colspan="3" style="padding: 16px;">No scores today.</td></tr>';
         }
 
         function getRevisionItems(playerName = null) {
@@ -2340,20 +2582,31 @@
             
             const isCritical = isBacklog && daysAgo > 0 && daysAgo <= 3;
             const btnClass = isCritical ? 'btn-critical' : 'btn-warning';
+            const borderColor = isBacklog ? (isCritical ? 'var(--critical-color)' : 'var(--danger-color)') : 'var(--primary-color)';
             
-            let overdueText = `Due Today`;
+            let overdueText = `<span style="color:var(--text-muted); font-weight:500;">Due Today</span>`;
             if (isBacklog) {
-                overdueText = `<span style="color:${isCritical ? 'var(--critical-color)' : 'var(--danger-color)'}; font-weight:bold;">${daysAgo === 1 ? '1 day ago' : daysAgo + ' days ago'}</span>`;
+                overdueText = `<span style="color:${isCritical ? 'var(--critical-color)' : 'var(--danger-color)'}; font-weight:600;">${daysAgo === 1 ? '1 day ago' : daysAgo + ' days ago'}</span>`;
             }
 
-            let itemHtml = `<div class="history-item" style="border-left-color: ${isBacklog ? (isCritical ? 'var(--critical-color)' : 'var(--danger-color)') : 'var(--primary-color)'}; position: relative;">
-                <div style="display:flex; justify-content:space-between; align-items:center;"><h4>${item.setName}</h4><span style="font-size: 0.8em; background: #eee; padding: 2px 6px; border-radius: 4px;">Interval: ${item.day} Days</span></div>`;
+            let itemHtml = `<div class="history-item" style="border-left-color: ${borderColor}; position: relative; padding: 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 1.1em;">${item.setName}</h4>
+                    <span style="font-size: 0.85em; background: var(--light-color); color: var(--text-muted); padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border-color); font-weight: 500;">Interval: ${item.day} Days</span>
+                </div>`;
             
             if (isCritical) {
-                itemHtml += `<span style="position: absolute; top: -10px; right: -5px; background: var(--danger-color); color: white; padding: 2px 8px; font-size: 0.7em; font-weight: bold; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">CRITICAL</span>`;
+                itemHtml += `<span style="position: absolute; top: -10px; right: -5px; background: var(--danger-color); color: white; padding: 4px 12px; font-size: 0.75em; font-weight: 700; border-radius: 99px; box-shadow: 0 4px 6px rgba(0,0,0,0.15);">CRITICAL</span>`;
             }
 
-            itemHtml += `<p>Total Questions: ${questionSets[item.setName].questions.length}</p><p style="margin-bottom: 10px;">${overdueText}</p><button onclick="startRevisionPractice('${item.setName}', '${item.setName}')" class="${btnClass}">${isCritical ? 'Recover Now' : 'Start Revision'}</button></div>`; 
+            itemHtml += `<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+                            <div>
+                                <p style="margin-bottom: 4px; color: var(--text-muted); font-size: 0.9em;">Total Questions: <strong>${questionSets[item.setName].questions.length}</strong></p>
+                                <p style="margin: 0;">${overdueText}</p>
+                            </div>
+                            <button onclick="startRevisionPractice('${item.setName}', '${item.setName}')" class="${btnClass}" style="padding: 10px 20px; box-shadow: var(--shadow-sm);">${isCritical ? 'Recover Now' : 'Start Revision'}</button>
+                        </div>
+                    </div>`; 
             return itemHtml;
         }
 
@@ -2364,7 +2617,7 @@
             if (!currentPlayerName) { userPrompt.classList.remove('hidden'); dueTodayDiv.innerHTML = ''; return; } 
             else { userPrompt.classList.add('hidden'); }
             const { dueToday } = getRevisionItems();
-            dueTodayDiv.innerHTML = dueToday.length > 0 ? dueToday.map(item => renderRevisionItem(item, false)).join('') : '<p>No tasks due today!</p>';
+            dueTodayDiv.innerHTML = dueToday.length > 0 ? dueToday.map(item => renderRevisionItem(item, false)).join('') : '<div class="dashboard-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; text-align: center;"><h3 style="color: #166534; margin-bottom: 8px;">All Caught Up!</h3><p style="color: #15803d;">You have no tasks due for revision today.</p></div>';
         }
 
         function renderBacklogPage() {
@@ -2372,7 +2625,7 @@
             updateAllBadges();
             if (!currentPlayerName) { backlogDiv.innerHTML = '<p>Select a player.</p>'; return; }
             const { backlog } = getRevisionItems();
-            backlogDiv.innerHTML = backlog.length > 0 ? backlog.map(item => renderRevisionItem(item, true)).join('') : '<p>Backlog clear!</p>';
+            backlogDiv.innerHTML = backlog.length > 0 ? backlog.map(item => renderRevisionItem(item, true)).join('') : '<div class="dashboard-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; text-align: center;"><h3 style="color: #166534; margin-bottom: 8px;">Backlog Clear!</h3><p style="color: #15803d;">Great job staying on top of your schedule.</p></div>';
         }
 
         // --- NEW ANALYSIS TAB LOGIC ---
@@ -2381,7 +2634,7 @@
             const filterContainer = document.getElementById('analysisSubjectFilterContainer');
             
             if (!currentPlayerName) {
-                analysisDiv.innerHTML = '<p style="color:var(--danger-color);">Select a player in the Practice tab first.</p>';
+                analysisDiv.innerHTML = '<p style="color:var(--danger-color); font-weight:500;">Select a player in the Practice tab first.</p>';
                 filterContainer.classList.add('hidden');
                 return;
             }
@@ -2446,19 +2699,19 @@
                 return;
             }
 
-            let html = `<div class="dashboard-card" style="background: #f8f9fa; color: #333; margin-bottom: 20px; border-left: 5px solid var(--primary-color);">
-                            <h3 style="margin-bottom: 15px; color: var(--primary-color); border-bottom: 2px solid #eee; padding-bottom: 5px;">${subject}</h3>
-                            <div style="display: grid; gap: 10px;">`;
+            let html = `<div class="dashboard-card" style="background: var(--surface-color); color: var(--dark-color); margin-bottom: 24px; border-left: 5px solid var(--primary-color);">
+                            <h3 style="margin-bottom: 20px; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">${subject}</h3>
+                            <div style="display: grid; gap: 12px;">`;
 
             subjectData.sort((a, b) => a.setName.localeCompare(b.setName)).forEach(item => {
                 const percent = Math.min(100, Math.round((item.stage / item.totalStages) * 100));
-                html += `<div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px;">
+                html += `<div style="background: var(--light-color); padding: 16px; border-radius: var(--border-radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <strong>${item.setName}</strong>
-                                <span style="font-size: 0.85em; background: ${percent === 100 ? 'var(--success-color)' : '#eee'}; color: ${percent === 100 ? 'white' : '#555'}; padding: 3px 8px; border-radius: 12px;">Stage ${item.stage}/${item.totalStages}</span>
+                                <strong style="font-size: 1.05em;">${item.setName}</strong>
+                                <span style="font-size: 0.85em; background: ${percent === 100 ? '#ecfdf5' : '#f1f5f9'}; color: ${percent === 100 ? '#059669' : '#64748b'}; padding: 4px 10px; border-radius: 99px; border: 1px solid ${percent === 100 ? '#a7f3d0' : '#e2e8f0'}; font-weight: 500;">Stage ${item.stage}/${item.totalStages}</span>
                             </div>
-                            <div class="xp-bar" style="height: 6px; background: #eee; border-radius: 3px; width: 100%;">
-                                <div class="xp-bar-fill" style="height: 100%; background: ${percent === 100 ? 'var(--success-color)' : 'var(--secondary-color)'}; width: ${percent}%; border-radius: 3px;"></div>
+                            <div class="xp-bar" style="height: 8px; background: #e2e8f0; border-radius: 99px; width: 100%; overflow: hidden;">
+                                <div class="xp-bar-fill" style="height: 100%; background: ${percent === 100 ? 'var(--success-color)' : 'var(--primary-color)'}; width: ${percent}%; border-radius: 99px; transition: width 0.5s;"></div>
                             </div>
                          </div>`;
             });
@@ -2539,7 +2792,7 @@
             if (count > 0) {
                 badge = document.createElement('span');
                 badge.className = 'revision-badge';
-                badge.style.cssText = "position: absolute; top: 5px; right: 5px; background-color: var(--danger-color); color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold;";
+                badge.style.cssText = "position: absolute; top: -2px; right: -2px; background-color: var(--danger-color); color: white; border-radius: 99px; padding: 2px 6px; font-size: 10px; font-weight: 700; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3); border: 2px solid var(--surface-color);";
                 badge.textContent = count;
                 button.appendChild(badge);
             }
@@ -2578,24 +2831,24 @@
         
         function showAdminRevisionDetailsForDate(dateKey, revisions, playerName) {
             const formattedDate = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            let detailsHtml = `<h2>Due for ${playerName} on ${formattedDate}</h2>`;
+            let detailsHtml = `<h2 style="margin-bottom: 24px;">Due for ${playerName} on ${formattedDate}</h2>`;
             revisions.forEach(rev => { detailsHtml += `<div class="history-item"><p><strong>Set: ${rev.setName} (Interval: ${rev.day} days)</strong></p></div>`; });
-            detailsHtml += `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
+            detailsHtml += `<button onclick="closeModal('viewDetailsModal')" style="margin-top:24px; width:100%;">Close</button>`;
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml;
             openModal('viewDetailsModal');
         }
 
         function showUserRevisionDetailsForDate(dateKey, revisions) {
             const formattedDate = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            let detailsHtml = `<h2>Revisions Due ${formattedDate}</h2>`;
+            let detailsHtml = `<h2 style="margin-bottom: 24px;">Revisions Due ${formattedDate}</h2>`;
             revisions.forEach(rev => { detailsHtml += `<div class="history-item"><p><strong>Set: ${rev.setName} (Interval: ${rev.day} days)</strong></p></div>`; });
-            detailsHtml += `<button onclick="closeModal('viewDetailsModal')" style="margin-top:20px;">Close</button>`;
+            detailsHtml += `<button onclick="closeModal('viewDetailsModal')" style="margin-top:24px; width:100%;">Close</button>`;
             document.getElementById('viewDetailsModalContent').innerHTML = detailsHtml;
             openModal('viewDetailsModal');
         }
 
         function renderAttendanceCalendar(year, month) {
-             if (!currentPlayerName) { document.getElementById('attendanceCalendarBody').innerHTML = '<p>Select a player.</p>'; document.getElementById('attendanceCalendarMonthYear').textContent = ''; return; }
+             if (!currentPlayerName) { document.getElementById('attendanceCalendarBody').innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Select a player.</p>'; document.getElementById('attendanceCalendarMonthYear').textContent = ''; return; }
             const profile = playerProfiles[currentPlayerName];
             const attendance = profile.attendance || [];
             const revisionSchedule = getRevisionScheduleForPlayer(currentPlayerName);
@@ -2606,7 +2859,7 @@
             const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; 
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div style="font-weight:bold; text-align:center;">${day}</div>`; });
+            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div style="font-weight:600; color:var(--text-muted); font-size:0.85em; text-align:center; padding-bottom:8px;">${day}</div>`; });
             for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div></div>`; }
             const todayStr = getTodayDateString();
             for (let day = 1; day <= daysInMonth; day++) {
@@ -2614,7 +2867,7 @@
                 dayCell.classList.add('calendar-day'); dayCell.textContent = day;
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 if (attendance.includes(dateKey)) { dayCell.classList.add('present'); }
-                if (revisionSchedule[dateKey]) { dayCell.style.border = "1px solid var(--primary-color)"; dayCell.style.cursor = "pointer"; dayCell.onclick = () => showUserRevisionDetailsForDate(dateKey, revisionSchedule[dateKey]); }
+                if (revisionSchedule[dateKey]) { dayCell.style.border = "2px solid var(--primary-color)"; dayCell.style.cursor = "pointer"; dayCell.onclick = () => showUserRevisionDetailsForDate(dateKey, revisionSchedule[dateKey]); }
                 if (dateKey === todayStr) { dayCell.classList.add('today'); }
                 calendarBody.appendChild(dayCell);
             }
@@ -2626,7 +2879,7 @@
             const monthName = new Date(year, month).toLocaleString('default', { month: 'long' });
             document.getElementById('adminAttendanceCalendarMonthYear').textContent = `${monthName} ${year}`;
             const calendarBody = document.getElementById('adminAttendanceCalendarBody');
-            if (!playerName || !playerProfiles[playerName]) { calendarBody.innerHTML = '<p>Select a player.</p>'; return; }
+            if (!playerName || !playerProfiles[playerName]) { calendarBody.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Select a player.</p>'; return; }
             const profile = playerProfiles[playerName];
             const attendance = profile.attendance || [];
             const revisionSchedule = getRevisionScheduleForPlayer(playerName);
@@ -2634,7 +2887,7 @@
             const firstDayOfMonth = (new Date(year, month, 1).getDay() + 6) % 7; 
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div style="font-weight:bold; text-align:center;">${day}</div>`; });
+            daysOfWeek.forEach(day => { calendarBody.innerHTML += `<div style="font-weight:600; color:var(--text-muted); font-size:0.85em; text-align:center; padding-bottom:8px;">${day}</div>`; });
             for (let i = 0; i < firstDayOfMonth; i++) { calendarBody.innerHTML += `<div></div>`; }
             const todayStr = getTodayDateString();
             for (let day = 1; day <= daysInMonth; day++) {
@@ -2642,7 +2895,7 @@
                 dayCell.classList.add('calendar-day'); dayCell.textContent = day;
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 if (attendance.includes(dateKey)) { dayCell.classList.add('present'); }
-                if (revisionSchedule[dateKey]) { dayCell.style.border = "1px solid var(--primary-color)"; dayCell.style.cursor = "pointer"; dayCell.onclick = () => showAdminRevisionDetailsForDate(dateKey, revisionSchedule[dateKey], playerName); }
+                if (revisionSchedule[dateKey]) { dayCell.style.border = "2px solid var(--primary-color)"; dayCell.style.cursor = "pointer"; dayCell.onclick = () => showAdminRevisionDetailsForDate(dateKey, revisionSchedule[dateKey], playerName); }
                 if (dateKey === todayStr) { dayCell.classList.add('today'); }
                 calendarBody.appendChild(dayCell);
             }
@@ -2672,9 +2925,15 @@
                 }
                 const qText = ans.questionText || "";
                 let questionText = qText.replace(/1\./g, '<br>1.').replace(/2\./g, '<br><br>2.').replace(/3\./g, '<br><br>3.').replace(/4\./g, '<br><br>4.');
-                return `<div class="history-item" style="border-left-color: var(--danger-color);"><div class="statement-question" style="font-weight:400;">${index + 1}. ${questionText}</div>
-                        <p style="color: var(--danger-color);">Your Answer: ${ans.selectedAnswer || 'None'}. ${yourAnswerText}</p>
-                        <p style="color: var(--success-color);">Correct Answer: ${correctAns}. ${correctText}</p></div>`;
+                return `<div class="history-item" style="border-left-color: var(--danger-color); background: var(--light-color);">
+                        <div class="statement-question" style="font-weight:500; margin-bottom:12px;">${index + 1}. ${questionText}</div>
+                        <div style="background: #fef2f2; padding: 12px; border-radius: var(--border-radius-sm); margin-bottom: 8px;">
+                            <p style="color: #991b1b; margin:0;"><strong>Your Answer:</strong> ${ans.selectedAnswer || 'None'}. ${yourAnswerText}</p>
+                        </div>
+                        <div style="background: #ecfdf5; padding: 12px; border-radius: var(--border-radius-sm);">
+                            <p style="color: #065f46; margin:0;"><strong>Correct Answer:</strong> ${correctAns}. ${correctText}</p>
+                        </div>
+                    </div>`;
             }).join('');
             openModal('wrongAnswersModal');
         }
@@ -2764,14 +3023,14 @@
 
         function renderAdminBacklogManager(playerName) {
             const listDiv = document.getElementById('adminBacklogList');
-            if (!playerName) { listDiv.innerHTML = '<p>Select player.</p>'; return; }
+            if (!playerName) { listDiv.innerHTML = '<p style="color:var(--text-muted); margin-top:16px;">Select player.</p>'; return; }
             const { backlog } = getRevisionItems(playerName);
             listDiv.innerHTML = backlog.map(item => `
-                <div class="history-item" style="border-left-color: var(--danger-color); display: flex; justify-content: space-between; align-items: center;">
-                    <div><h4>${item.setName}</h4><p>Due: ${item.revisionDate.toLocaleDateString()}</p></div>
-                    <button onclick="removeBacklogItem('${playerName}', '${item.setName}')" class="btn-danger">Skip</button>
+                <div class="history-item" style="border-left-color: var(--danger-color); display: flex; justify-content: space-between; align-items: center; margin-top:16px;">
+                    <div><h4 style="margin-bottom:4px;">${item.setName}</h4><p style="font-size:0.9em; color:var(--text-muted);">Due: ${item.revisionDate.toLocaleDateString()}</p></div>
+                    <button onclick="removeBacklogItem('${playerName}', '${item.setName}')" class="btn-danger" style="padding:8px 16px;">Skip</button>
                 </div>
-            `).join('') || `<p>No backlog.</p>`;
+            `).join('') || `<p style="color:var(--text-muted); margin-top:16px;">No backlog.</p>`;
         }
 
         function removeBacklogItem(playerName, setName) {
@@ -2807,10 +3066,10 @@
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
             notification.textContent = message;
-            notification.style.cssText = `position: fixed; top: 20px; right: 20px; padding: 15px; border-radius: 8px; color: white; background: ${type === 'success' ? 'var(--success-color)' : (type === 'error' ? 'var(--danger-color)' : 'var(--warning-color)')}; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 5000; transform: translateX(120%); transition: transform 0.5s;`;
+            notification.style.cssText = `position: fixed; top: 24px; right: 24px; padding: 16px 24px; border-radius: var(--border-radius-md); color: white; background: ${type === 'success' ? 'var(--success-color)' : (type === 'error' ? 'var(--danger-color)' : 'var(--warning-color)')}; box-shadow: var(--shadow-lg); z-index: 5000; transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); font-weight: 500; font-family: var(--font-primary);`;
             document.body.appendChild(notification);
             setTimeout(() => { notification.style.transform = 'translateX(0)'; }, 10);
-            setTimeout(() => { notification.style.transform = 'translateX(120%)'; setTimeout(() => notification.remove(), 500); }, 3000);
+            setTimeout(() => { notification.style.transform = 'translateX(120%)'; setTimeout(() => notification.remove(), 400); }, 3000);
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
@@ -2869,7 +3128,7 @@
         }
         function stopConfetti() { cancelAnimationFrame(animationFrameId); if(confettiCtx) confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); }
         function createConfettiParticle() {
-            const colors = ['#f1c40f', '#e74c3c', '#3498db', '#8e44ad', '#2ecc71'];
+            const colors = ['#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#10b981'];
             return { x: Math.random() * confettiCanvas.width, y: -20, w: Math.random() * 10 + 5, h: Math.random() * 10 + 5, color: colors[Math.floor(Math.random() * colors.length)], vx: (Math.random() - 0.5) * 4, vy: Math.random() * 4 + 2, angle: Math.random() * Math.PI * 2, angularVelocity: (Math.random() - 0.5) * 0.1 };
         }
         function animateConfetti() {
@@ -2902,7 +3161,7 @@
             listDiv.innerHTML = reportedQuestions.map(report => {
                 const correctOpt = report.question.options[report.question.correctAnswer.charCodeAt(0) - 65];
                 return `<div class="history-item" style="border-left-color: var(--danger-color);"><p><strong>${report.question.question}</strong></p>
-                    <button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning">Review</button><button onclick="dismissReport('${report.reportId}')" class="btn-success">Dismiss</button></div>`;
+                    <div style="margin-top:12px; display:flex; gap:8px;"><button onclick="editReportedQuestion('${report.reportId}')" class="btn-warning" style="padding:6px 12px;">Review</button><button onclick="dismissReport('${report.reportId}')" class="btn-success" style="padding:6px 12px;">Dismiss</button></div></div>`;
             }).join('');
         }
 
@@ -2946,7 +3205,7 @@
 
         function updateFirebaseStatus(status, isConnected) {
             const statusEl = document.getElementById('firebaseStatus');
-            if (statusEl) { statusEl.textContent = status; statusEl.style.color = isConnected ? 'green' : 'red'; }
+            if (statusEl) { statusEl.textContent = status; statusEl.style.color = isConnected ? 'var(--success-color)' : 'var(--danger-color)'; }
         }
 
         function validateAndSyncQuestionSets(callback) {
@@ -2965,7 +3224,7 @@
             if (!setsListDiv) return;
             
             if (!selectedSubject) {
-                setsListDiv.innerHTML = '<p>Please select a subject to view its sets.</p>';
+                setsListDiv.innerHTML = '<p style="color:var(--text-muted); margin-top:16px;">Please select a subject to view its sets.</p>';
                 return;
             }
             
@@ -2973,8 +3232,8 @@
             
             setsListDiv.innerHTML = filteredSetNames.map(setName => {
                 const set = questionSets[setName];
-                return `<div class="history-item" style="display: flex; justify-content: space-between; align-items: center;"><div><h4>${setName} (${set.questions.length})</h4></div><div><button onclick="editQuestionSet('${setName}')" class="btn-warning">Edit</button><button onclick="renameSet('${setName}')" class="btn-warning" style="background:#3498db;">Name</button><button onclick="exportQuestionSet('${setName}')" class="btn-success">Copy</button><button onclick="deleteQuestionSet('${setName}')" class="btn-danger">Del</button></div></div>`;
-            }).join('') || '<p>No sets.</p>';
+                return `<div class="history-item" style="display: flex; justify-content: space-between; align-items: center; margin-top:16px;"><div><h4 style="margin-bottom:0;">${setName} <span style="font-size:0.85em; font-weight:500; color:var(--text-muted);">(${set.questions.length})</span></h4></div><div style="display:flex; gap:8px;"><button onclick="editQuestionSet('${setName}')" class="btn-warning" style="padding:6px 12px;">Edit</button><button onclick="renameSet('${setName}')" class="btn-primary" style="padding:6px 12px;">Name</button><button onclick="exportQuestionSet('${setName}')" class="btn-success" style="padding:6px 12px;">Copy</button><button onclick="deleteQuestionSet('${setName}')" class="btn-danger" style="padding:6px 12px;">Del</button></div></div>`;
+            }).join('') || '<p style="color:var(--text-muted); margin-top:16px;">No sets.</p>';
         }
 
         function proceedToNextQuestion() {
