@@ -11,370 +11,253 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
-    <style>
-        /* --- MODERNIZED GLOBAL VARIABLES & BASE STYLES --- */
+ <style>
+        /* --- DOPAMINE-INDUCING GLOBAL VARIABLES --- */
         :root {
-            --primary-color: #4f46e5; /* Indigo 600 */
-            --primary-hover: #4338ca;
-            --secondary-color: #7c3aed; /* Violet 600 */
-            --success-color: #10b981; /* Emerald 500 */
-            --success-hover: #059669;
-            --danger-color: #ef4444; /* Red 500 */
-            --danger-hover: #dc2626;
-            --warning-color: #f59e0b; /* Amber 500 */
-            --warning-hover: #d97706;
-            --critical-color: #0f172a; /* Slate 900 */
+            --primary-color: #5c4ff2; 
+            --primary-hover: #4a3bde;
+            --secondary-color: #8b5cf6; 
+            --success-color: #10b981; 
+            --danger-color: #ef4444; 
+            --warning-color: #f59e0b; 
+            --critical-color: #dc2626; 
             
-            --light-color: #f8fafc; /* Slate 50 */
-            --dark-color: #1e293b; /* Slate 800 */
-            --text-muted: #64748b; /* Slate 500 */
-            --bg-color: #f1f5f9; /* Slate 100 */
+            --bg-body: #e2e8f0; 
+            --bg-app: #ffffff; 
             --surface-color: #ffffff;
-            --border-color: #e2e8f0; /* Slate 200 */
+            --dark-color: #0f172a; 
+            --text-muted: #94a3b8; 
+            --border-color: #f1f5f9; 
             
             --font-primary: 'Inter', system-ui, sans-serif;
             --font-heading: 'Poppins', sans-serif;
             
             --border-radius-sm: 8px;
-            --border-radius-md: 12px;
-            --border-radius-lg: 16px;
-            --border-radius-xl: 24px;
+            --border-radius-md: 14px;
+            --border-radius-lg: 20px;
+            --border-radius-xl: 30px;
             
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-float: 0 10px 40px -10px rgba(92, 79, 242, 0.15);
+            --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.03);
+            --shadow-btn: 0 8px 16px -4px rgba(92, 79, 242, 0.3);
             
-            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --bouncy-transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { width: 0px; height: 0px; display: none; }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--light-color); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        body {
-            font-family: var(--font-primary);
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(at 0% 0%, hsla(253,16%,7%,0.05) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.05) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.05) 0, transparent 50%);
-            background-attachment: fixed;
-            min-height: 100vh;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            line-height: 1.5;
+        /* --- ANTI-FLASH SCREEN RESPONSIVENESS --- */
+        /* Locks the viewport to stop mobile dropdowns/keyboards from causing resize flashing */
+        html, body {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%; overflow: hidden; 
+            font-family: var(--font-primary); font-size: 15px; 
+            background-color: var(--bg-body); color: var(--dark-color);
+            display: flex; align-items: center; justify-content: center; line-height: 1.5;
         }
 
-        h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 600; }
-
-        /* --- EXAM MODE FULLSCREEN LAYOUT --- */
-        body.practice-active { 
-            padding: 0 !important; margin: 0 !important; 
-            height: 100vh; height: 100dvh; 
-            width: 100vw; overflow: hidden; 
-            overscroll-behavior-y: none; 
-            align-items: flex-start; background: #f8fafc; 
-        }
-        body.practice-active .container, body.practice-active #adminPanel { max-width: 100% !important; width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; background: #f8fafc; padding: 0; margin: 0; border: none; }
-        body.practice-active header, body.practice-active nav { display: none !important; }
-        body.practice-active main { height: 100%; padding: 0 !important; }
-        body.practice-active .tab-content { padding: 0; height: 100%; display: none; background: transparent; box-shadow: none; border: none; }
-        body.practice-active .tab-content.active { display: block; }
-
-        #practiceSessionView { 
-            height: 100vh; height: 100dvh; 
-            width: 100vw; display: flex; flex-direction: column; background: #f8fafc; 
-        }
-        
-        #topProgressIndicator { 
-            flex: 0 0 70px; min-height: 70px; background: var(--surface-color); border-bottom: 1px solid var(--border-color); 
-            display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 20;
-            box-shadow: var(--shadow-sm);
-        }
-        .question-counter-pill {
-            background: var(--light-color); border: 1px solid var(--border-color); padding: 8px 24px; 
-            border-radius: 9999px; font-weight: 600; font-size: 1.05em; color: var(--dark-color);
-            display: inline-flex; align-items: center; justify-content: center;
-            box-shadow: var(--shadow-sm);
-        }
-
-        #practiceSessionViewContentWrapper { 
-            flex: 1 1 auto; min-height: 0; 
-            display: flex; flex-direction: column; overflow: hidden; position: relative; 
-        }
-
-        #questionScrollContainer { 
-            flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 32px 24px; 
-            background: #f8fafc; -webkit-overflow-scrolling: touch; 
-        }
-        
-        #practiceQuestion { 
-            font-size: 1.2em; font-weight: 500; line-height: 1.7; color: var(--dark-color); 
-            max-width: 850px; margin: 0 auto;
-        }
-        
-        #optionsGridContainer { 
-            flex: 0 0 auto; background: var(--surface-color); padding: 24px; 
-            border-top: 1px solid var(--border-color); position: static !important; 
-            z-index: 10; box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-
-        #optionsGrid { 
-            max-width: 850px; 
-            margin: 0 auto;
-            width: 100%; box-sizing: border-box;
-        }
-        
-        .option-grid-item { 
-            display: flex; align-items: center; justify-content: flex-start; 
-            background: var(--surface-color); border: 2px solid var(--border-color); border-radius: var(--border-radius-lg); 
-            padding: 16px 20px; font-weight: 500; font-size: 1.05em; color: var(--dark-color);
-            cursor: pointer; transition: var(--transition); user-select: none; text-align: left; line-height: 1.5;
-            word-wrap: break-word; overflow-wrap: break-word; white-space: normal;
-            box-shadow: var(--shadow-sm);
-        }
-        .option-grid-item:hover { border-color: var(--primary-color); background: #f5f3ff; transform: translateY(-1px); }
-        
-        .option-grid-item.correct { background: #ecfdf5; color: #065f46; border-color: var(--success-color); box-shadow: 0 0 0 1px var(--success-color); }
-        .option-grid-item.correct .option-letter { background: var(--success-color); color: white; border-color: var(--success-color); }
-        .option-grid-item.wrong { background: #fef2f2; color: #991b1b; border-color: var(--danger-color); box-shadow: 0 0 0 1px var(--danger-color); }
-        .option-grid-item.wrong .option-letter { background: var(--danger-color); color: white; border-color: var(--danger-color); }
-        
-        .option-letter { 
-            font-family: var(--font-heading); font-weight: 600; color: var(--text-muted); background: var(--light-color); 
-            border: 2px solid var(--border-color); border-radius: 50%; 
-            width: 32px; height: 32px; display: inline-flex; align-items: center; 
-            justify-content: center; margin-right: 16px; flex-shrink: 0; transition: var(--transition);
-        }
-
-        @media screen and (min-width: 1024px) {
-            #practiceSessionViewContentWrapper { flex-direction: row; }
-            #questionScrollContainer { height: 100%; border-right: 1px solid var(--border-color); padding: 48px; }
-            #optionsGridContainer { flex: 0 0 450px; height: 100%; padding: 48px 32px; border-top: none; justify-content: center; overflow-y: auto; box-shadow: -4px 0 15px -3px rgba(0, 0, 0, 0.05); }
-            #optionsGrid { display: flex; flex-direction: column; gap: 16px; }
-        }
-
-        @media screen and (max-width: 1023px) {
-            #practiceSessionViewContentWrapper { flex-direction: column; }
-            #practiceQuestion { padding: 0 0 20px 0; font-size: 1.1em; }
-            #optionsGridContainer { padding: 20px; }
-            #optionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-            .option-grid-item { padding: 12px 16px; font-size: 0.95em; min-height: 64px; }
-            .option-letter { width: 28px; height: 28px; font-size: 0.9em; margin-right: 12px; }
-        }
-
-        #examFooter { flex: 0 0 70px; min-height: 70px; background: var(--surface-color); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: flex-end; padding: 0 24px; gap: 16px; z-index: 20; position: static !important; }
-
-        /* --- GENERAL UI ELEMENTS --- */
+        /* --- STRUCTURAL FIXES --- */
         .container, #adminPanel { 
-            width: 100%; max-width: 1000px; margin: 0 auto; 
-            background: var(--surface-color); 
-            border-radius: var(--border-radius-xl); 
-            box-shadow: var(--shadow-xl); 
-            overflow: hidden; 
-            border: 1px solid rgba(255, 255, 255, 0.5); 
-            transition: var(--transition); 
-            min-height: 85vh; 
-            display: flex; flex-direction: column;
+            width: 100%; max-width: 440px; height: 100%;
+            margin: 0 auto; background: var(--bg-app); flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: absolute; 
         }
         
-        header { 
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); 
-            color: white; padding: 32px 24px; text-align: center; position: relative; 
-        }
-        header h1 { font-size: 1.8em; margin-bottom: 4px; letter-spacing: -0.025em; }
-        header p { opacity: 0.9; font-weight: 400; }
+        .container:not(.hidden), #adminPanel:not(.hidden) { display: flex !important; }
         
-        nav { 
-            display: flex; background: var(--light-color); flex-wrap: wrap; 
-            justify-content: center; padding: 8px; gap: 6px; border-bottom: 1px solid var(--border-color); 
-        }
-        nav button { 
-            background: transparent; border: none; color: var(--text-muted); 
-            padding: 12px 16px; cursor: pointer; font-size: 14px; font-family: var(--font-primary); 
-            transition: var(--transition); font-weight: 600; flex-grow: 1; text-align: center; 
-            border-radius: var(--border-radius-md); box-shadow: none;
-        }
-        nav button:hover { background: #e2e8f0; color: var(--dark-color); transform: none; }
-        nav button.active { 
-            background: var(--surface-color); color: var(--primary-color); 
-            box-shadow: var(--shadow-sm); 
-        }
+        /* BULLETPROOF HIDING RULE */
+        .hidden, .view-stage.hidden, .tab-content.hidden, #adminPanel main > div.hidden { display: none !important; }
 
-        main { flex-grow: 1; display: flex; flex-direction: column; }
+        /* STRICT ADMIN OVERLAP FIX */
+        /* Forces Manage Sets to vanish if Edit Screen is open */
+        #adminPanel main:has(#editQuestionsSection:not(.hidden)) #adminQuestionSets { display: none !important; }
+
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); font-weight: 700; color: var(--dark-color); letter-spacing: -0.5px; }
+
+        /* --- FLEXBOX BASE ORDERING --- */
+        header { order: 1; flex: 0 0 auto; }
+        main { order: 2; flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; }
+        nav, #admin-tab-nav { order: 3; flex: 0 0 auto; }
+
+        /* --- HEADER & STATS --- */
+        header { background: var(--surface-color); padding: 48px 24px 16px; position: relative; z-index: 10; border-bottom: 1px solid var(--border-color); }
+        header h1 { position: absolute; top: 16px; left: 0; width: 100%; text-align: center; font-size: 1.15em; margin: 0; color: var(--dark-color); pointer-events: none; }
+        header p { display: none; }
         
-        .tab-content { display: none; padding: 32px; animation: fadeIn 0.4s ease-out; flex-grow: 1; background: var(--surface-color); }
-        .tab-content.active { display: block; }
-        .view-stage.hidden, .hidden { display: none !important; }
+        header::before { content: ''; position: absolute; top: 16px; right: 20px; width: 24px; height: 24px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2364748b'%3E%3Cpath d='M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z'/%3E%3C/svg%3E"); background-size: contain; background-repeat: no-repeat; pointer-events: none; }
 
-        /* Buttons */
-        button { 
-            background: var(--primary-color); color: white; border: none; 
-            padding: 12px 24px; border-radius: var(--border-radius-md); cursor: pointer; 
-            font-weight: 600; font-family: var(--font-primary); transition: var(--transition); 
-            box-shadow: var(--shadow-sm); font-size: 0.95em;
-        }
-        button:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        button:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
+        #playerPFP { width: 56px !important; height: 56px !important; border: 3px solid #eef0f6 !important; border-radius: 50%; object-fit: cover; display: inline-block !important; vertical-align: top !important; margin: 0 12px 0 0 !important; float: none !important; transition: transform 0.2s ease; }
+        #playerPFP.hidden { display: none !important; }
+        #pfpUploadHidden { display: none !important; opacity: 0; position: absolute; pointer-events: none; z-index: -9999; } 
         
-        .btn-success { background: var(--success-color); }
-        .btn-success:hover { background: var(--success-hover); }
-        .btn-danger { background: var(--danger-color); }
-        .btn-danger:hover { background: var(--danger-hover); }
-        .btn-warning { background: var(--warning-color); }
-        .btn-warning:hover { background: var(--warning-hover); }
-        .btn-critical { background: var(--critical-color); color: white; }
-        .btn-critical:hover { background: #1e293b; }
+        #playerStats { background: transparent !important; color: var(--dark-color) !important; text-align: left !important; padding: 0 !important; display: inline-block !important; vertical-align: top !important; width: calc(100% - 75px); margin: 0 !important; float: none !important; }
+        #playerStats.hidden { display: none !important; }
         
-        .btn-bookmark { 
-            background: var(--surface-color); border: 1px solid var(--border-color); color: var(--text-muted); 
-            padding: 8px 16px; font-size: 0.9em; border-radius: 9999px; cursor: pointer; 
-            transition: var(--transition); box-shadow: var(--shadow-sm); font-weight: 500; 
-        }
-        .btn-bookmark:hover { background: var(--light-color); color: var(--dark-color); transform: translateY(-1px); }
-        .btn-bookmark.active { background: #fef3c7; color: #d97706; border-color: #fde68a; }
-
-        /* Inputs */
-        input, select, textarea { 
-            width: 100%; padding: 14px 16px; margin: 8px 0 16px 0; 
-            background: var(--light-color); border: 1px solid var(--border-color); 
-            border-radius: var(--border-radius-md); font-family: inherit; font-size: 0.95em;
-            transition: var(--transition); color: var(--dark-color);
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none; border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); background: var(--surface-color);
-        }
-        label { font-weight: 500; color: var(--dark-color); font-size: 0.95em; margin-bottom: 4px; display: block; }
-
-        .statement-question { text-align: left; line-height: 1.7; font-weight: 500; }
-        .statement-question br { display: block; margin-bottom: 8px; content: ""; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Cards & Lists */
-        .dashboard-card { 
-            background: var(--surface-color); padding: 24px; border-radius: var(--border-radius-lg); 
-            margin-bottom: 20px; color: var(--dark-color); border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-sm);
-        }
-        .history-item { 
-            background: var(--surface-color); padding: 20px; border-radius: var(--border-radius-lg); 
-            margin-bottom: 16px; border: 1px solid var(--border-color); border-left: 4px solid var(--border-color);
-            box-shadow: var(--shadow-sm); transition: var(--transition);
-        }
-        .history-item:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-        .history-item h4 { margin-bottom: 8px; color: var(--dark-color); }
+        #playerNameDisplay { display: block !important; font-size: 1.15em !important; font-weight: 700 !important; margin-bottom: 2px !important; color: var(--dark-color) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #playerStats p:nth-of-type(2) { font-size: 0 !important; color: transparent !important; margin: 0; display: flex; align-items: center; white-space: nowrap; }
+        #playerStats p:nth-of-type(2) span { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        #playerTitle { color: white !important; background: var(--primary-color) !important; padding: 4px 10px; border-radius: 8px; font-weight: 700; margin-right: 8px; box-shadow: var(--shadow-btn); text-transform: uppercase; font-size: 10px !important; letter-spacing: 0.5px;}
         
-        /* Modals */
-        .modal { 
-            display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; 
-            background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); 
-            align-items: center; justify-content: center; padding: 20px;
-        }
-        .modal-content { 
-            background-color: var(--surface-color); padding: 32px; border-radius: var(--border-radius-xl); 
-            width: 100%; max-width: 500px; text-align: center; box-shadow: var(--shadow-xl); 
-            max-height: 90vh; overflow-y: auto; position: relative; animation: fadeIn 0.3s ease-out;
-        }
-        .modal-content h2, .modal-content h3 { margin-bottom: 16px; color: var(--dark-color); }
+        .xp-bar { background: var(--border-color) !important; height: 8px !important; margin-top: 24px !important; border-radius: 99px; width: 100%; overflow: visible !important; position: relative; }
+        .xp-bar::before { content: 'XP Progress'; position: absolute; top: -20px; left: 0; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+        .xp-bar-fill { background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)) !important; height: 100%; border-radius: 99px; position: relative; box-shadow: 0 0 10px rgba(92, 79, 242, 0.4); }
 
-        /* Calendar */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 16px; }
-        .calendar-day { 
-            padding: 10px 4px; text-align: center; border-radius: var(--border-radius-sm); 
-            font-size: 0.9em; font-weight: 500; background: var(--light-color); border: 1px solid transparent;
-        }
-        .calendar-day.present { background: #ecfdf5; color: var(--success-hover); border-color: #a7f3d0; font-weight: 600; }
-        .calendar-day.today { border: 2px solid var(--primary-color); }
+        /* --- THE BOTTOM NAVIGATION "UNDERTAB" --- */
+        nav, #admin-tab-nav { display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x mandatory; background: var(--surface-color); padding: 12px 16px 20px 16px; border-top: 1px solid var(--border-color); border-bottom: none; gap: 8px; }
         
-        /* Dropdown */
-        .header-menu { position: absolute; top: 24px; right: 24px; }
-        .menu-btn { 
-            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; 
-            width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2em;
-            backdrop-filter: blur(4px); transition: var(--transition); box-shadow: none;
+        nav button, #admin-tab-nav button { 
+            flex: 0 0 calc(25% - 6px); scroll-snap-align: start; background: transparent; border: none; 
+            color: var(--text-muted); padding: 8px 4px; font-size: 10px; font-weight: 600; 
+            border-radius: 12px; display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; transition: var(--bouncy-transition); box-shadow: none; 
+            cursor: pointer; position: relative;
         }
-        .menu-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(0) scale(1.05); }
-        .dropdown-content { 
-            display: none; position: absolute; right: 0; top: 50px; background: var(--surface-color); 
-            min-width: 200px; box-shadow: var(--shadow-lg); border-radius: var(--border-radius-md); 
-            overflow: hidden; z-index: 100; border: 1px solid var(--border-color);
-        }
-        .dropdown-content button { 
-            width: 100%; text-align: left; background: transparent; color: var(--dark-color); 
-            border-radius: 0; padding: 12px 16px; font-weight: 500; box-shadow: none;
-        }
-        .dropdown-content button:hover { background: var(--light-color); color: var(--primary-color); transform: none; }
-        .dropdown-content button.btn-danger { color: var(--danger-color); }
-        .dropdown-content button.btn-danger:hover { background: #fef2f2; color: var(--danger-hover); }
-        .show { display: block; animation: fadeIn 0.2s ease-out; }
+        
+        nav button[onclick*="study"] { order: 1; }
+        nav button[onclick*="revision"] { order: 2; }
+        nav button[onclick*="backlog"] { order: 3; } 
+        nav button[onclick*="practice"] { order: 4; }
+        nav button[onclick*="analysis"] { order: 5; }
+        nav button[onclick*="attendance"] { order: 6; }
+        nav button[onclick*="bookmarks"] { order: 7; }
+        nav button[onclick*="leaderboard"] { order: 8; }
 
+        nav button:hover, #admin-tab-nav button:hover { color: var(--primary-color); background: #f8f9ff; }
+        nav button:active, #admin-tab-nav button:active { transform: scale(0.92); }
+        nav button.active, #admin-tab-nav button.active { color: var(--primary-color); background: transparent; }
+
+        nav button::before, #admin-tab-nav button::before { content: ''; display: flex; width: 24px; height: 24px; margin-bottom: 6px; background-size: contain; background-repeat: no-repeat; background-position: center; filter: grayscale(100%) opacity(0.5); transition: var(--bouncy-transition); }
+        nav button.active::before, #admin-tab-nav button.active::before { filter: none; opacity: 1; transform: scale(1.1); }
+        
+        .revision-badge { position: absolute !important; top: -2px !important; right: 6px !important; background: var(--danger-color) !important; color: white !important; font-size: 10px !important; font-weight: 700 !important; padding: 2px 6px !important; border-radius: 99px !important; border: 2px solid var(--surface-color) !important; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3) !important; }
+
+        nav button[onclick*="study"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'%3E%3Cpath d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z'/%3E%3C/svg%3E"); }
+        nav button[onclick*="practice"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='6'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/svg%3E"); }
+        nav button[onclick*="revision"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2'/%3E%3C/svg%3E"); }
+        nav button[onclick*="analysis"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23eab308'%3E%3Cpath d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z'/%3E%3C/svg%3E"); }
+        nav button[onclick*="backlog"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12 6 12 12 16 14'/%3E%3C/svg%3E"); }
+        nav button[onclick*="attendance"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2314b8a6'%3E%3Cpath d='M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zm-9-5.41L7.41 11 6 12.41l4 4 8-8-1.41-1.41L10 13.59z'/%3E%3C/svg%3E"); }
+        nav button[onclick*="bookmarks"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'%3E%3Cpath d='M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z'/%3E%3C/svg%3E"); }
+        nav button[onclick*="leaderboard"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238b5cf6'%3E%3Cpath d='M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z'/%3E%3C/svg%3E"); }
+
+        /* --- CONTENT AREAS & TABS --- */
+        .tab-content { padding: 16px 24px; flex: 1; overflow-y: auto; animation: fadeIn 0.3s ease-out; -webkit-overflow-scrolling: touch; }
+        .tab-content:not(.active) { display: none !important; }
+
+        /* PERFECTLY CENTERED LOGIN SCREEN */
+        #practice { display: flex; flex-direction: column; height: 100%; padding: 0; }
+        #practice:not(.active) { display: none !important; }
+        
+        #loginGatewayView { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; padding: 24px; background: var(--bg-app); }
+        .login-container { width: 100%; max-width: 340px; margin: 0 auto; }
+        .login-form { background: var(--surface-color); padding: 36px 24px; border-radius: var(--border-radius-xl); box-shadow: var(--shadow-float); border: 1px solid var(--border-color); }
+        
+        /* STANDARD TAB CONTENT */
+        #practiceSetupView { padding: 16px 24px; }
+        #practiceSetupView h2 { font-size: 1.4em; margin-bottom: 12px; }
+        #motivationalQuoteLoggedIn { font-weight: 600 !important; color: var(--primary-color) !important; font-style: normal !important;}
+        #practiceSetupView > div:nth-of-type(1) { background: #f8f9ff !important; border: none !important; border-radius: var(--border-radius-lg) !important; padding: 16px !important; margin-top: 0; }
+
+        /* Buttons & Forms */
+        button { background: var(--primary-color); color: white; border: none; padding: 16px 20px; border-radius: var(--border-radius-lg); cursor: pointer; font-weight: 600; font-family: var(--font-primary); font-size: 1em; width: auto; transition: var(--bouncy-transition); box-shadow: var(--shadow-btn); }
+        button:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        button:active { transform: scale(0.96); }
+        
+        .btn-success { background: var(--primary-color); } 
+        .btn-danger { background: var(--danger-color); box-shadow: 0 8px 16px -4px rgba(239, 68, 68, 0.3); }
+        .btn-warning { background: var(--surface-color); color: var(--primary-color); border: 2px solid var(--border-color); box-shadow: none; }
+        
+        input, select, textarea { width: 100%; padding: 14px 16px; margin: 8px 0 16px 0; background: var(--surface-color); border: 2px solid var(--border-color); border-radius: var(--border-radius-md); font-family: inherit; font-size: 1em; color: var(--dark-color); transition: border-color 0.2s; font-weight: 500; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); background: #f8f9ff; }
+
+        .dashboard-card, .history-item { background: var(--surface-color); padding: 16px; border-radius: var(--border-radius-lg); margin-bottom: 16px; border: 2px solid var(--border-color); box-shadow: var(--shadow-card); transition: transform 0.2s; }
+        .history-item:hover { transform: translateY(-2px); border-color: rgba(92, 79, 242, 0.3); }
+        .history-item h4 { font-size: 1.1em; margin-bottom: 6px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- EXAM MODE (MAXIMIZED STATEMENT SPACE) --- */
+        body.practice-active { background: var(--bg-body); }
+        body.practice-active .container { padding: 0; margin: 0 auto; border: none; }
+        body.practice-active header, body.practice-active nav { display: none !important; }
+        
+        #practiceSessionView { flex: 1; display: flex; flex-direction: column; background: var(--bg-app); overflow: hidden; position: relative; height: 100%; }
+        #topProgressIndicator { flex: 0 0 auto; min-height: 56px; background: var(--surface-color); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--border-color); z-index: 10; }
+        .question-counter-pill { font-weight: 700; font-size: 1.1em; color: var(--dark-color); display: inline-flex; align-items: center; }
+        
+        #practiceSessionViewContentWrapper { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Expanded Statement Space */
+        #questionScrollContainer { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 8px; -webkit-overflow-scrolling: touch; }
+        #practiceQuestion { font-size: 1.15em; font-weight: 600; line-height: 1.5; color: var(--dark-color); margin: 0 auto; padding-bottom: 8px; }
+        
+        /* Pure CSS trick to separate the "Question" from the "Statements" */
+        .statement-question { font-weight: 500; background: var(--surface-color); padding: 12px 16px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); margin-bottom: 8px; font-size: 0.95em; line-height: 1.6; }
+        .statement-question::first-line { font-family: var(--font-heading); font-size: 1.05em; font-weight: 700; color: var(--primary-color); }
+        
+        /* Ultra-compact Option Grid */
+        #optionsGridContainer { flex: 0 0 auto; background: var(--surface-color); padding: 8px 20px 12px; border-top: 1px solid var(--border-color); box-shadow: 0 -8px 16px rgba(0,0,0,0.03); z-index: 10; }
+        #optionsGrid { margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+        
+        /* Subdued option font to contrast heavily with statements */
+        .option-grid-item { display: flex; align-items: center; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 8px 12px; font-weight: 400; font-family: var(--font-primary); font-size: 0.85em; cursor: pointer; transition: var(--bouncy-transition); text-align: left; min-height: 40px;}
+        .option-grid-item:hover { border-color: var(--primary-color); transform: translateY(-1px); }
+        .option-grid-item:active { transform: scale(0.98); }
+        .option-grid-item.correct, .option-grid-item.wrong { background: var(--primary-color); color: white; border-color: var(--primary-color); font-weight: 600; transform: scale(1.02); box-shadow: var(--shadow-btn); }
+        .option-grid-item.wrong { background: var(--danger-color); border-color: var(--danger-color); box-shadow: 0 8px 16px -4px rgba(239, 68, 68, 0.4); }
+        .option-letter { font-family: var(--font-heading); font-weight: 700; color: var(--text-muted); background: #f1f5f9; border: none; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; font-size: 0.75em; transition: var(--bouncy-transition); }
+        .option-grid-item.correct .option-letter, .option-grid-item.wrong .option-letter { background: white; color: var(--primary-color); }
+        .option-grid-item.wrong .option-letter { color: var(--danger-color); }
+
+        #examFooter { flex: 0 0 auto; min-height: 60px; background: var(--surface-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid var(--border-color); }
+
+        /* --- FULL SCREEN CALENDAR TAB --- */
+        #attendance { flex-direction: column; height: 100%; padding: 20px 24px; }
+        .calendar-container { flex: 1; display: flex; flex-direction: column; padding: 16px; background: var(--surface-color); border-radius: var(--border-radius-lg); border: 2px solid var(--border-color); margin-top: 16px; min-height: 0; box-shadow: var(--shadow-card); }
+        
+        .calendar-header { flex: 0 0 auto; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .calendar-header button { padding: 6px 16px; width: auto; min-width: 48px; border-radius: 10px; font-size: 1.1em; display: flex; justify-content: center; align-items: center; box-shadow: none; }
+        
+        .calendar-grid { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; gap: 4px; min-height: 0; }
+        .calendar-day { display: flex; align-items: center; justify-content: center; font-size: 0.9em; border-radius: 10px; font-weight: 600; border: 1px solid transparent; height: 100%; width: 100%; cursor: pointer;}
+        .calendar-day.present { background: #ecfdf5; color: #059669; }
+        .calendar-day.today { border: 2px solid var(--primary-color); color: var(--primary-color); }
+
+        /* --- ADMIN AND MODALS FIXES --- */
+        #adminPanel header { background: var(--surface-color); padding: 20px 20px; position: relative; z-index: 10; border-bottom: 1px solid var(--border-color); text-align: center; }
+        #adminPanel header h1 { position: static; font-size: 1.3em; margin: 0; color: var(--dark-color); }
+        #adminPanel header p { display: block; font-size: 0.85em; color: var(--text-muted); margin-top: 4px; }
+        #adminPanel .btn-danger[onclick="adminLogout()"] { position: absolute; top: 18px; right: 16px; padding: 6px 12px; font-size: 0.85em; border-radius: 8px; box-shadow: none; z-index: 20; }
+
+        #admin-tab-nav button { flex: 0 0 calc(20% - 6px); padding: 8px 2px; font-size: 9px; } 
+        #admin-tab-nav button[onclick*="adminQuestionSets"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cpath d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/%3E%3Cpath d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/%3E%3C/svg%3E"); }
+        #admin-tab-nav button[onclick*="reportedQuestions"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z'/%3E%3Cline x1='4' y1='22' x2='4' y2='15'/%3E%3C/svg%3E"); }
+        #admin-tab-nav button[onclick*="adminBacklogManager"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12 6 12 12 16 14'/%3E%3C/svg%3E"); }
+        #admin-tab-nav button[onclick*="adminAttendance"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E"); }
+        #admin-tab-nav button[onclick*="adminSystem"]::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.8 1 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E"); }
+
+        #adminPanel main { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+        #adminPanel main > div { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
+        #editQuestionsSection { padding-bottom: 40px; }
+        
+        .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: var(--surface-color); padding: 32px 24px; border-radius: var(--border-radius-xl); width: 100%; max-width: 360px; text-align: center; box-shadow: var(--shadow-xl); animation: fadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); max-height: 90vh; overflow-y: auto; }
+        
+        .header-menu { position: absolute; top: 16px; left: 16px; z-index: 20; }
+        .menu-btn { background: transparent; color: var(--text-muted); width: 40px; height: 40px; border: none; font-size: 1.6em; box-shadow: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .dropdown-content { display: none; position: absolute; left: 0; top: 48px; background: var(--surface-color); min-width: 180px; box-shadow: var(--shadow-xl); border-radius: var(--border-radius-lg); overflow: hidden; z-index: 100; border: 1px solid var(--border-color); padding: 8px; }
+        .dropdown-content button { width: 100%; text-align: left; background: transparent; color: var(--dark-color); padding: 12px 16px; font-weight: 600; border-radius: 10px; border-bottom: none; box-shadow: none; margin-bottom: 4px; }
+        .dropdown-content button:hover { background: #f8f9ff; color: var(--primary-color); transform: none; }
+        .show { display: block; }
+
+        #studyReadingView > div, #revisionNotesView > div { justify-content: flex-start !important; align-items: center !important; }
+        #studyReadingView > div:last-child, #revisionNotesView > div:nth-child(2) { flex: 0 0 auto !important; margin-top: 24px; }
+        
         #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4000; }
 
-        /* Login */
-        .login-container { max-width: 400px; margin: 40px auto; width: 100%; }
-        .login-form { 
-            background: var(--surface-color); padding: 32px; border-radius: var(--border-radius-xl); 
-            box-shadow: var(--shadow-md); border: 1px solid var(--border-color);
-        }
-        .login-form h3 { margin-bottom: 24px; text-align: center; }
-
-        /* --- STUDY TAB & READING UI CSS --- */
-        .note-reading-area { 
-            background: var(--surface-color); padding: 32px; border-radius: var(--border-radius-lg); 
-            line-height: 1.8; font-size: 1.1em; color: var(--dark-color); box-shadow: var(--shadow-sm); 
-            white-space: pre-wrap; word-wrap: break-word; flex-grow: 1; overflow-y: auto; border: 1px solid var(--border-color); 
-        }
-        .study-card { 
-            background: var(--surface-color); border: 1px solid var(--border-color); padding: 20px 24px; 
-            border-radius: var(--border-radius-lg); cursor: pointer; transition: var(--transition); 
-            display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);
-        }
-        .study-card:hover { border-color: var(--primary-color); transform: translateY(-3px); box-shadow: var(--shadow-md); }
-        
-        .progress-track { width: 8px; background: var(--border-color); border-radius: 99px; flex-shrink: 0; margin-left: 20px; position: relative; overflow: hidden; }
-        .progress-fill { width: 100%; height: 0%; background: var(--success-color); border-radius: 99px; transition: height 0.3s ease-out; }
-
-        /* Tables */
-        .leaderboard-table th { font-weight: 600; color: var(--text-muted); border-bottom: 2px solid var(--border-color); background: var(--light-color); }
-        .leaderboard-table td { border-bottom: 1px solid var(--border-color); color: var(--dark-color); font-weight: 500; }
-
-        /* --- MOBILE FULLSCREEN NOTES ADDITION --- */
-        @media screen and (max-width: 768px) { 
-            .container { border-radius: 0; min-height: 100vh; border: none; box-shadow: none; }
-            .note-reading-area { padding: 20px; font-size: 1.05em; } 
-            .progress-track { margin-left: 12px; width: 6px; }
-
-            body.notes-fullscreen-active {
-                padding: 0 !important; margin: 0 !important;
-                height: 100vh; height: 100dvh;
-                width: 100vw; overflow: hidden;
-                overscroll-behavior-y: none;
-                align-items: flex-start; background: var(--surface-color);
-            }
-            body.notes-fullscreen-active .container {
-                max-width: 100% !important; width: 100% !important; height: 100% !important;
-                border-radius: 0; box-shadow: none; border: none; margin: 0; padding: 0;
-            }
-            body.notes-fullscreen-active header,
-            body.notes-fullscreen-active nav {
-                display: none !important;
-            }
-            body.notes-fullscreen-active main { height: 100%; padding: 0 !important; }
-            body.notes-fullscreen-active .tab-content { padding: 0; height: 100%; background: transparent; }
-            body.notes-fullscreen-active #studyReadingView,
-            body.notes-fullscreen-active #revisionNotesView {
-                padding: 20px !important; height: 100% !important;
-            }
+        @media screen and (max-width: 480px) {
+            .container, #adminPanel { border-radius: 0; max-width: 100%; border: none; box-shadow: none; }
         }
     </style>
 </head>
@@ -455,8 +338,7 @@
                             </div>
                         </div>
                         <div style="text-align: center; margin-top: 24px;">
-                            <button onclick="handleAdminLogin()" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 8px 16px; font-size: 0.9em; box-shadow: none;">Admin Login</button>
-                        </div>
+                          <button id="adminLoginBtn" onclick="handleAdminLogin()" disabled style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 8px 16px; font-size: 0.9em; box-shadow: none; opacity: 0.5; cursor: not-allowed;">Admin Login</button></div>
                     </div>
                 </div>
 
@@ -909,15 +791,24 @@
 
         function syncQuestionSetsFromFirebase() {
             if (!isFirebaseConnected) { showNotification('Not connected to cloud', 'warning'); return; }
-            showNotification('Downloading latest question sets...');
+            showNotification('Downloading all sets to strictly match database...', 'info');
+            
+            // FULL STRICT SYNC: Downloads everything, disregarding timestamps
             db.ref('questionSets').once('value').then(snapshot => {
                 const firebaseSets = snapshot.val() || {};
+                
+                // Completely OVERWRITE local data. This instantly removes any sets deleted from Firebase.
                 questionSets = firebaseSets;
+                
                 localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                localStorage.setItem('pscLastSyncTimestamp', Date.now());
+                
                 loadQuestionSets();
                 updateSubjectSelect();
-                showNotification('Question sets updated from cloud!', 'success');
-            }).catch(error => { showNotification('Failed to update question sets', 'error'); });
+                showNotification('Database strictly synced! Deleted sets removed locally.', 'success');
+            }).catch(error => { 
+                showNotification('Failed to update question sets', 'error'); 
+            });
         }
 
         function showCreatePlayerForm() {
@@ -951,6 +842,12 @@
                 if (snapshot.val() === true) {
                     updateFirebaseStatus('Connected', true);
                     isFirebaseConnected = true;
+                    // Enable Admin Login Button
+                    const adminBtn = document.getElementById('adminLoginBtn');
+                    if (adminBtn) {
+                        adminBtn.disabled = false;
+                        adminBtn.style.opacity = '1';
+                        adminBtn.style.cursor = 'pointer';}
                     
                     db.ref('systemSettings/customSubjectSort').once('value').then(snap => {
                         if(snap.val()) {
@@ -973,21 +870,18 @@
         function loadPlayerProfilesFromFirebase() {
             const localProfiles = JSON.parse(localStorage.getItem('pscPlayerProfiles')) || {};
             if (Object.keys(localProfiles).length > 0) { playerProfiles = localProfiles; updatePlayerSelects(); }
+            
             if (!db) return;
+            
             db.ref('playerProfiles').once('value').then(snapshot => {
                 const firebaseProfiles = snapshot.val() || {};
-                if (Object.keys(firebaseProfiles).length > 0) {
-                    Object.keys(firebaseProfiles).forEach(playerName => {
-                        if (!playerProfiles[playerName]) {
-                            playerProfiles[playerName] = firebaseProfiles[playerName];
-                        } else {
-                            playerProfiles[playerName] = { ...playerProfiles[playerName], ...firebaseProfiles[playerName] };
-                        }
-                    });
-                    localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
-                    updatePlayerSelects();
-                    if (document.getElementById('playerNameDisplay') && currentPlayerName) updateProgressUI();
-                }
+                
+                // STRICT SYNC: Completely overwrite local profiles to wipe deleted ones
+                playerProfiles = firebaseProfiles;
+                localStorage.setItem('pscPlayerProfiles', JSON.stringify(playerProfiles));
+                
+                updatePlayerSelects();
+                if (document.getElementById('playerNameDisplay') && currentPlayerName) updateProgressUI();
                 
                 if (currentPlayerName) {
                     db.ref(`revisionProgress/${currentPlayerName}`).once('value').then(revSnapshot => {
@@ -1013,26 +907,60 @@
         }
 
         function performSmartSync() {
-            if (!isFirebaseConnected) { loadCachedData(); return; }
-            showNotification('Checking for updates...', 'info');
+            if (!isFirebaseConnected) { 
+                loadCachedData(); 
+                enableLoginUI(); 
+                return; 
+            }
+            
             const lastSyncTimestamp = localStorage.getItem('pscLastSyncTimestamp') || 0;
+            
+            // DELTA SYNC: Only fetch sets modified AFTER the last sync timestamp
             db.ref('questionSets').orderByChild('lastModified').startAt(parseInt(lastSyncTimestamp) + 1).once('value').then(snapshot => {
                 const newOrUpdatedSets = snapshot.val() || {};
                 const count = Object.keys(newOrUpdatedSets).length;
+                
                 if (count > 0) {
-                    const currentRevisionProgress = JSON.parse(JSON.stringify(revisionProgress));
-                    Object.keys(newOrUpdatedSets).forEach(setName => { questionSets[setName] = newOrUpdatedSets[setName]; });
-                    revisionProgress = currentRevisionProgress;
+                    // Merge new/updated sets into existing local storage
+                    Object.keys(newOrUpdatedSets).forEach(setName => { 
+                        questionSets[setName] = newOrUpdatedSets[setName]; 
+                    });
+                    
                     localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
-                    localStorage.setItem('pscRevisionProgress', JSON.stringify(revisionProgress));
-                    loadQuestionSets();
-                    updateSubjectSelect();
-                    showNotification(`Updated ${count} question set(s) from cloud!`, 'success');
-                } else { showNotification('All question sets are up to date.', 'info'); }
-                const currentTimestamp = Date.now();
-                localStorage.setItem('pscLastSyncTimestamp', currentTimestamp);
-                localStorage.setItem('pscLastSyncDate', getTodayDateString());
-            }).catch(error => { showNotification('Using cached data (offline mode)', 'warning'); loadCachedData(); });
+                    showNotification(`Downloaded ${count} new/updated set(s)!`, 'success');
+                }
+                
+                // Always load from the local merged data
+                loadQuestionSets();
+                updateSubjectSelect();
+                
+                // Update timestamp for the NEXT time the app opens
+                localStorage.setItem('pscLastSyncTimestamp', Date.now());
+                
+                // UNLOCK UI
+                enableLoginUI();
+                
+                // Execute deferred auto-login
+                if (pendingAutoLoginPlayer) {
+                    loginPlayer(pendingAutoLoginPlayer, true);
+                    pendingAutoLoginPlayer = null;
+                }
+            }).catch(error => { 
+                showNotification('Using cached data (offline mode)', 'warning'); 
+                loadCachedData(); 
+                enableLoginUI();
+                // Also ensure Admin login unlocks offline
+                const adminBtn = document.getElementById('adminLoginBtn');
+                if (adminBtn) {
+                    adminBtn.disabled = false;
+                    adminBtn.style.opacity = '1';
+                    adminBtn.style.cursor = 'pointer';
+                }
+                if (pendingAutoLoginPlayer) {
+                    loginPlayer(pendingAutoLoginPlayer, true);
+                    pendingAutoLoginPlayer = null;
+                }
+            });
         }
 
         function syncRevisionProgressOnly() {
@@ -1115,6 +1043,25 @@
 
         document.addEventListener('DOMContentLoaded', init);
         
+        let pendingAutoLoginPlayer = null;
+
+        function disableLoginUI() {
+            const loginBtn = document.querySelector('button[onclick="handlePlayerSelection()"]');
+            const createBtn = document.querySelector('button[onclick="showCreatePlayerForm()"]');
+            const playerSel = document.getElementById('playerSelect');
+            if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Syncing Database...'; loginBtn.style.opacity = '0.5'; loginBtn.style.cursor = 'not-allowed'; }
+            if (createBtn) { createBtn.disabled = true; createBtn.style.opacity = '0.5'; createBtn.style.cursor = 'not-allowed'; }
+            if (playerSel) { playerSel.disabled = true; playerSel.style.opacity = '0.5'; }
+        }
+
+        function enableLoginUI() {
+            const loginBtn = document.querySelector('button[onclick="handlePlayerSelection()"]');
+            const createBtn = document.querySelector('button[onclick="showCreatePlayerForm()"]');
+            const playerSel = document.getElementById('playerSelect');
+            if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Login'; loginBtn.style.opacity = '1'; loginBtn.style.cursor = 'pointer'; }
+            if (createBtn) { createBtn.disabled = false; createBtn.style.opacity = '1'; createBtn.style.cursor = 'pointer'; }
+            if (playerSel) { playerSel.disabled = false; playerSel.style.opacity = '1'; }
+        }
         function init() {
             document.getElementById('customSubjectSortOrder').value = customSubjectSort.join(', ');
             initializeFirebase();
@@ -1129,6 +1076,7 @@
                 document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
                 loadPlayerProgress();
                 switchPracticeView('practiceSetupView');
+                switchTab('revision'); /* <-- ADD THIS LINE */
                 updateAllBadges();
                 updateSubjectSelect();
                 setTimeout(() => {
@@ -1696,6 +1644,7 @@
             document.getElementById('setupWelcome').textContent = `Welcome, ${currentPlayerName}!`;
             loadPlayerProgress();
             switchPracticeView('practiceSetupView');
+            switchTab('revision');
             updateAllBadges();
             updateSubjectSelect();
             setTimeout(() => { syncRevisionProgressOnly(); }, 1000);
@@ -2257,30 +2206,56 @@
         }
 
        function updateSubjectSelect() {
-            validateAndSyncQuestionSets(() => {
-                const subjectSelect = document.getElementById('subjectSelect');
-                if (!subjectSelect) return;
-                const subjects = sortSubjectsArray([...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))]);
-                const currentSelection = subjectSelect.value;
-                subjectSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
-                if(subjects.includes(currentSelection)) { subjectSelect.value = currentSelection; }
-                updatePracticeSetSelect(subjectSelect.value);
-            });
+            // Removed the infinite syncing loop wrapper
+            const subjectSelect = document.getElementById('subjectSelect');
+            if (!subjectSelect) return;
+            
+            const subjects = sortSubjectsArray([...new Set(Object.values(questionSets).map(s => s.subject || 'Uncategorized'))]);
+            const currentSelection = subjectSelect.value;
+            
+            subjectSelect.innerHTML = '<option value="">-- Select a Subject --</option>' + subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            
+            if(subjects.includes(currentSelection)) { 
+                subjectSelect.value = currentSelection; 
+            }
+            updatePracticeSetSelect(subjectSelect.value);
         }
         
-        function updatePracticeSetSelect(subject) {
+       function updatePracticeSetSelect(subject) {
             const practiceSetSelect = document.getElementById('practiceSetSelect');
             const startBtn = document.getElementById('startPracticeBtn');
             if (!practiceSetSelect) return;
+            
+            // Save the user's current selection before redrawing the dropdown
+            const currentSetSelection = practiceSetSelect.value;
+            
             practiceSetSelect.innerHTML = '<option value="">-- Select a Question Set --</option>';
             if (!subject) { if(startBtn) startBtn.disabled = true; return; }
+            
             const setsForSubject = Object.keys(questionSets).filter(setName => {
                 const set = questionSets[setName];
                 const setSubject = set.subject || 'Uncategorized';
                 return setSubject === subject && set.type !== 'pdf';
             }).sort((a, b) => new Date(questionSets[b].uploadDate || 0) - new Date(questionSets[a].uploadDate || 0));
+            
             practiceSetSelect.innerHTML += setsForSubject.map(name => `<option value="${name}">${name}</option>`).join('');
+            
+            // Restore the user's selection if it exists in the newly drawn list
+            if (setsForSubject.includes(currentSetSelection)) {
+                practiceSetSelect.value = currentSetSelection;
+            }
+            
             if(startBtn) startBtn.disabled = setsForSubject.length === 0;
+            
+            // Enable start button if a valid set is selected
+            if(practiceSetSelect.value !== "") {
+                 if(startBtn) startBtn.disabled = false;
+            }
+            
+            // Add an event listener to enable the start button when the user clicks a set
+            practiceSetSelect.onchange = function() {
+                if(startBtn) startBtn.disabled = this.value === "";
+            };
         }
 
         function updatePlayerSelects() {
