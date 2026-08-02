@@ -718,9 +718,20 @@
         }
         
         function parseLocalDate(dateStr) {
-            if (!dateStr) return new Date();
-            const [y, m, d] = dateStr.split('-');
-            return new Date(y, m - 1, d);
+            if (!dateStr || typeof dateStr !== 'string') return new Date();
+            if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if(parts.length === 3) {
+                    const y = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    const d = parseInt(parts[2], 10);
+                    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                        return new Date(y, m - 1, d);
+                    }
+                }
+            }
+            const fallbackDate = new Date(dateStr);
+            return isNaN(fallbackDate.getTime()) ? new Date() : fallbackDate;
         }
 
         function getTodayDateString() { 
@@ -906,7 +917,7 @@
             });
         }
 
-        function performSmartSync() {
+       function performSmartSync() {
             if (!isFirebaseConnected) { 
                 loadCachedData(); 
                 enableLoginUI(); 
@@ -915,41 +926,62 @@
             
             const lastSyncTimestamp = localStorage.getItem('pscLastSyncTimestamp') || 0;
             
-            // DELTA SYNC: Only fetch sets modified AFTER the last sync timestamp
+            // DELTA SYNC: Fetch sets modified AFTER the last sync timestamp
             db.ref('questionSets').orderByChild('lastModified').startAt(parseInt(lastSyncTimestamp) + 1).once('value').then(snapshot => {
                 const newOrUpdatedSets = snapshot.val() || {};
                 const count = Object.keys(newOrUpdatedSets).length;
                 
                 if (count > 0) {
-                    // Merge new/updated sets into existing local storage
                     Object.keys(newOrUpdatedSets).forEach(setName => { 
                         questionSets[setName] = newOrUpdatedSets[setName]; 
                     });
-                    
-                    localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
                     showNotification(`Downloaded ${count} new/updated set(s)!`, 'success');
                 }
                 
-                // Always load from the local merged data
-                loadQuestionSets();
-                updateSubjectSelect();
+                // NEW: Automatic Deletion Check (Minimal Data Transfer)
+                const localSets = Object.keys(questionSets);
+                let deletedCount = 0;
+                let checksPending = localSets.length;
                 
-                // Update timestamp for the NEXT time the app opens
-                localStorage.setItem('pscLastSyncTimestamp', Date.now());
-                
-                // UNLOCK UI
-                enableLoginUI();
-                
-                // Execute deferred auto-login
-                if (pendingAutoLoginPlayer) {
-                    loginPlayer(pendingAutoLoginPlayer, true);
-                    pendingAutoLoginPlayer = null;
+                if (checksPending === 0) { finishSync(); return; }
+
+                // Only asks Firebase for the existence of the set, not the whole set
+                localSets.forEach(setName => {
+                    db.ref(`questionSets/${setName}/lastModified`).once('value').then(snap => {
+                        if (!snap.exists()) {
+                            delete questionSets[setName];
+                            deletedCount++;
+                        }
+                        checkDone();
+                    }).catch(() => checkDone());
+                });
+
+                function checkDone() {
+                    checksPending--;
+                    if (checksPending === 0) {
+                        if (deletedCount > 0) {
+                            showNotification(`Removed ${deletedCount} deleted set(s) automatically.`, 'info');
+                        }
+                        finishSync();
+                    }
+                }
+
+                function finishSync() {
+                    localStorage.setItem('pscQuestionSets', JSON.stringify(questionSets));
+                    loadQuestionSets();
+                    updateSubjectSelect();
+                    localStorage.setItem('pscLastSyncTimestamp', Date.now());
+                    enableLoginUI();
+                    
+                    if (pendingAutoLoginPlayer) {
+                        loginPlayer(pendingAutoLoginPlayer, true);
+                        pendingAutoLoginPlayer = null;
+                    }
                 }
             }).catch(error => { 
                 showNotification('Using cached data (offline mode)', 'warning'); 
                 loadCachedData(); 
                 enableLoginUI();
-                // Also ensure Admin login unlocks offline
                 const adminBtn = document.getElementById('adminLoginBtn');
                 if (adminBtn) {
                     adminBtn.disabled = false;
@@ -962,7 +994,6 @@
                 }
             });
         }
-
         function syncRevisionProgressOnly() {
             if (!isFirebaseConnected || !currentPlayerName) return;
             if (revisionProgress[currentPlayerName]) { db.ref(`revisionProgress/${currentPlayerName}`).update(revisionProgress[currentPlayerName]); }
@@ -2527,6 +2558,14 @@
                 let currentStage = 0;
                 if (revisionProgress[targetPlayer] && revisionProgress[targetPlayer][setName]) {
                     currentStage = revisionProgress[targetPlayer][setName].currentStage || 0;
+                } else {
+                    // Fix: Check for older legacy data so older active sets don't get stuck
+                    let maxStage = -1;
+                    [1, 3, 7, 14, 21, 30].forEach((day, index) => {
+                        const legacyKey = `${setName}_RevDay${day}`;
+                        if (revisionProgress[targetPlayer] && revisionProgress[targetPlayer][legacyKey] && revisionProgress[targetPlayer][legacyKey].success) maxStage = index;
+                    });
+                    if (maxStage !== -1) currentStage = maxStage + 1;
                 }
                 
                 if (currentStage >= SRS_INTERVALS.length) continue; 
